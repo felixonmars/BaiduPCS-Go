@@ -17,7 +17,7 @@ Go语言程序, 可直接下载使用 [点此查看发布页面](https://github.
 
 程序应在 (Linux, macOS)终端／(Windows)命令提示符, PowerShell 中运行.
 
-安卓, 建议使用软件 [Termux](https://termux.com) 或 终端模拟器, 以提供终端环境.
+安卓, 建议使用软件 [Termux](https://termux.com) 或 [NeoTerm](https://github.com/NeoTerm/NeoTerm/releases) 或 终端模拟器, 以提供终端环境.
 
 苹果iOS, 需要越狱, 在 Cydia 下载安装 Terminal, 以提供终端环境
 
