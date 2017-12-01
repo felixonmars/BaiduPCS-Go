@@ -20,9 +20,6 @@ out/
 .glide/
 
 # others
-file.*
-*.mov
-*.ipa
+.Ds_Store
 *.txt
-*.f4v
 download/
