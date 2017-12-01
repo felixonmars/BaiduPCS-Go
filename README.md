@@ -3,7 +3,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 # 特色
 
-使用百度 BDUSS 登录百度帐号, 支持多用户 [关于 获取百度 BDUSS](https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS);
+使用百度 BDUSS 登录百度帐号, 支持多用户, [关于 获取百度 BDUSS](https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS);
 
 网盘内列出文件和目录, **支持通配符匹配路径**;
 
@@ -13,9 +13,13 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 # 程序运行说明
 
-Go语言程序, 可直接下载使用 [点此查看发布页面](https://github.com/iikira/BaiduPCS-Go/releases)
+Go语言程序, 可直接下载使用 [点此查看发布页面](https://github.com/iikira/BaiduPCS-Go/releases), 使用本程序, 强烈建议学习一些 linux 基础知识, [Linux20个常用命令](http://blog.csdn.net/xufei512/article/details/53321980).
 
 程序应在 (Linux, macOS)终端／(Windows)命令提示符, PowerShell 中运行.
+
+安卓, 建议使用软件 [Termux](https://termux.com) 或 终端模拟器, 以提供终端环境.
+
+苹果iOS, 需要越狱, 在 Cydia 下载安装 Terminal, 以提供终端环境
 
 Windows 也可直接双击程序运行.
 
@@ -123,24 +127,24 @@ console 模式下, 运行命令 `login` 程序将会提示你输入 百度BDUSS 
 
 console 模式下, 运行命令 `login -bduss=<BDUSS>` 来设置 百度BDUSS 值, 设置时请替换掉 `<BDUSS>`
 
-## 3. 切换网盘目录
+## 3. 切换网盘工作目录
 
-console 模式下, 运行命令 `cd /我的资源` 将目录切换为 `/我的资源` (前提: 该目录存在于网盘)
+console 模式下, 运行命令 `cd /我的资源` 将工作目录切换为 `/我的资源` (前提: 该目录存在于网盘)
 
-目录支持通配符匹配, 所有你也可以这样: 运行命令 `cd /我的*` 或 `cd /我的??` 将目录切换为 `/我的资源`
+目录支持通配符匹配, 所以你也可以这样: 运行命令 `cd /我的*` 或 `cd /我的??` 将工作目录切换为 `/我的资源`, 简化输入.
 
-将目录切换为 `/我的资源` 成功后, 运行命令 `cd ..` 切换上级目录, 即将目录切换为 `/`
+将工作目录切换为 `/我的资源` 成功后, 运行命令 `cd ..` 切换上级目录, 即将工作目录切换为 `/`
 
 为什么要这样设计呢, 举个例子, 
 
-假设 你要下载 `/我的资源` 内名为 `1.mp4` 和 `2.mp4` 两个文件, 未切换网盘目录, 你需要依次运行以下命令: 
+假设 你要下载 `/我的资源` 内名为 `1.mp4` 和 `2.mp4` 两个文件, 而未切换工作目录, 你需要依次运行以下命令: 
 
 ```
 d /我的资源/1.mp4
 d /我的资源/2.mp4
 ```
 
-而切换网盘目录之后, 依次运行以下命令: 
+而切换网盘工作目录之后, 依次运行以下命令: 
 
 ```
 cd /我的资源
