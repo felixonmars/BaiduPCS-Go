@@ -4,6 +4,7 @@
 *.so
 *.dylib
 baidupcs_go
+BaiduPCS-Go
 httpserver
 
 # Test binary, build with `go test -c`
@@ -11,6 +12,7 @@ httpserver
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+out/
 *.json
 *.dl
 

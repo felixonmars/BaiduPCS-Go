@@ -5,7 +5,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 使用百度 BDUSS 登录百度帐号, 支持多用户 [关于 获取百度 BDUSS](https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS);
 
-网盘内列出文件和目录, **支持通配符匹配**;
+网盘内列出文件和目录, **支持通配符匹配路径**;
 
 下载网盘内文件, 支持高并发下载和断点续传;
 

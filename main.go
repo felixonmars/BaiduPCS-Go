@@ -44,7 +44,13 @@ func main() {
 	app.Author = "iikira/BaiduPCS-Go: https://github.com/iikira/BaiduPCS-Go"
 	app.Usage = fmt.Sprintf("百度网盘工具箱 %s/%s GoVersion %s", runtime.GOOS, runtime.GOARCH, runtime.Version())
 	app.Description = `baidupcs_go 使用 Go语言编写, 为操作百度网盘, 提供实用功能.
-	具体功能, 参见 COMMANDS 列表`
+	具体功能, 参见 COMMANDS 列表
+
+	特色:
+		网盘内列出文件和目录, 支持通配符匹配路径;
+		下载网盘内文件, 支持高并发下载和断点续传.
+
+	程序目前处于测试版, 后续会添加更多的实用功能.`
 	app.Version = "beta-v1"
 	app.Action = func(c *cli.Context) {
 		if c.NArg() == 0 {
@@ -230,7 +236,7 @@ func main() {
 							fmt.Println("退出用户失败, 请检查 index 值是否正确")
 						}
 					} else {
-						fmt.Printf("退出用户失败, index 值非法, %s\n", err)
+						fmt.Printf("退出用户失败, index 值非法\n")
 					}
 
 					return nil
