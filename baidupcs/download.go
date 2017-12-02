@@ -7,13 +7,14 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"os"
-	fpath "path"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 var saveDir = "download"
 
+// FileDownload 下载网盘内文件
 func (p PCSApi) FileDownload(path string, size int64) (err error) {
 	// addItem 放在最后
 	p.addItem("file", "download", map[string]string{
@@ -32,7 +33,7 @@ func (p PCSApi) FileDownload(path string, size int64) (err error) {
 	h.SetKeepAlive(true)
 	h.SetTimeout(2 * time.Minute)
 
-	fileDl, err := downloader.NewFileDl(h, p.url.String(), saveDir+string(os.PathSeparator)+fpath.Base(path), size)
+	fileDl, err := downloader.NewFileDl(h, p.url.String(), saveDir+string(os.PathSeparator)+filepath.Base(path), size)
 	if err != nil {
 		fmt.Println(err)
 		return
