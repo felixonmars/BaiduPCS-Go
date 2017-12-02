@@ -56,7 +56,7 @@ func parsePath(path string) (string, error) {
 			}
 		}
 		if len(pfiles) == errTime {
-			return "", fmt.Errorf("文件路径匹配失败, 请检查通配符, 停留在 %s", ret.String())
+			return "", fmt.Errorf("文件路径匹配失败, 请检查通配符, 停留在 %s", fpath.Dir(ret.String()+"/.."))
 		}
 	}
 
