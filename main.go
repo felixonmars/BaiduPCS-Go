@@ -185,13 +185,7 @@ func main() {
 					return nil
 				}
 
-				baidu, err := pcsconfig.Config.GetBaiduUserByUID(pcsconfig.Config.BaiduActiveUID)
-				if err != nil {
-					fmt.Println(err)
-					return nil
-				}
-
-				fmt.Printf("切换用户成功, %v\n", baidu.Name)
+				fmt.Printf("切换用户成功, %v\n", pcsconfig.ActiveBaiduUser.Name)
 				return nil
 
 			},
@@ -247,6 +241,7 @@ func main() {
 					return nil
 				}
 
+				// 删除之前先获取被删除的数据, 用于下文输出日志
 				baidu, err := pcsconfig.Config.GetBaiduUserByUID(uid)
 				if err != nil {
 					fmt.Println(err)
@@ -255,11 +250,6 @@ func main() {
 
 				if !pcsconfig.Config.DeleteBaiduUserByUID(uid) {
 					fmt.Printf("退出用户失败, %s\n", baidu.Name)
-				}
-
-				if err := pcsconfig.Config.Save(); err != nil {
-					fmt.Println(err)
-					return nil
 				}
 
 				fmt.Printf("退出用户成功, %v\n", baidu.Name)
@@ -279,13 +269,7 @@ func main() {
 			Category:  "百度帐号操作",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
-				baidu, err := pcsconfig.Config.GetBaiduUserByUID(pcsconfig.Config.BaiduActiveUID)
-				if err != nil {
-					fmt.Println(err)
-					return nil
-				}
-
-				fmt.Printf("\n当前帐号 uid: %d, 用户名: %s\n", baidu.UID, baidu.Name)
+				fmt.Printf("\n当前帐号 uid: %d, 用户名: %s\n", pcsconfig.ActiveBaiduUser.UID, pcsconfig.ActiveBaiduUser.Name)
 				fmt.Println(pcsconfig.Config.GetAllBaiduUser())
 				return nil
 			},
@@ -336,7 +320,7 @@ func main() {
 			Category:  "网盘操作",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
-				fmt.Println(pcsconfig.Config.Workdir)
+				fmt.Println(pcsconfig.ActiveBaiduUser.Workdir)
 				return nil
 			},
 		},
@@ -398,9 +382,15 @@ func main() {
 					if err != nil {
 						return cli.NewExitError(fmt.Errorf("max_parallel 设置值不合法, 错误: %s", err), 1)
 					}
+
 					pcsconfig.Config.MaxParallel = parallel
-					pcsconfig.Config.Save()
+					err = pcsconfig.Config.Save()
+					if err != nil {
+						fmt.Println("设置失败, 错误:", err)
+						return nil
+					}
 					fmt.Printf("设置成功, %s -> %v\n", c.Args().Get(0), c.Args().Get(1))
+
 				default:
 					fmt.Printf("未知设定值: %s\n\n", c.Args().Get(0))
 					cli.ShowCommandHelp(c, "set")

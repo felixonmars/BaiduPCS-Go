@@ -7,7 +7,6 @@ import (
 
 // RunChangeDirectory 执行更改工作目录
 func RunChangeDirectory(path string) {
-	info.Workdir = pcsconfig.Config.Workdir
 	path, err := toAbsPath(path)
 	if err != nil {
 		fmt.Println(err)
@@ -25,7 +24,7 @@ func RunChangeDirectory(path string) {
 		return
 	}
 
-	pcsconfig.Config.Workdir = path
+	pcsconfig.ActiveBaiduUser.Workdir = path
 	pcsconfig.Config.Save()
 
 	fmt.Printf("改变工作目录: %s\n", path)

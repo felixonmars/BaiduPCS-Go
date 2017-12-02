@@ -3,6 +3,7 @@ package baidupcscmd
 import (
 	"bytes"
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/config"
 	fpath "path"
 	"regexp"
 	"strings"
@@ -11,7 +12,7 @@ import (
 func toAbsPath(path string) (string, error) {
 	var _p string
 	if !fpath.IsAbs(path) {
-		_p = fpath.Dir(info.Workdir + "/" + path + "/")
+		_p = fpath.Dir(pcsconfig.ActiveBaiduUser.Workdir + "/" + path + "/")
 	} else {
 		_p = fpath.Dir(path + "/")
 	}

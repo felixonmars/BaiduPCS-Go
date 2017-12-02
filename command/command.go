@@ -1,7 +1,6 @@
 package baidupcscmd
 
 import (
-	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/config"
 	"os"
@@ -19,13 +18,8 @@ func init() {
 // ReloadInfo 重载配置
 func ReloadInfo() {
 	pcsconfig.Reload()
-	baidu, err := pcsconfig.Config.GetBaiduUserByUID(pcsconfig.Config.BaiduActiveUID)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	info = baidupcs.NewPCS(baidu.BDUSS)
-	info.Workdir = pcsconfig.Config.Workdir
+
+	info = baidupcs.NewPCS(pcsconfig.ActiveBaiduUser.BDUSS)
 	thread = pcsconfig.Config.MaxParallel
 }
 

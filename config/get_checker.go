@@ -5,13 +5,13 @@ import (
 	"fmt"
 )
 
-func (c *PCSConfig) GetBaiduUserByUID(uid uint64) (Baidu, error) {
+func (c *PCSConfig) GetBaiduUserByUID(uid uint64) (*Baidu, error) {
 	for k := range c.BaiduUserList {
 		if uid == c.BaiduUserList[k].UID {
 			return c.BaiduUserList[k], nil
 		}
 	}
-	return Baidu{}, fmt.Errorf("未找到百度帐号")
+	return nil, fmt.Errorf("未找到百度帐号")
 }
 
 func (c *PCSConfig) GetAllBaiduUser() string {

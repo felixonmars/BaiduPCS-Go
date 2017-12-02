@@ -12,6 +12,8 @@ type Baidu struct {
 	UID   uint64 `json:"uid"`
 	Name  string `json:"name"`
 	BDUSS string `json:"bduss"`
+
+	Workdir string `json:"workdir"`
 }
 
 // NewWithBDUSS 检测BDUSS有效性, 同时获取百度详细信息
@@ -67,9 +69,10 @@ func NewWithBDUSS(bduss string) (*Baidu, error) {
 	}
 
 	return &Baidu{
-		UID:   uid,
-		Name:  username,
-		BDUSS: bduss,
+		UID:     uid,
+		Name:    username,
+		BDUSS:   bduss,
+		Workdir: "/",
 	}, nil
 }
 

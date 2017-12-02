@@ -1,5 +1,9 @@
 package pcsconfig
 
+import (
+	"fmt"
+)
+
 func (c *PCSConfig) DeleteBaiduUserByUID(uid uint64) bool {
 	for k := range c.BaiduUserList {
 		if c.BaiduUserList[k].UID == uid {
@@ -12,6 +16,12 @@ func (c *PCSConfig) DeleteBaiduUserByUID(uid uint64) bool {
 				} else {
 					c.BaiduActiveUID = 0
 				}
+			}
+
+			err := c.Save()
+			if err != nil {
+				fmt.Println(err)
+				return false
 			}
 			return true
 		}

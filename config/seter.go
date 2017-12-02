@@ -13,7 +13,7 @@ func (c *PCSConfig) SetBDUSS(bduss string) (username string, err error) {
 	if c.CheckUIDExist(b.UID) {
 		return "", fmt.Errorf("登录失败, 用户 %s 已存在", b.Name)
 	}
-	c.BaiduUserList = append(c.BaiduUserList, *b)
+	c.BaiduUserList = append(c.BaiduUserList, b)
 	c.BaiduActiveUID = b.UID
 	return b.Name, c.Save()
 }
