@@ -7,6 +7,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/util"
 )
 
+// FileDirectory 文件或目录的详细信息
 type FileDirectory struct {
 	FsID        int64
 	Path        string
@@ -18,6 +19,7 @@ type FileDirectory struct {
 	Ifhassubdir bool
 }
 
+// FileDirectoryList FileDirectory 的 数组
 type FileDirectoryList []FileDirectory
 
 // FilesDirectoriesMeta 获取单个文件/目录的元信息
@@ -128,6 +130,7 @@ func (f FileDirectory) String() string {
 	)
 }
 
+// TotalSize 获取总文件大小
 func (f *FileDirectoryList) TotalSize() int64 {
 	var size int64
 	for k := range *f {
@@ -136,6 +139,7 @@ func (f *FileDirectoryList) TotalSize() int64 {
 	return size
 }
 
+// Count 获取文件总数和目录总数
 func (f *FileDirectoryList) Count() (fileN int64, directoryN int64) {
 	for k := range *f {
 		if (*f)[k].Isdir {

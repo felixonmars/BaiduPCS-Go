@@ -9,6 +9,7 @@ var (
 	appid = 260149
 )
 
+// PCSApi 百度 PCS API 详情
 type PCSApi struct {
 	url   url.URL
 	bduss string
@@ -17,6 +18,7 @@ type PCSApi struct {
 	writed  bool
 }
 
+// NewPCS 提供 百度BDUSS, 返回 PCSApi 指针对象
 func NewPCS(bduss string) *PCSApi {
 	return &PCSApi{
 		url: url.URL{
