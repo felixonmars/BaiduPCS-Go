@@ -25,7 +25,6 @@ func RunChangeDirectory(path string) {
 		return
 	}
 
-	info.Workdir = path
 	pcsconfig.Config.Workdir = path
 	pcsconfig.Config.Save()
 
