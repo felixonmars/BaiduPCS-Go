@@ -2,7 +2,7 @@ package baidupcscmd
 
 import (
 	"fmt"
-	"github.com/iikira/baidupcs_go/downloader"
+	"github.com/iikira/BaiduPCS-Go/downloader"
 )
 
 // RunDownload 执行下载网盘内文件

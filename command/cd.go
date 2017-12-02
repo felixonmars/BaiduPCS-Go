@@ -2,7 +2,7 @@ package baidupcscmd
 
 import (
 	"fmt"
-	"github.com/iikira/baidupcs_go/config"
+	"github.com/iikira/BaiduPCS-Go/config"
 )
 
 // RunChangeDirectory 执行更改工作目录

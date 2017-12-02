@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/gobs/args"
-	"github.com/iikira/baidupcs_go/command"
-	"github.com/iikira/baidupcs_go/config"
+	"github.com/iikira/BaiduPCS-Go/command"
+	"github.com/iikira/BaiduPCS-Go/config"
 	"github.com/kardianos/osext"
 	"github.com/peterh/liner"
 	"github.com/urfave/cli"

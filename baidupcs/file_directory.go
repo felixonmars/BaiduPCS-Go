@@ -3,8 +3,8 @@ package baidupcs
 import (
 	"fmt"
 	"github.com/bitly/go-simplejson"
-	"github.com/iikira/baidupcs_go/downloader"
-	"github.com/iikira/baidupcs_go/util"
+	"github.com/iikira/BaiduPCS-Go/downloader"
+	"github.com/iikira/BaiduPCS-Go/util"
 )
 
 type FileDirectory struct {
