@@ -14,8 +14,7 @@ type PCSApi struct {
 	url   url.URL
 	bduss string
 
-	Workdir string // 工作目录
-	writed  bool
+	writed bool
 }
 
 // NewPCS 提供 百度BDUSS, 返回 PCSApi 指针对象

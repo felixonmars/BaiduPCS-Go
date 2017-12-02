@@ -10,15 +10,17 @@ var (
 	// Config 配置信息, 由外部调用
 	Config = new(PCSConfig)
 
+	// ActiveBaiduUser 当前百度帐号
+	ActiveBaiduUser *Baidu
+
 	configFileName = "pcs_config.json"
 )
 
 // PCSConfig 配置详情
 type PCSConfig struct {
-	BaiduActiveUID uint64  `json:"baidu_active_uid"`
-	BaiduUserList  []Baidu `json:"baidu_user_list"`
-	Workdir        string  `json:"workdir"`
-	MaxParallel    int     `json:"max_parallel"`
+	BaiduActiveUID uint64   `json:"baidu_active_uid"`
+	BaiduUserList  []*Baidu `json:"baidu_user_list"`
+	MaxParallel    int      `json:"max_parallel"`
 }
 
 func init() {
@@ -32,12 +34,17 @@ func init() {
 		}
 	}
 	Config = cfg
+
+	if UpdateActiveBaiduUser() != nil {
+		fmt.Println(err)
+		ActiveBaiduUser = new(Baidu)
+	}
 }
 
 func initConfig() (*PCSConfig, error) {
 	cfg := &PCSConfig{
-		Workdir:     "/",
-		MaxParallel: 100,
+		BaiduActiveUID: 0,
+		MaxParallel:    100,
 	}
 	return cfg, cfg.Save()
 }
@@ -62,7 +69,8 @@ func Reload() error {
 		return err
 	}
 	Config = cfg
-	return nil
+
+	return UpdateActiveBaiduUser()
 }
 
 // Save 保存配置信息到配置文件
@@ -71,5 +79,20 @@ func (c *PCSConfig) Save() error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(configFileName, data, 0666)
+
+	err = ioutil.WriteFile(configFileName, data, 0666)
+	if err != nil {
+		return err
+	}
+
+	return Reload()
+}
+
+func UpdateActiveBaiduUser() error {
+	baidu, err := Config.GetBaiduUserByUID(Config.BaiduActiveUID)
+	if err == nil {
+		ActiveBaiduUser = baidu
+		return nil
+	}
+	return err
 }
