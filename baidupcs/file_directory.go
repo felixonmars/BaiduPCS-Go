@@ -42,7 +42,7 @@ func (p PCSApi) FilesDirectoriesMeta(path string) (data FileDirectory, err error
 
 	code, err := checkErr(json)
 	if err != nil {
-		err = fmt.Errorf("获取单个文件/目录的元信息遇到错误, 错误代码: %d, 消息: %s", code, err)
+		err = fmt.Errorf("获取单个文件/目录的元信息遇到错误, 路径: %s, 错误代码: %d, 消息: %s", path, code, err)
 		return
 	}
 
@@ -86,7 +86,7 @@ func (p PCSApi) FileList(path string) (data FileDirectoryList, err error) {
 
 	code, err := checkErr(json)
 	if err != nil {
-		return nil, fmt.Errorf("获取目录下的文件列表遇到错误, 错误代码: %d, 消息: %s", code, err)
+		return nil, fmt.Errorf("获取目录下的文件列表遇到错误, 路径: %s, 错误代码: %d, 消息: %s", path, code, err)
 	}
 
 	json = json.Get("list")
