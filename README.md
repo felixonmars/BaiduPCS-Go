@@ -10,10 +10,14 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 下载网盘内文件, 支持高并发**高速**下载和断点续传;
 
 > 下载测试:
-服务器: 阿里云
-下载 4G 文件, 只需 7分29秒
-![test_4g](https://gitee.com/linode_776/image/raw/master/misc_1/BaiduPCS-Go/test_4g.png)
-自己感受一下吧
+
+> 服务器: 阿里云
+
+> 下载 4G 文件, 只需 7分29秒
+
+> ![test_4g](./assets/test/test_4g.png)
+
+> 自己感受一下吧
 
 目前只支持下载单个文件, 暂不支持目录下载和多个文件下载. 
 
