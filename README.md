@@ -3,17 +3,25 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 # 特色
 
-使用百度 BDUSS 登录百度帐号, 支持多用户, [关于 获取百度 BDUSS](https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS);
+使用百度 BDUSS 登录百度网盘, 支持多用户, [关于 获取百度 BDUSS](https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS);
 
 网盘内列出文件和目录, **支持通配符匹配路径**;
 
-下载网盘内文件, 支持高并发下载和断点续传;
+下载网盘内文件, 支持高并发**高速**下载和断点续传;
+
+> 下载测试:
+服务器: 阿里云
+下载 4G 文件, 只需 7分29秒
+![test_4g](https://gitee.com/linode_776/image/raw/master/misc_1/BaiduPCS-Go/test_4g.png)
+自己感受一下吧
 
 目前只支持下载单个文件, 暂不支持目录下载和多个文件下载. 
 
-# 程序运行说明
+# 程序 下载/ 运行 说明
 
-Go语言程序, 可直接下载使用 [点此查看发布页面](https://github.com/iikira/BaiduPCS-Go/releases), 使用本程序, 强烈建议学习一些 linux 基础知识, [Linux20个常用命令](http://blog.csdn.net/xufei512/article/details/53321980).
+Go语言程序, 可直接下载使用, [点此查看发布页面 / 下载汇总](https://github.com/iikira/BaiduPCS-Go/releases).
+
+使用本程序, 强烈建议学习一些 linux 基础知识, [Linux20个常用命令](http://blog.csdn.net/xufei512/article/details/53321980).
 
 程序应在 (Linux, macOS)终端／(Windows)命令提示符, PowerShell 中运行.
 
