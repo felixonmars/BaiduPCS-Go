@@ -5,22 +5,13 @@ import (
 	"fmt"
 )
 
-func (c *PCSConfig) GetActiveBDUSS() string {
+func (c *PCSConfig) GetBaiduUserByUID(uid uint64) (Baidu, error) {
 	for k := range c.BaiduUserList {
-		if c.BaiduActiveUID == c.BaiduUserList[k].UID {
-			return c.BaiduUserList[k].BDUSS
+		if uid == c.BaiduUserList[k].UID {
+			return c.BaiduUserList[k], nil
 		}
 	}
-	return ""
-}
-
-func (c *PCSConfig) GetActiveUserName() string {
-	for k := range c.BaiduUserList {
-		if c.BaiduActiveUID == c.BaiduUserList[k].UID {
-			return c.BaiduUserList[k].Name
-		}
-	}
-	return ""
+	return Baidu{}, fmt.Errorf("未找到百度帐号")
 }
 
 func (c *PCSConfig) GetAllBaiduUser() string {

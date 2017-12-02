@@ -146,23 +146,19 @@ func main() {
 			Before:   reloadFn,
 			After:    reloadFn,
 			Action: func(c *cli.Context) error {
-				if c.IsSet("uid") {
-					if pcsconfig.Config.CheckUIDExist(c.Uint64("uid")) {
-						pcsconfig.Config.BaiduActiveUID = c.Uint64("uid")
-						pcsconfig.Config.Save()
-						fmt.Printf("切换用户成功, uid: %d\n", c.Uint64("uid"))
-					} else {
-						fmt.Println("切换用户失败, uid 不存在")
-					}
+				if len(pcsconfig.Config.BaiduUserList) == 0 {
+					fmt.Println("未设置任何百度帐号, 不能切换")
 					return nil
 				}
 
-				if c.NArg() == 0 {
-					if len(pcsconfig.Config.BaiduUserList) == 0 {
-						fmt.Println("未设置任何百度帐号, 不能切换")
-						return nil
+				var uid uint64
+				if c.IsSet("uid") {
+					if pcsconfig.Config.CheckUIDExist(c.Uint64("uid")) {
+						uid = c.Uint64("uid")
+					} else {
+						fmt.Println("切换用户失败, uid 不存在")
 					}
-
+				} else if c.NArg() == 0 {
 					cli.HandleAction(app.Command("loglist").Action, c)
 
 					line := liner.NewLiner()
@@ -171,18 +167,33 @@ func main() {
 					nLine, _ := line.Prompt("请输入要切换帐号的 index 值 > ")
 
 					if n, err := strconv.Atoi(nLine); err == nil && n >= 0 && n < len(pcsconfig.Config.BaiduUserList) {
-						pcsconfig.Config.BaiduActiveUID = pcsconfig.Config.BaiduUserList[n].UID
-						pcsconfig.Config.Save()
-						fmt.Printf("切换用户成功, %s\n", pcsconfig.Config.BaiduUserList[n].Name)
+						uid = pcsconfig.Config.BaiduUserList[n].UID
 					} else {
 						fmt.Println("切换用户失败, 请检查 index 值是否正确")
 					}
+				} else {
+					cli.ShowCommandHelp(c, c.Command.Name)
+				}
 
+				if uid == 0 {
 					return nil
 				}
 
-				cli.ShowCommandHelp(c, c.Command.Name)
+				pcsconfig.Config.BaiduActiveUID = uid
+				if err := pcsconfig.Config.Save(); err != nil {
+					fmt.Println(err)
+					return nil
+				}
+
+				baidu, err := pcsconfig.Config.GetBaiduUserByUID(pcsconfig.Config.BaiduActiveUID)
+				if err != nil {
+					fmt.Println(err)
+					return nil
+				}
+
+				fmt.Printf("切换用户成功, %v\n", baidu.Name)
 				return nil
+
 			},
 			Flags: []cli.Flag{
 				cli.StringFlag{
@@ -203,22 +214,19 @@ func main() {
 			Before:   reloadFn,
 			After:    reloadFn,
 			Action: func(c *cli.Context) error {
-				if c.IsSet("uid") {
-					if ok := pcsconfig.Config.DeleteBaiduUserByUID(c.Uint64("uid")); ok {
-						pcsconfig.Config.Save()
-						fmt.Printf("退出用户成功, uid: %d\n", c.Uint64("uid"))
-					} else {
-						fmt.Println("退出用户失败, uid 不存在")
-					}
+				if len(pcsconfig.Config.BaiduUserList) == 0 {
+					fmt.Println("未设置任何百度帐号, 不能退出")
 					return nil
 				}
 
-				if c.NArg() == 0 {
-					if len(pcsconfig.Config.BaiduUserList) == 0 {
-						fmt.Println("未设置任何百度帐号, 不能退出")
-						return nil
+				var uid uint64
+				if c.IsSet("uid") {
+					if pcsconfig.Config.CheckUIDExist(c.Uint64("uid")) {
+						uid = c.Uint64("uid")
+					} else {
+						fmt.Println("退出用户失败, uid 不存在")
 					}
-
+				} else if c.NArg() == 0 {
 					cli.HandleAction(app.Command("loglist").Action, c)
 
 					line := liner.NewLiner()
@@ -227,22 +235,34 @@ func main() {
 					nLine, _ := line.Prompt("请输入要退出帐号的 index 值 > ")
 
 					if n, err := strconv.Atoi(nLine); err == nil && n >= 0 && n < len(pcsconfig.Config.BaiduUserList) {
-						name := pcsconfig.Config.BaiduUserList[n].Name
-						ok := pcsconfig.Config.DeleteBaiduUserByUID(pcsconfig.Config.BaiduUserList[n].UID)
-						if ok {
-							pcsconfig.Config.Save()
-							fmt.Printf("退出用户成功, %s\n", name)
-						} else {
-							fmt.Println("退出用户失败, 请检查 index 值是否正确")
-						}
+						uid = pcsconfig.Config.BaiduUserList[n].UID
 					} else {
-						fmt.Printf("退出用户失败, index 值非法\n")
+						fmt.Println("退出用户失败, 请检查 index 值是否正确")
 					}
+				} else {
+					cli.ShowCommandHelp(c, c.Command.Name)
+				}
 
+				if uid == 0 {
 					return nil
 				}
 
-				cli.ShowCommandHelp(c, c.Command.Name)
+				baidu, err := pcsconfig.Config.GetBaiduUserByUID(uid)
+				if err != nil {
+					fmt.Println(err)
+					return nil
+				}
+
+				if !pcsconfig.Config.DeleteBaiduUserByUID(uid) {
+					fmt.Printf("退出用户失败, %s\n", baidu.Name)
+				}
+
+				if err := pcsconfig.Config.Save(); err != nil {
+					fmt.Println(err)
+					return nil
+				}
+
+				fmt.Printf("退出用户成功, %v\n", baidu.Name)
 				return nil
 			},
 			Flags: []cli.Flag{
@@ -259,10 +279,13 @@ func main() {
 			Category:  "百度帐号操作",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
-				username := pcsconfig.Config.GetActiveUserName()
-				if username != "" {
-					fmt.Printf("\n当前帐号 uid: %d, 用户名: %s\n", pcsconfig.Config.BaiduActiveUID, username)
+				baidu, err := pcsconfig.Config.GetBaiduUserByUID(pcsconfig.Config.BaiduActiveUID)
+				if err != nil {
+					fmt.Println(err)
+					return nil
 				}
+
+				fmt.Printf("\n当前帐号 uid: %d, 用户名: %s\n", baidu.UID, baidu.Name)
 				fmt.Println(pcsconfig.Config.GetAllBaiduUser())
 				return nil
 			},
