@@ -10,8 +10,10 @@ Build(){
         go build -ldflags "-s -w" -o "out/$1/baidupcs_go"
     fi
     mkdir "out/$1/download"
-    echo '{"baidu_active_uid":0,"baidu_user_list":[],"workdir":"/","max_parallel":100}' > "out/$1/pcs_config.json"
-    zip -q -r "out/$1.zip" "out/$1"
+    echo '{"baidu_active_uid":0,"baidu_user_list":[],"max_parallel":100}' > "out/$1/pcs_config.json"
+    cd out
+    zip -q -r "$1.zip" "$1"
+    cd ..
     echo Done!
 }
 
@@ -23,8 +25,10 @@ ArmBuild(){
         ldid -S "out/$1/baidupcs_go"
     fi
     mkdir "out/$1/download"
-    echo '{"baidu_active_uid":0,"baidu_user_list":[],"workdir":"/","max_parallel":100}' > "out/$1/pcs_config.json"
-    zip -q -r "out/$1.zip" "out/$1"
+    echo '{"baidu_active_uid":0,"baidu_user_list":[],"max_parallel":100}' > "out/$1/pcs_config.json"
+    cd out
+    zip -q -r "$1.zip" "$1"
+    cd ..
     echo Done!
 }
 
