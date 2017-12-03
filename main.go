@@ -94,8 +94,8 @@ func main() {
 			Name:  "login",
 			Usage: "使用百度BDUSS登录百度账号",
 			Description: fmt.Sprintf("\n   示例: \n\n      %s\n\n      %s\n\n   %s\n\n      %s\n\n      %s\n",
-				app.Name+" login --bduss=123456789",
-				app.Name+" login",
+				filepath.Base(os.Args[0])+" login --bduss=123456789",
+				filepath.Base(os.Args[0])+" login",
 				"百度BDUSS获取方法: ",
 				"参考这篇 Wiki: https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS",
 				"或者百度搜索: 获取百度BDUSS",
@@ -139,8 +139,8 @@ func main() {
 			Usage: "切换已登录的百度帐号",
 			Description: fmt.Sprintf("%s\n   示例:\n\n      %s\n      %s\n",
 				"如果运行该条命令没有提供参数, 程序将会列出所有的百度帐号, 供选择切换",
-				app.Name+" chuser --uid=123456789",
-				app.Name+" chuser",
+				filepath.Base(os.Args[0])+" chuser --uid=123456789",
+				filepath.Base(os.Args[0])+" chuser",
 			),
 			Category: "百度帐号操作",
 			Before:   reloadFn,
@@ -201,8 +201,8 @@ func main() {
 			Usage: "退出已登录的百度帐号",
 			Description: fmt.Sprintf("%s\n   示例:\n\n      %s\n      %s\n",
 				"如果运行该条命令没有提供参数, 程序将会列出所有的百度帐号, 供选择退出",
-				app.Name+" logout --uid=123456789",
-				app.Name+" logout",
+				filepath.Base(os.Args[0])+" logout --uid=123456789",
+				filepath.Base(os.Args[0])+" logout",
 			),
 			Category: "百度帐号操作",
 			Before:   reloadFn,
@@ -263,11 +263,10 @@ func main() {
 			},
 		},
 		{
-			Name:      "loglist",
-			Usage:     "获取当前帐号, 和所有已登录的百度帐号",
-			UsageText: fmt.Sprintf("%s loglist", app.Name),
-			Category:  "百度帐号操作",
-			Before:    reloadFn,
+			Name:     "loglist",
+			Usage:    "获取当前帐号, 和所有已登录的百度帐号",
+			Category: "百度帐号操作",
+			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				fmt.Printf("\n当前帐号 uid: %d, 用户名: %s\n", pcsconfig.ActiveBaiduUser.UID, pcsconfig.ActiveBaiduUser.Name)
 				fmt.Println(pcsconfig.Config.GetAllBaiduUser())
@@ -275,11 +274,10 @@ func main() {
 			},
 		},
 		{
-			Name:      "quota",
-			Usage:     "获取配额, 即获取网盘总空间, 和已使用空间",
-			UsageText: fmt.Sprintf("%s quota", app.Name),
-			Category:  "网盘操作",
-			Before:    reloadFn,
+			Name:     "quota",
+			Usage:    "获取配额, 即获取网盘总空间, 和已使用空间",
+			Category: "网盘操作",
+			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				baidupcscmd.RunGetQuota()
 				return nil
@@ -288,7 +286,7 @@ func main() {
 		{
 			Name:      "cd",
 			Usage:     "切换工作目录",
-			UsageText: fmt.Sprintf("%s cd <目录>", app.Name),
+			UsageText: fmt.Sprintf("%s cd <目录>", filepath.Base(os.Args[0])),
 			Category:  "网盘操作",
 			Before:    reloadFn,
 			After:     reloadFn,
@@ -305,7 +303,7 @@ func main() {
 			Name:      "ls",
 			Aliases:   []string{"l", "ll"},
 			Usage:     "列出当前工作目录的文件和目录或指定目录",
-			UsageText: fmt.Sprintf("%s ls <目录>", app.Name),
+			UsageText: fmt.Sprintf("%s ls <目录>", filepath.Base(os.Args[0])),
 			Category:  "网盘操作",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -316,7 +314,7 @@ func main() {
 		{
 			Name:      "pwd",
 			Usage:     "输出当前所在目录",
-			UsageText: fmt.Sprintf("%s pwd", app.Name),
+			UsageText: fmt.Sprintf("%s pwd", filepath.Base(os.Args[0])),
 			Category:  "网盘操作",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -327,7 +325,7 @@ func main() {
 		{
 			Name:      "meta",
 			Usage:     "获取单个文件/目录的元信息 (详细信息)",
-			UsageText: fmt.Sprintf("%s meta <文件/目录 路径>", app.Name),
+			UsageText: fmt.Sprintf("%s meta <文件/目录 路径>", filepath.Base(os.Args[0])),
 			Category:  "网盘操作",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -339,7 +337,7 @@ func main() {
 			Name:        "download",
 			Aliases:     []string{"d"},
 			Usage:       "下载文件, 网盘文件绝对路径或相对路径",
-			UsageText:   fmt.Sprintf("%s download <网盘文件的路径>", app.Name),
+			UsageText:   fmt.Sprintf("%s download <网盘文件的路径>", filepath.Base(os.Args[0])),
 			Description: "下载的文件将会保存到, 程序所在目录的 download/ 目录 (文件夹), 暂不支持指定目录, \n   重名的文件将会被覆盖! \n",
 			Category:    "网盘操作",
 			Before:      reloadFn,
@@ -355,7 +353,7 @@ func main() {
 		{
 			Name:      "set",
 			Usage:     "设置配置",
-			UsageText: fmt.Sprintf("%s set OptionName Value", app.Name),
+			UsageText: fmt.Sprintf("%s set OptionName Value", filepath.Base(os.Args[0])),
 			Description: `
 可设置的值:
 
