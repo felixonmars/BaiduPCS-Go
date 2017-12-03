@@ -23,6 +23,7 @@
 package downloader
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -76,6 +77,13 @@ func NewFileDl(h *HTTPClient, url, savePath string, size int64) (*FileDl, error)
 		}
 	}
 
+	// 如果文件存在, 取消下载
+	if _, err = os.Stat(savePath); err == nil {
+		if _, err = os.Stat(savePath + DownloadingFileSuffix); err != nil {
+			return nil, fmt.Errorf("文件已存在: %s", savePath)
+		}
+	}
+
 	// 检测要保存下载内容的目录是否存在
 	// 不存在则创建该目录
 	if _, err = os.Stat(filepath.Dir(savePath)); err != nil {
@@ -87,8 +95,8 @@ func NewFileDl(h *HTTPClient, url, savePath string, size int64) (*FileDl, error)
 
 	// 移除旧的断点续传文件
 	if _, err = os.Stat(savePath); err != nil {
-		if _, err = os.Stat(savePath + downloadingFileSuffix); err == nil {
-			os.Remove(savePath + downloadingFileSuffix)
+		if _, err = os.Stat(savePath + DownloadingFileSuffix); err == nil {
+			os.Remove(savePath + DownloadingFileSuffix)
 		}
 	}
 

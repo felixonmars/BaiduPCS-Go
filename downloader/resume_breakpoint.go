@@ -6,7 +6,8 @@ import (
 )
 
 var (
-	downloadingFileSuffix = ".baidupcs_go_downloading"
+	// DownloadingFileSuffix 断点续传临时文件后缀
+	DownloadingFileSuffix = ".baidupcs_go_downloading"
 )
 
 type downloadStatus struct {
@@ -23,12 +24,12 @@ func (f *FileDl) recordBreakPoint() error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(f.File.Name()+downloadingFileSuffix, byt, 0644)
+	return ioutil.WriteFile(f.File.Name()+DownloadingFileSuffix, byt, 0644)
 }
 
 // loadBreakPoint 尝试从文件载入下载断点
 func (f *FileDl) loadBreakPoint() error {
-	byt, err := ioutil.ReadFile(f.File.Name() + downloadingFileSuffix)
+	byt, err := ioutil.ReadFile(f.File.Name() + DownloadingFileSuffix)
 	if err != nil {
 		return err
 	}

@@ -231,7 +231,7 @@ func (f *FileDl) blockMonitor() <-chan struct{} {
 			// 下载完毕, 线程全部完成下载任务, 发送结束信号
 			if f.BlockList.isAllDone() {
 				c <- struct{}{}
-				os.Remove(f.File.Name() + downloadingFileSuffix) // 删除断点信息
+				os.Remove(f.File.Name() + DownloadingFileSuffix) // 删除断点信息
 
 				if f.Size <= 0 {
 					fileInfo, err := f.File.Stat()
@@ -256,10 +256,10 @@ func (f *FileDl) blockMonitor() <-chan struct{} {
 
 					// 清除长时间无响应, 和下载速度为 0 的线程
 					go func(k int) {
-						// 设 old 速度监测点, 5 秒后检查速度有无变化
+						// 设 old 速度监测点, 2 秒后检查速度有无变化
 						old := f.BlockList[k].Begin
-						time.Sleep(5 * time.Second)
-						// 过滤 速度有变化, 或 5 秒内完成了下载任务 的线程
+						time.Sleep(2 * time.Second)
+						// 过滤 速度有变化, 或 2 秒内完成了下载任务 的线程
 						if old != f.BlockList[k].Begin || f.BlockList[k].isDone() {
 							return
 						}
