@@ -62,3 +62,25 @@ func parsePath(path string) (string, error) {
 
 	return ret.String(), nil
 }
+
+func recurseFDCountTotalSize(path string) (fileN, directoryN, size int64) {
+	di, err := info.FileList(path)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	for k := range di {
+		if di[k].Isdir {
+			f, d, s := recurseFDCountTotalSize(di[k].Path)
+			fileN += f
+			directoryN += d
+			size += s
+		}
+	}
+	f, d := di.Count()
+	s := di.TotalSize()
+	fileN += f
+	directoryN += d
+	size += s
+	return
+}
