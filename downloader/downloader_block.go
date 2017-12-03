@@ -129,14 +129,12 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 		return 1, err
 	}
 
-	var resp *http.Response
-
 	if f.BlockList[id].End != -1 {
 		// 设置 Range 请求头, 给各线程分配内容
 		request.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", f.BlockList[id].Begin, f.BlockList[id].End))
 	}
 
-	resp, err = f.Client.Do(request) // 开始 http 请求
+	resp, err := f.Client.Do(request) // 开始 http 请求
 	if err != nil {
 		return 2, err
 	}
@@ -300,7 +298,7 @@ func (f *FileDl) blockMonitor() <-chan struct{} {
 						}
 
 						middle := (f.BlockList[k].Begin + f.BlockList[k].End) / 2
-						if f.BlockList[k].End-middle <= 5*cacheSize { // 如果线程剩余的下载量太少, 不分配空闲线程
+						if f.BlockList[k].End-middle <= 102400 { // 如果线程剩余的下载量太少, 不分配空闲线程
 							mu.Unlock()
 							return
 						}
