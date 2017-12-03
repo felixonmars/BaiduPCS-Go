@@ -2,6 +2,7 @@ package baidupcs
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/config"
 	"github.com/iikira/BaiduPCS-Go/downloader"
 	"github.com/iikira/BaiduPCS-Go/util"
 	"net/http"
@@ -33,10 +34,10 @@ func (p PCSApi) FileDownload(path string, size int64) (err error) {
 	h.SetKeepAlive(true)
 	h.SetTimeout(2 * time.Minute)
 
-	fileDl, err := downloader.NewFileDl(h, p.url.String(), saveDir+string(os.PathSeparator)+filepath.Base(path), size)
+	savePath := saveDir + filepath.Dir("/"+pcsconfig.ActiveBaiduUser.Name+path+"/..")
+	fileDl, err := downloader.NewFileDl(h, p.url.String(), savePath, size)
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 
 	pa := make(chan struct{})
@@ -73,6 +74,6 @@ func (p PCSApi) FileDownload(path string, size int64) (err error) {
 
 	fileDl.Start()
 	<-pa
-	fmt.Printf("\n下载完成\n\n")
+	fmt.Printf("\n\n下载完成, 保存位置: %s\n\n", savePath)
 	return nil
 }
