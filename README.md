@@ -25,6 +25,8 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 Go语言程序, 可直接下载使用, [点此查看发布页面 / 下载汇总](https://github.com/iikira/BaiduPCS-Go/releases).
 
+如果程序输出乱码, 请检查下终端的编码方式是否为 UTF-8.
+
 使用本程序, 强烈建议学习一些 linux 基础知识, [Linux20个常用命令](http://blog.csdn.net/xufei512/article/details/53321980).
 
 程序应在 (Linux, macOS)终端／(Windows)命令提示符, PowerShell 中运行.
