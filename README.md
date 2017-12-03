@@ -5,9 +5,9 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 使用百度 BDUSS 登录百度网盘, 支持多用户, [关于 获取百度 BDUSS](https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS);
 
-网盘内列出文件和目录, **支持通配符匹配路径**;
+网盘内列出文件和目录, **支持通配符匹配路径**, [通配符_百度百科](https://baike.baidu.com/item/通配符);
 
-下载网盘内文件, 支持高并发**高速**下载和断点续传;
+下载网盘内文件, 支持网盘内目录 (文件夹) 下载, 支持断点续传和高并发**高速**下载;
 
 > 下载测试:
 
@@ -19,21 +19,19 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 > 自己感受一下吧
 
-目前只支持下载单个文件, 暂不支持目录下载和多个文件下载. 
-
 # 程序 下载/ 运行 说明
 
 Go语言程序, 可直接下载使用, [点此查看发布页面 / 下载汇总](https://github.com/iikira/BaiduPCS-Go/releases).
 
-如果程序输出乱码, 请检查下终端的编码方式是否为 UTF-8.
+如果程序运行时输出乱码, 请检查下终端的编码方式是否为 `UTF-8`.
 
 使用本程序, 强烈建议学习一些 linux 基础知识, [Linux20个常用命令](http://blog.csdn.net/xufei512/article/details/53321980).
 
-程序应在 (Linux, macOS)终端／(Windows)命令提示符, PowerShell 中运行.
+程序应在 (Linux, macOS)终端／(Windows)命令提示符 (Command Prompt), PowerShell 中运行.
 
 安卓, 建议使用软件 [Termux](https://termux.com) 或 [NeoTerm](https://github.com/NeoTerm/NeoTerm/releases) 或 终端模拟器, 以提供终端环境.
 
-苹果iOS, 需要越狱, 在 Cydia 下载安装 Terminal, 以提供终端环境
+苹果iOS, 需要越狱, 在 Cydia 下载安装 Terminal, 以提供终端环境.
 
 Windows 也可直接双击程序运行.
 
@@ -180,7 +178,7 @@ console 模式下, 运行命令 `ls ..` 来列出当前所在目录的上级目�
 
 ## 5. 下载文件
 
-说明: 下载的文件将会保存到, 程序所在目录的 download/ 目录 (文件夹)
+说明: 下载的文件将会保存到 download/ 目录 (文件夹)
 
 console 模式下, 运行命令 `d -h` (注意空格) 查看帮助
 
@@ -191,6 +189,12 @@ cd /我的资源
 d 1.mp4
 ```
 
+现在已经支持目录 (文件夹) 下载, 所以, 运行以下命令, 会下载 `/我的资源` 内的所有文件 (违规文件除外): 
+
+```
+d /我的资源
+```
+
 参见 例6 设置下载最大并发数
 
 ## 6. 设置下载最大并发数
@@ -199,15 +203,16 @@ console 模式下, 运行命令 `set -h` (注意空格) 查看设置帮助以及
 
 console 模式下, 运行命令 `set max_parallel 250` 将下载最大并发数设置为 250
 
-下载最大并发数建议值: 100~500, 太低下载速度提升不明显甚至速度会变为0, 太高可能会导致程序和系统超负荷
+下载最大并发数建议值: 50~500, 太低下载速度提升不明显甚至速度会变为0, 太高可能会导致程序和系统超负荷
 
 ## 7. 退出程序
 
 运行命令 `quit` 或 `exit` 或 组合键 `Ctrl+C` 或 组合键 `Ctrl+D`
 
+# 已知问题
+下载进度到最后的时候, 下载速度会大幅降低.
+
 # TODO
 
 1. 网盘内文件或目录的复制, 移动, 删除等操作
 2. 上传文件
-3. 本地文件与云端同步
-4. 下载目录
