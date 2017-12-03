@@ -101,9 +101,10 @@ func (p PCSApi) FileList(path string) (data FileDirectoryList, err error) {
 			FsID:     fsID,
 			Path:     index.Get("path").MustString(),
 			Filename: index.Get("server_filename").MustString(),
-			Isdir:    pcsutil.IntToBool(index.Get("isdir").MustInt()),
 			Ctime:    index.Get("ctime").MustInt64(),
+			MD5:      index.Get("md5").MustString(),
 			Size:     index.Get("size").MustInt64(),
+			Isdir:    pcsutil.IntToBool(index.Get("isdir").MustInt()),
 		})
 	}
 	return
@@ -140,7 +141,7 @@ func (f *FileDirectoryList) TotalSize() int64 {
 }
 
 // Count 获取文件总数和目录总数
-func (f *FileDirectoryList) Count() (fileN int64, directoryN int64) {
+func (f *FileDirectoryList) Count() (fileN, directoryN int64) {
 	for k := range *f {
 		if (*f)[k].Isdir {
 			directoryN++
