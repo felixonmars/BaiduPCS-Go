@@ -14,6 +14,9 @@ var (
 	ActiveBaiduUser *Baidu
 
 	configFileName = "pcs_config.json"
+
+	// SaveDir 保存文件的目录
+	SaveDir = "download/"
 )
 
 // PCSConfig 配置详情

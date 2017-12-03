@@ -6,7 +6,6 @@ import (
 	"github.com/iikira/BaiduPCS-Go/downloader"
 	"github.com/iikira/BaiduPCS-Go/util"
 	"os"
-	"path/filepath"
 )
 
 // RunDownload 执行下载网盘内文件
@@ -62,7 +61,7 @@ func downloadDirectory(path string) {
 
 	// 遇到空目录, 则创建目录
 	if len(di) == 0 {
-		os.MkdirAll("download/"+pcsconfig.ActiveBaiduUser.Name+path, 0777)
+		os.MkdirAll(pcsconfig.GetSavePath(path), 0777)
 		return
 	}
 
@@ -73,12 +72,9 @@ func downloadDirectory(path string) {
 		}
 
 		// 如果文件存在, 跳过
-		savePath := "download" + filepath.Dir("/"+pcsconfig.ActiveBaiduUser.Name+di[k].Path+"/..")
-		if _, err = os.Stat(savePath); err == nil {
-			if _, err = os.Stat(savePath + downloader.DownloadingFileSuffix); err != nil {
-				fmt.Printf("文件已存在 (自动跳过): %s\n\n", savePath)
-				continue
-			}
+		if pcsconfig.CheckFileExist(di[k].Path) {
+			fmt.Printf("文件已存在 (自动跳过): %s\n\n", pcsconfig.GetSavePath(di[k].Path))
+			continue
 		}
 
 		fmt.Println(di[k])

@@ -8,12 +8,9 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
-
-var saveDir = "download"
 
 // FileDownload 下载网盘内文件
 func (p PCSApi) FileDownload(path string, size int64) (err error) {
@@ -34,8 +31,7 @@ func (p PCSApi) FileDownload(path string, size int64) (err error) {
 	h.SetKeepAlive(true)
 	h.SetTimeout(2 * time.Minute)
 
-	savePath := saveDir + filepath.Dir("/"+pcsconfig.ActiveBaiduUser.Name+path+"/..")
-	fileDl, err := downloader.NewFileDl(h, p.url.String(), savePath, size)
+	fileDl, err := downloader.NewFileDl(h, p.url.String(), pcsconfig.GetSavePath(path), size)
 	if err != nil {
 		return err
 	}
@@ -74,6 +70,6 @@ func (p PCSApi) FileDownload(path string, size int64) (err error) {
 
 	fileDl.Start()
 	<-pa
-	fmt.Printf("\n\n下载完成, 保存位置: %s\n\n", savePath)
+	fmt.Printf("\n\n下载完成, 保存位置: %s\n\n", pcsconfig.GetSavePath(path))
 	return nil
 }
