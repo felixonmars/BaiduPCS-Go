@@ -51,7 +51,7 @@ console 模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`
 
 示例: [Android 运行本 BaiduPCS-Go 程序参考示例](https://github.com/iikira/BaiduPCS-Go/wiki/Android-运行本-BaiduPCS-Go-程序参考示例), 有兴趣的可以参考一下.
 
-苹果iOS, 需要越狱, 在 Cydia 下载安装 Terminal, 以提供终端环境.
+苹果iOS, 需要越狱, 在 Cydia 搜索下载并安装 MobileTerminal, 以提供终端环境. MobileTerminal 功能有限, 本人建议 设备安装 openssh 后使用 ssh 控制苹果设备, sftp 传输文件.
 
 具体使用方法请参见 [命令列表及说明](#命令列表及说明) 和 [例子](#举一些例子).
 
