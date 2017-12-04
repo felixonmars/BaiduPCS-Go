@@ -31,7 +31,13 @@ func init() {
 	cfg, err := loadConfig()
 	if err != nil {
 		fmt.Printf("错误: %s, 自动初始化配置文件\n", err)
-		cfg, err = initConfig()
+
+		cfg = &PCSConfig{
+			BaiduActiveUID: 0,
+			MaxParallel:    100,
+		}
+
+		err = cfg.Save()
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -39,17 +45,8 @@ func init() {
 	Config = cfg
 
 	if UpdateActiveBaiduUser() != nil {
-		fmt.Println(err)
 		ActiveBaiduUser = new(Baidu)
 	}
-}
-
-func initConfig() (*PCSConfig, error) {
-	cfg := &PCSConfig{
-		BaiduActiveUID: 0,
-		MaxParallel:    100,
-	}
-	return cfg, cfg.Save()
 }
 
 func loadConfig() (*PCSConfig, error) {
@@ -73,10 +70,11 @@ func Reload() error {
 	}
 	Config = cfg
 
+	// 更新 当前百度帐号
 	return UpdateActiveBaiduUser()
 }
 
-// Save 保存配置信息到配置文件
+// Save 保存配置信息到配置文件, 并重载配置
 func (c *PCSConfig) Save() error {
 	data, err := json.MarshalIndent(c, "", "\t")
 	if err != nil {
@@ -91,6 +89,7 @@ func (c *PCSConfig) Save() error {
 	return Reload()
 }
 
+// UpdateActiveBaiduUser 更新 当前百度帐号
 func UpdateActiveBaiduUser() error {
 	baidu, err := Config.GetBaiduUserByUID(Config.BaiduActiveUID)
 	if err == nil {
