@@ -27,17 +27,31 @@ Go语言程序, 可直接下载使用, [点此查看发布页面 / 下载汇总]
 
 使用本程序, 强烈建议学习一些 linux 基础知识, [Linux20个常用命令](http://blog.csdn.net/xufei512/article/details/53321980).
 
-程序应在 (Linux, macOS)终端／(Windows)命令提示符 (Command Prompt), PowerShell 中运行.
-
-安卓, 建议使用软件 [Termux](https://termux.com) 或 [NeoTerm](https://github.com/NeoTerm/NeoTerm/releases) 或 终端模拟器, 以提供终端环境.
-
-苹果iOS, 需要越狱, 在 Cydia 下载安装 Terminal, 以提供终端环境.
-
-Windows 也可直接双击程序运行.
-
 如果未带任何参数运行程序, 程序将会进入独有的 console 模式, 可直接运行相关命令.
 
 程序会提供相关命令的使用说明.
+
+## Windows
+
+程序应在 命令提示符 (Command Prompt) 或 PowerShell 中运行.
+
+也可直接双击程序运行, 具体使用方法请参见 [命令列表及说明](#命令列表及说明) 和 [例子](#举一些例子).
+
+## Linux / macOS
+
+程序应在 终端 (Terminal) 运行.
+
+具体使用方法请参见 [命令列表及说明](#命令列表及说明) 和 [例子](#举一些例子).
+
+## Android / iOS
+
+安卓, 建议使用软件 [Termux](https://termux.com) 或 [NeoTerm](https://github.com/NeoTerm/NeoTerm/releases) 或 终端模拟器, 以提供终端环境.
+
+[Android-运行本-BaiduPCS-Go-程序参考示例](https://github.com/iikira/BaiduPCS-Go/wiki/Android-运行本-BaiduPCS-Go-程序参考示例), 有兴趣的可以参考一下.
+
+苹果iOS, 需要越狱, 在 Cydia 下载安装 Terminal, 以提供终端环境.
+
+具体使用方法请参见 [命令列表及说明](#命令列表及说明) 和 [例子](#举一些例子).
 
 # 命令列表及说明
 
