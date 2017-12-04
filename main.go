@@ -336,9 +336,9 @@ func main() {
 		{
 			Name:        "download",
 			Aliases:     []string{"d"},
-			Usage:       "下载文件, 网盘文件绝对路径或相对路径",
-			UsageText:   fmt.Sprintf("%s download <网盘文件的路径>", filepath.Base(os.Args[0])),
-			Description: "下载的文件将会保存到, 程序所在目录的 download/ 目录 (文件夹), 暂不支持指定目录, \n   重名的文件将会被覆盖! \n",
+			Usage:       "下载文件或目录, 网盘文件或目录的绝对路径或相对路径",
+			UsageText:   fmt.Sprintf("%s download <网盘文件或目录的路径>", filepath.Base(os.Args[0])),
+			Description: "下载的文件将会保存到, 程序所在目录的 download/ 目录 (文件夹).\n   已支持目录下载.\n   自动跳过下载重名的文件! \n",
 			Category:    "网盘操作",
 			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
