@@ -47,7 +47,7 @@ Go语言程序, 可直接下载使用, [点此查看发布页面 / 下载汇总]
 
 安卓, 建议使用软件 [Termux](https://termux.com) 或 [NeoTerm](https://github.com/NeoTerm/NeoTerm/releases) 或 终端模拟器, 以提供终端环境.
 
-[Android-运行本-BaiduPCS-Go-程序参考示例](https://github.com/iikira/BaiduPCS-Go/wiki/Android-运行本-BaiduPCS-Go-程序参考示例), 有兴趣的可以参考一下.
+示例: [Android 运行本 BaiduPCS-Go 程序参考示例](https://github.com/iikira/BaiduPCS-Go/wiki/Android-运行本-BaiduPCS-Go-程序参考示例), 有兴趣的可以参考一下.
 
 苹果iOS, 需要越狱, 在 Cydia 下载安装 Terminal, 以提供终端环境.
 
