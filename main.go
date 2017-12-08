@@ -40,18 +40,18 @@ func init() {
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "baidupcs_go"
+	app.Name = "BaiduPCS-Go"
+	app.Version = "beta-v2"
 	app.Author = "iikira/BaiduPCS-Go: https://github.com/iikira/BaiduPCS-Go"
-	app.Usage = fmt.Sprintf("百度网盘工具箱 %s/%s GoVersion %s", runtime.GOOS, runtime.GOARCH, runtime.Version())
-	app.Description = `baidupcs_go 使用 Go语言编写, 为操作百度网盘, 提供实用功能.
+	app.Usage = "百度网盘工具箱 for " + runtime.GOOS + "/" + runtime.GOARCH
+	app.Description = `BaiduPCS-Go 使用 Go语言编写, 为操作百度网盘, 提供实用功能.
 	具体功能, 参见 COMMANDS 列表
 
 	特色:
 		网盘内列出文件和目录, 支持通配符匹配路径;
-		下载网盘内文件, 支持高并发下载和断点续传.
+		下载网盘内文件, 支持网盘内目录 (文件夹) 下载, 支持多个文件或目录下载, 支持断点续传和高并发高速下载.
 
 	程序目前处于测试版, 后续会添加更多的实用功能.`
-	app.Version = "beta-v1"
 	app.Action = func(c *cli.Context) {
 		if c.NArg() == 0 {
 			cli.ShowAppHelp(c)
@@ -286,7 +286,7 @@ func main() {
 		{
 			Name:      "cd",
 			Usage:     "切换工作目录",
-			UsageText: fmt.Sprintf("%s cd <目录>", filepath.Base(os.Args[0])),
+			UsageText: fmt.Sprintf("%s cd <目录 绝对路径或相对路径>", filepath.Base(os.Args[0])),
 			Category:  "网盘操作",
 			Before:    reloadFn,
 			After:     reloadFn,
@@ -302,8 +302,8 @@ func main() {
 		{
 			Name:      "ls",
 			Aliases:   []string{"l", "ll"},
-			Usage:     "列出当前工作目录的文件和目录或指定目录",
-			UsageText: fmt.Sprintf("%s ls <目录>", filepath.Base(os.Args[0])),
+			Usage:     "列出当前工作目录内的文件和目录 或 指定目录内的文件和目录",
+			UsageText: fmt.Sprintf("%s ls <目录 绝对路径或相对路径>", filepath.Base(os.Args[0])),
 			Category:  "网盘操作",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -313,7 +313,7 @@ func main() {
 		},
 		{
 			Name:      "pwd",
-			Usage:     "输出当前所在目录",
+			Usage:     "输出当前所在目录 (工作目录)",
 			UsageText: fmt.Sprintf("%s pwd", filepath.Base(os.Args[0])),
 			Category:  "网盘操作",
 			Before:    reloadFn,
@@ -325,7 +325,7 @@ func main() {
 		{
 			Name:      "meta",
 			Usage:     "获取单个文件/目录的元信息 (详细信息)",
-			UsageText: fmt.Sprintf("%s meta <文件/目录 路径>", filepath.Base(os.Args[0])),
+			UsageText: fmt.Sprintf("%s meta <文件/目录 绝对路径或相对路径>", filepath.Base(os.Args[0])),
 			Category:  "网盘操作",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -336,9 +336,9 @@ func main() {
 		{
 			Name:        "download",
 			Aliases:     []string{"d"},
-			Usage:       "下载文件或目录, 网盘文件或目录的绝对路径或相对路径",
-			UsageText:   fmt.Sprintf("%s download <网盘文件或目录的路径>", filepath.Base(os.Args[0])),
-			Description: "下载的文件将会保存到, 程序所在目录的 download/ 目录 (文件夹).\n   已支持目录下载.\n   自动跳过下载重名的文件! \n",
+			Usage:       "下载文件或目录",
+			UsageText:   fmt.Sprintf("%s download <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", filepath.Base(os.Args[0])),
+			Description: "下载的文件将会保存到, 程序所在目录的 download/ 目录 (文件夹).\n   已支持目录下载.\n   已支持多个文件或目录下载.\n   自动跳过下载重名的文件! \n",
 			Category:    "网盘操作",
 			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
@@ -346,7 +346,12 @@ func main() {
 					cli.ShowCommandHelp(c, c.Command.Name)
 					return nil
 				}
-				baidupcscmd.RunDownload(c.Args().Get(0))
+
+				var dargs []string
+				for i := 0; c.Args().Get(i) != ""; i++ {
+					dargs = append(dargs, c.Args().Get(i))
+				}
+				baidupcscmd.RunDownload(dargs...)
 				return nil
 			},
 		},

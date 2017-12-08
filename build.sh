@@ -1,5 +1,5 @@
 name="baidupcs_go"
-version="beta-v1"
+version="beta-v2"
 
 Build(){
     echo "Building $1..."

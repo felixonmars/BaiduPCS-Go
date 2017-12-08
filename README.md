@@ -1,4 +1,4 @@
-# BaiduPCS-Go 百度网盘工具箱 beta-v1
+# BaiduPCS-Go 百度网盘工具箱 beta-v2
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
 
 # 特色
@@ -7,7 +7,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 网盘内列出文件和目录, **支持通配符匹配路径**, [通配符_百度百科](https://baike.baidu.com/item/通配符);
 
-下载网盘内文件, 支持网盘内目录 (文件夹) 下载, 支持断点续传和高并发**高速**下载;
+下载网盘内文件, 支持网盘内目录 (文件夹) 下载, 支持多个文件或目录下载, 支持断点续传和高并发**高速**下载;
 
 > 下载测试:
 
@@ -123,19 +123,21 @@ baidupcs_go ls <目录>
 
 ## 获取单个文件/目录的元信息 (详细信息)
 ```
-baidupcs_go meta <目录>
+baidupcs_go meta <文件/目录>
 ```
 ```
 baidupcs_go meta
 ```
 
-## 下载文件, 网盘文件绝对路径或相对路径
+## 下载文件, 网盘文件或目录的绝对路径或相对路径
 ```
-baidupcs_go download <网盘文件的路径>
-baidupcs_go d <网盘文件的路径>
+baidupcs_go download <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...
+baidupcs_go d <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...
 ```
 
-下载的文件将会保存到, 程序所在目录的 download/ 目录 (文件夹), 暂不支持指定目录, 重名的文件将会被覆盖!
+已支持多个文件或目录的下载.
+
+下载的文件将会保存到, **程序所在目录**的 download/ 目录 (文件夹), 暂不支持指定目录, 重名的文件会自动跳过!
 
 # 举一些例子 
 
