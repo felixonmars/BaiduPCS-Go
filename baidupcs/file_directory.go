@@ -26,6 +26,10 @@ type FileDirectoryList []FileDirectory
 //
 // 可用信息: 是否是目录isdir 是否含有子目录ifhassubdir 修改时间mtime 文件大小size
 func (p PCSApi) FilesDirectoriesMeta(path string) (data FileDirectory, err error) {
+	if path == "" {
+		path = "/"
+	}
+
 	p.addItem("file", "meta", map[string]string{
 		"path": path,
 	})
@@ -64,6 +68,10 @@ func (p PCSApi) FilesDirectoriesMeta(path string) (data FileDirectory, err error
 
 // FileList 获取目录下的文件列表
 func (p PCSApi) FileList(path string) (data FileDirectoryList, err error) {
+	if path == "" {
+		path = "/"
+	}
+
 	p.addItem("file", "list", map[string]string{
 		"path":  path,
 		"by":    "name",
