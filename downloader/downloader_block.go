@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -201,8 +202,8 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 		}
 
 		// 更新已下载大小
-		f.status.Downloaded += bufSize
-		f.BlockList[id].Begin += bufSize
+		atomic.AddInt64(&f.status.Downloaded, bufSize)
+		atomic.AddInt64(&f.BlockList[id].Begin, bufSize)
 
 		if err != nil {
 			// 下载数据可能出现异常, 重新下载
