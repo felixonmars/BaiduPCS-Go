@@ -1,7 +1,6 @@
 package baidupcscmd
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/config"
 	fpath "path"
@@ -9,58 +8,60 @@ import (
 	"strings"
 )
 
+var (
+	patternRE = regexp.MustCompile(`[\[\]\*\?]`)
+)
+
 func toAbsPath(path string) (string, error) {
-	var _p string
-	if !fpath.IsAbs(path) {
-		_p = fpath.Dir(pcsconfig.ActiveBaiduUser.Workdir + "/" + path + "/")
-	} else {
-		_p = fpath.Dir(path + "/")
+	p := parsePath(path)
+	if len(p) == 0 {
+		return "", fmt.Errorf("文件路径匹配失败, 请检查通配符")
 	}
-	p, err := parsePath(_p)
-	if err != nil {
-		return "", err
-	}
-	return fpath.Dir(p + "/.."), nil
+	return p[0], nil
 }
 
-func parsePath(path string) (string, error) {
-	re := regexp.MustCompile(`[\[\]\*\?]`)
-	names := strings.Split(path, "/")
-
-	var ret bytes.Buffer
-	ret.WriteRune('/')
-	for k := range names {
-		if names[k] == "" {
-			continue
-		}
-		if !re.MatchString(names[k]) {
-			ret.WriteString("/" + names[k])
-			continue
-		}
-		pfiles, err := info.FileList(ret.String())
-		if err != nil {
-			return "", err
-		}
-
-		errTime := 0
-		for k2 := range pfiles {
-			ok, err := fpath.Match(names[k], pfiles[k2].Filename)
-			if err != nil {
-				return "", err
-			}
-			if ok {
-				ret.WriteString("/" + pfiles[k2].Filename)
-				break
-			} else {
-				errTime++
-			}
-		}
-		if len(pfiles) == errTime {
-			return "", fmt.Errorf("文件路径匹配失败, 请检查通配符, 停留在 %s", fpath.Dir(ret.String()+"/.."))
-		}
+// parsePath 递归解析通配符
+func parsePath(path string) (paths []string) {
+	if !fpath.IsAbs(path) {
+		path = fpath.Dir(pcsconfig.ActiveBaiduUser.Workdir + "/" + path + "/")
 	}
 
-	return ret.String(), nil
+	if !patternRE.MatchString(path) {
+		paths = []string{path}
+		return
+	}
+
+	if _, err := fpath.Match(path, ""); err != nil {
+		return nil
+	}
+
+	names := strings.Split(path, "/")
+
+	for k := range names {
+		if names[k] == "" || !patternRE.MatchString(names[k]) {
+			continue
+		}
+
+		pfiles, err := info.FileList(strings.Join(names[:k], "/"))
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+
+		for k2 := range pfiles {
+			ok, _ := fpath.Match(names[k], pfiles[k2].Filename)
+			if ok {
+				if k >= len(names)-1 {
+					paths = append(paths, strings.Join(names[:k], "/")+"/"+pfiles[k2].Filename)
+				} else if pfiles[k2].Isdir {
+					paths = append(paths, parsePath(pfiles[k2].Path+"/"+strings.Join(names[k+1:], "/"))...)
+				}
+			}
+		}
+		break
+	}
+
+	return
 }
 
 func recurseFDCountTotalSize(path string) (fileN, directoryN, size int64) {
