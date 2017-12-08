@@ -19,7 +19,10 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 > 自己感受一下吧
 
-# 程序 下载/ 运行 说明
+# 程序 编译/交叉编译 说明
+参见 [交叉编译帮助](https://github.com/iikira/BaiduPCS-Go/wiki/交叉编译帮助) 
+
+# 程序 下载/运行 说明
 
 Go语言程序, 可直接下载使用, [点此查看发布页面 / 下载汇总](https://github.com/iikira/BaiduPCS-Go/releases).
 
