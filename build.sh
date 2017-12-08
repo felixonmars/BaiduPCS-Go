@@ -5,9 +5,9 @@ Build(){
     echo "Building $1..."
     export GOOS=$2 GOARCH=$3 GO386=sse2 CGO_ENABLED=0
     if [ $2 = "windows" ];then
-        go build -ldflags "-s -w" -o "out/$1/baidupcs_go.exe"
+        go build -ldflags "-s -w" -o "out/$1/$name.exe"
     else
-        go build -ldflags "-s -w" -o "out/$1/baidupcs_go"
+        go build -ldflags "-s -w" -o "out/$1/$name"
     fi
     mkdir "out/$1/download"
     cd out
@@ -19,9 +19,9 @@ Build(){
 ArmBuild(){
     echo "Building $1..."
     export GOOS=$2 GOARCH=$3 GOARM=$4 CGO_ENABLED=1
-    go build -ldflags '-s -w -linkmode=external -extldflags=-pie' -o "out/$1/baidupcs_go"
+    go build -ldflags '-s -w -linkmode=external -extldflags=-pie' -o "out/$1/$name"
     if [ $2 = "darwin" -a $3 = "arm64" ];then
-        ldid -S "out/$1/baidupcs_go"
+        ldid -S "out/$1/$name"
     fi
     mkdir "out/$1/download"
     cd out
