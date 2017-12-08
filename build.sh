@@ -1,4 +1,4 @@
-name="baidupcs_go"
+name="BaiduPCS-Go"
 version="beta-v2"
 
 Build(){

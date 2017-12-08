@@ -59,80 +59,80 @@ console 模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`
 
 ## 注意
 
-命令的前缀 `baidupcs_go` 为指向程序运行的全路径名 (ARGv 的第一个参数)
+命令的前缀 `BaiduPCS-Go` 为指向程序运行的全路径名 (ARGv 的第一个参数)
 
-未带任何其他参数运行程序, 则程序进入 console 模式, 前缀为 `BaiduPCS-Go >`, 则运行以下命令时, 要把命令的前缀 `baidupcs_go` 去掉!
+未带任何其他参数运行程序, 则程序进入 console 模式, 前缀为 `BaiduPCS-Go >`, 则运行以下命令时, 要把命令的前缀 `BaiduPCS-Go` 去掉!
 
 ## 使用百度 BDUSS 来登录百度帐号
 ```
-baidupcs_go login -bduss=<BDUSS>
+BaiduPCS-Go login -bduss=<BDUSS>
 ```
 ```
-baidupcs_go login
+BaiduPCS-Go login
 
 请输入百度BDUSS值, 回车键提交 > 
 ```
 
 ## 获取当前帐号, 和所有已登录的百度帐号
 ```
-baidupcs_go loglist
+BaiduPCS-Go loglist
 ```
 
 ## 切换已登录的百度帐号
 ```
-baidupcs_go chuser -uid=12345678
+BaiduPCS-Go chuser -uid=12345678
 ```
 ```
-baidupcs_go chuser
+BaiduPCS-Go chuser
 
 请输入要切换帐号的 index 值 > 
 ```
 
 ## 退出已登录的百度帐号
 ```
-baidupcs_go logout -uid=12345678
+BaiduPCS-Go logout -uid=12345678
 ```
 ```
-baidupcs_go logout
+BaiduPCS-Go logout
 
 请输入要退出帐号的 index 值 > 
 ```
 
 ## 获取配额, 即获取网盘总空间, 和已使用空间
 ```
-baidupcs_go quota
+BaiduPCS-Go quota
 ```
 
 ## 切换工作目录
 ```
-baidupcs_go cd <目录>
+BaiduPCS-Go cd <目录>
 ```
 
 ## 输出当前所在目录
 ```
-baidupcs_go pwd
+BaiduPCS-Go pwd
 ```
 
 ## 列出当前工作目录的文件和目录或指定目录
 ```
-baidupcs_go ls
+BaiduPCS-Go ls
 ```
 ```
-baidupcs_go ls <目录>
+BaiduPCS-Go ls <目录>
 ```
 
 ## 获取单个文件/目录的元信息 (详细信息)
 ```
-baidupcs_go meta <文件/目录>
+BaiduPCS-Go meta <文件/目录>
 ```
 ```
-baidupcs_go meta
+BaiduPCS-Go meta
 ```
 
 ## 下载文件, 网盘文件或目录的绝对路径或相对路径
 ```
-baidupcs_go download <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...
-baidupcs_go d <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...
+BaiduPCS-Go download <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...
+BaiduPCS-Go d <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...
 ```
 
 已支持多个文件或目录的下载.
