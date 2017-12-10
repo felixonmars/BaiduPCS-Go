@@ -13,25 +13,22 @@ func RunDownload(paths ...string) {
 	downloader.SetCacheSize(2048)
 	downloader.SetMaxParallel(pcsconfig.Config.MaxParallel)
 
-	var _paths []string
+	paths = getAllPaths(paths...)
+
+	fmt.Println()
 	for k := range paths {
-		_paths = append(_paths, parsePath(paths[k])...)
-	}
-
-	fmt.Println()
-	for k := range _paths {
-		fmt.Printf("添加下载任务: %s\n", _paths[k])
+		fmt.Printf("添加下载任务: %s\n", paths[k])
 	}
 	fmt.Println()
 
-	for k, path := range _paths {
+	for k, path := range paths {
 		downloadInfo, err := info.FilesDirectoriesMeta(path)
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
 
-		fmt.Printf("[ %d / %d ] %s\n", k+1, len(_paths), downloadInfo.String())
+		fmt.Printf("[ %d / %d ] %s\n", k+1, len(paths), downloadInfo.String())
 
 		// 如果是一个目录, 递归下载该目录下的所有文件
 		if downloadInfo.Isdir {

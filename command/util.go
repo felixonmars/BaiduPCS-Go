@@ -12,6 +12,21 @@ var (
 	patternRE = regexp.MustCompile(`[\[\]\*\?]`)
 )
 
+// getAbsPath 获取绝对路径, 忽略通配符
+func getAbsPath(path string) string {
+	if !fpath.IsAbs(path) {
+		path = fpath.Dir(pcsconfig.ActiveBaiduUser.Workdir + "/" + path + "/")
+	}
+	return path
+}
+
+func getAllPaths(paths ...string) (_paths []string) {
+	for k := range paths {
+		_paths = append(_paths, parsePath(paths[k])...)
+	}
+	return
+}
+
 func toAbsPath(path string) (string, error) {
 	p := parsePath(path)
 	if len(p) == 0 {
@@ -22,9 +37,7 @@ func toAbsPath(path string) (string, error) {
 
 // parsePath 递归解析通配符
 func parsePath(path string) (paths []string) {
-	if !fpath.IsAbs(path) {
-		path = fpath.Dir(pcsconfig.ActiveBaiduUser.Workdir + "/" + path + "/")
-	}
+	path = getAbsPath(path)
 
 	if !patternRE.MatchString(path) {
 		paths = []string{path}
