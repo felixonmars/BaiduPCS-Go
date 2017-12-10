@@ -334,6 +334,42 @@ func main() {
 			},
 		},
 		{
+			Name:      "rm",
+			Usage:     "删除 单个/多个 文件/目录",
+			UsageText: fmt.Sprintf("%s rm <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", filepath.Base(os.Args[0])),
+			Category:  "网盘操作",
+			Before:    reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() == 0 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+
+				var dargs []string
+				for i := 0; c.Args().Get(i) != ""; i++ {
+					dargs = append(dargs, c.Args().Get(i))
+				}
+				baidupcscmd.RunRemove(dargs...)
+				return nil
+			},
+		},
+		{
+			Name:      "mkdir",
+			Usage:     "创建目录",
+			UsageText: fmt.Sprintf("%s mkdir <目录 绝对路径或相对路径> ...", filepath.Base(os.Args[0])),
+			Category:  "网盘操作",
+			Before:    reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() == 0 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+
+				baidupcscmd.RunMkdir(c.Args().Get(0))
+				return nil
+			},
+		},
+		{
 			Name:        "download",
 			Aliases:     []string{"d"},
 			Usage:       "下载文件或目录",
