@@ -40,7 +40,7 @@ func (h *HTTPClient) Fetch(method string, urlStr string, post interface{}, heade
 		case string:
 			obody = strings.NewReader(value)
 		case []byte:
-			obody = bytes.NewReader(value)
+			obody = bytes.NewReader(value[:])
 		}
 	}
 	req, err = http.NewRequest(method, urlStr, obody)
