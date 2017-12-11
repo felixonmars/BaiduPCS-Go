@@ -337,8 +337,11 @@ func main() {
 			Name:      "rm",
 			Usage:     "删除 单个/多个 文件/目录",
 			UsageText: fmt.Sprintf("%s rm <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", filepath.Base(os.Args[0])),
-			Category:  "网盘操作",
-			Before:    reloadFn,
+			Description: fmt.Sprintf("\n   %s\n",
+				"注意: 删除多个文件和目录时, 请确保每一个文件和目录都存在, 否则删除操作会失败.",
+			),
+			Category: "网盘操作",
+			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() == 0 {
 					cli.ShowCommandHelp(c, c.Command.Name)
