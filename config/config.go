@@ -26,7 +26,8 @@ type PCSConfig struct {
 	MaxParallel    int      `json:"max_parallel"`
 }
 
-func init() {
+// Init 初始化配置
+func Init() {
 	// 检查配置
 	cfg, err := loadConfig()
 	if err != nil {

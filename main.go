@@ -36,6 +36,8 @@ func init() {
 		}
 	}
 	os.Chdir(folderPath)
+
+	pcsconfig.Init()
 }
 
 func main() {
