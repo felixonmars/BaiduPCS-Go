@@ -47,7 +47,7 @@ func (p PCSApi) Remove(paths ...string) (err error) {
 
 	code, err := checkErr(json)
 	if err != nil {
-		return fmt.Errorf("批量删除文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, err)
+		return fmt.Errorf("删除文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, err)
 	}
 
 	return nil
