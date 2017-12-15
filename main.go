@@ -350,11 +350,7 @@ func main() {
 					return nil
 				}
 
-				var dargs []string
-				for i := 0; c.Args().Get(i) != ""; i++ {
-					dargs = append(dargs, c.Args().Get(i))
-				}
-				baidupcscmd.RunRemove(dargs...)
+				baidupcscmd.RunRemove(getSubArgs(c)...)
 				return nil
 			},
 		},
@@ -375,6 +371,42 @@ func main() {
 			},
 		},
 		{
+			Name:      "cp",
+			Usage:     "拷贝(复制) 文件/目录",
+			UsageText: fmt.Sprintf("%s cp <文件/目录1> <文件/目录2> <文件/目录3> ... <目标目录>", filepath.Base(os.Args[0])),
+			Category:  "网盘操作",
+			Before:    reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() <= 1 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+
+				baidupcscmd.RunCopy(getSubArgs(c)...)
+				return nil
+			},
+		},
+		{
+			Name:  "mv",
+			Usage: "移动/重命名 文件/目录",
+			UsageText: fmt.Sprintf(
+				"移动\t: %s mv <文件/目录1> <文件/目录2> <文件/目录3> ... <目标目录>\n   重命名: %s mv <文件/目录> <重命名的文件/目录>",
+				filepath.Base(os.Args[0]),
+				filepath.Base(os.Args[0]),
+			),
+			Category: "网盘操作",
+			Before:   reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() <= 1 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+
+				baidupcscmd.RunMove(getSubArgs(c)...)
+				return nil
+			},
+		},
+		{
 			Name:        "download",
 			Aliases:     []string{"d"},
 			Usage:       "下载文件或目录",
@@ -388,11 +420,7 @@ func main() {
 					return nil
 				}
 
-				var dargs []string
-				for i := 0; c.Args().Get(i) != ""; i++ {
-					dargs = append(dargs, c.Args().Get(i))
-				}
-				baidupcscmd.RunDownload(dargs...)
+				baidupcscmd.RunDownload(getSubArgs(c)...)
 				return nil
 			},
 		},
@@ -458,6 +486,14 @@ func main() {
 	sort.Sort(cli.CommandsByName(app.Commands))
 
 	app.Run(os.Args)
+}
+
+// getSubArgs 获取子命令参数
+func getSubArgs(c *cli.Context) (sargs []string) {
+	for i := 0; c.Args().Get(i) != ""; i++ {
+		sargs = append(sargs, c.Args().Get(i))
+	}
+	return
 }
 
 func newLiner() *liner.State {
