@@ -371,11 +371,15 @@ func main() {
 			},
 		},
 		{
-			Name:      "cp",
-			Usage:     "拷贝(复制) 文件/目录",
-			UsageText: fmt.Sprintf("%s cp <文件/目录1> <文件/目录2> <文件/目录3> ... <目标目录>", filepath.Base(os.Args[0])),
-			Category:  "网盘操作",
-			Before:    reloadFn,
+			Name:  "cp",
+			Usage: "拷贝(复制) 文件/目录",
+			UsageText: fmt.Sprintf(
+				"%s cp <文件/目录> <目标 文件/目录>\n   %s cp <文件/目录1> <文件/目录2> <文件/目录3> ... <目标目录>",
+				filepath.Base(os.Args[0]),
+				filepath.Base(os.Args[0]),
+			),
+			Category: "网盘操作",
+			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() <= 1 {
 					cli.ShowCommandHelp(c, c.Command.Name)
