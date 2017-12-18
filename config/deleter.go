@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+// DeleteBaiduUserByUID 通过uid删除百度帐号
 func (c *PCSConfig) DeleteBaiduUserByUID(uid uint64) bool {
 	for k := range c.BaiduUserList {
 		if c.BaiduUserList[k].UID == uid {

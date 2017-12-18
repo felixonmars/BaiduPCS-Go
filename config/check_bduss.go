@@ -8,6 +8,7 @@ import (
 	"strconv"
 )
 
+// Baidu 百度帐号对象
 type Baidu struct {
 	UID   uint64 `json:"uid"`
 	Name  string `json:"name"`
@@ -76,17 +77,21 @@ func NewWithBDUSS(bduss string) (*Baidu, error) {
 	}, nil
 }
 
+// GetUserNameByUID 通过百度uid获取百度用户名
 func GetUserNameByUID(uid uint64) (username string, err error) {
 	rawQuery := "has_plist=0&need_post_count=1&rn=1&uid=" + fmt.Sprint(uid)
 	urlStr := "http://c.tieba.baidu.com/c/u/user/profile?" + pcsutil.TiebaClientRawQuerySignature(rawQuery)
+
 	body, err := downloader.HTTPGet(urlStr)
 	if err != nil {
 		return "", err
 	}
+
 	json, err := simplejson.NewJson(body)
 	if err != nil {
 		return "", err
 	}
+
 	userJSON := json.GetPath("user")
 	username = userJSON.Get("name").MustString()
 	return
