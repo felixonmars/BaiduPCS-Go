@@ -38,12 +38,13 @@ func init() {
 	os.Chdir(folderPath)
 
 	pcsconfig.Init()
+	baidupcscmd.ReloadInfo()
 }
 
 func main() {
 	app := cli.NewApp()
 	app.Name = "BaiduPCS-Go"
-	app.Version = "beta-v2"
+	app.Version = "beta-v3"
 	app.Author = "iikira/BaiduPCS-Go: https://github.com/iikira/BaiduPCS-Go"
 	app.Usage = "百度网盘工具箱 for " + runtime.GOOS + "/" + runtime.GOARCH
 	app.Description = `BaiduPCS-Go 使用 Go语言编写, 为操作百度网盘, 提供实用功能.
@@ -53,7 +54,11 @@ func main() {
 		网盘内列出文件和目录, 支持通配符匹配路径;
 		下载网盘内文件, 支持网盘内目录 (文件夹) 下载, 支持多个文件或目录下载, 支持断点续传和高并发高速下载.
 
-	程序目前处于测试版, 后续会添加更多的实用功能.`
+	程序目前处于测试版, 后续会添加更多的实用功能.
+	
+	---------------------------------------------------
+	前往 https://github.com/iikira/BaiduPCS-Go/releases 以获取程序更新信息!
+	---------------------------------------------------`
 	app.Action = func(c *cli.Context) {
 		if c.NArg() == 0 {
 			cli.ShowAppHelp(c)
@@ -436,7 +441,7 @@ func main() {
 可设置的值:
 
 	OptionName		Value
-	------------------
+	------------------------------------------------------
 	max_parallel	下载最大线程 (并发量) - 建议值 ( 100 ~ 500 )
 
 例子:

@@ -1,4 +1,4 @@
-# BaiduPCS-Go 百度网盘工具箱 beta-v2
+# BaiduPCS-Go 百度网盘工具箱 beta-v3
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
 
 # 特色
@@ -272,5 +272,4 @@ console 模式下, 运行命令 `set max_parallel 250` 将下载最大并发数�
 
 # TODO
 
-1. 网盘内文件或目录的复制, 移动, 删除等操作
-2. 上传文件
+1. 上传文件
