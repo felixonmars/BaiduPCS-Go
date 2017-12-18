@@ -10,10 +10,6 @@ var (
 	info = new(baidupcs.PCSApi)
 )
 
-func init() {
-	ReloadInfo()
-}
-
 // ReloadInfo 重载配置
 func ReloadInfo() {
 	pcsconfig.Reload()

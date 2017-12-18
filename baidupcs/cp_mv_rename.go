@@ -38,10 +38,7 @@ func (p PCSApi) Move(cpmvJSON ...CpMvJSON) (err error) {
 }
 
 func (p PCSApi) cpmvOp(op string, cpmvJSON ...CpMvJSON) (err error) {
-
-	h := downloader.NewHTTPClient()
-
-	ejs, err := cpmvParseJSON(cpmvJSON...)
+	ejs, err := cpmvJSONEncode(cpmvJSON...)
 	if err != nil {
 		return err
 	}
@@ -55,6 +52,7 @@ func (p PCSApi) cpmvOp(op string, cpmvJSON ...CpMvJSON) (err error) {
 		"param": ejs,
 	})
 
+	h := downloader.NewHTTPClient()
 	body, err := h.Fetch("POST", p.url.String(), nil, map[string]string{
 		"Cookie": "BDUSS=" + p.bduss,
 	})
@@ -84,7 +82,8 @@ func (p PCSApi) cpmvOp(op string, cpmvJSON ...CpMvJSON) (err error) {
 	return nil
 }
 
-func cpmvParseJSON(cpmvJSON ...CpMvJSON) (string, error) {
+//cpmvJSONEncode 生成 json 串
+func cpmvJSONEncode(cpmvJSON ...CpMvJSON) (string, error) {
 	pathsData := CpMvJSONList{
 		List: cpmvJSON,
 	}

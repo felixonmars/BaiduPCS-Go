@@ -53,7 +53,6 @@ type FileDl struct {
 //
 // 如果 size <= 0 则自动获取文件大小
 func NewFileDl(h *HTTPClient, url, savePath string, size int64) (*FileDl, error) {
-
 	// 获取文件信息
 	request, err := http.NewRequest("HEAD", url, nil)
 	if err != nil {
