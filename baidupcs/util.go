@@ -16,7 +16,7 @@ func checkErr(json *simplejson.Json) (code int, msg error) {
 	errMsg := msgJSON.MustString()
 	switch errCode {
 	case 31045: // user not exists
-		errMsg = "操作失败, 可能BDUSS已过期, 请尝试运行 login 命令重新登录, 消息: " + errMsg
+		errMsg = "操作失败, 可能BDUSS已过期, 请尝试重新登录, 消息: " + errMsg
 	}
 	return errCode, errors.New(errMsg)
 }
