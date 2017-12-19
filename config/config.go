@@ -60,6 +60,12 @@ func loadConfig() (*PCSConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 下载目录为空处理
+	if conf.SaveDir == "" {
+		conf.SaveDir = "download"
+	}
+
 	return conf, nil
 }
 

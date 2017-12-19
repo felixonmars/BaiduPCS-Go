@@ -454,7 +454,7 @@ func main() {
 			Before:   reloadFn,
 			After:    reloadFn,
 			Action: func(c *cli.Context) error {
-				if c.NArg() < 2 {
+				if c.NArg() < 2 || c.Args().Get(1) == "" {
 					cli.ShowCommandHelp(c, c.Command.Name)
 					return nil
 				}
@@ -463,7 +463,13 @@ func main() {
 				case "max_parallel":
 					parallel, err := strconv.Atoi(c.Args().Get(1))
 					if err != nil {
-						return cli.NewExitError(fmt.Errorf("max_parallel 设置值不合法, 错误: %s", err), 1)
+						fmt.Printf("max_parallel 设置值不合法, 错误: %s\n", err)
+						return err
+					}
+
+					if parallel <= 0 {
+						fmt.Printf("max_parallel 设置值不合法, parallel 值应为一个正整数\n")
+						return nil
 					}
 
 					pcsconfig.Config.MaxParallel = parallel
