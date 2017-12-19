@@ -14,16 +14,15 @@ var (
 	ActiveBaiduUser *Baidu
 
 	configFileName = "pcs_config.json"
-
-	// SaveDir 保存文件的目录
-	SaveDir = "download/"
 )
 
 // PCSConfig 配置详情
 type PCSConfig struct {
 	BaiduActiveUID uint64   `json:"baidu_active_uid"`
 	BaiduUserList  []*Baidu `json:"baidu_user_list"`
-	MaxParallel    int      `json:"max_parallel"`
+
+	MaxParallel int    `json:"max_parallel"` // 最大下载并发量
+	SaveDir     string `json:"savedir"`      // 下载储存路径
 }
 
 // Init 初始化配置
@@ -36,6 +35,7 @@ func Init() {
 		cfg = &PCSConfig{
 			BaiduActiveUID: 0,
 			MaxParallel:    100,
+			SaveDir:        "download",
 		}
 
 		err = cfg.Save()

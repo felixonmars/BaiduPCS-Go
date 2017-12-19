@@ -46,15 +46,15 @@ func (c *PCSConfig) CheckUIDExist(uid uint64) bool {
 // 返回绝对路径, 获取绝对路径出错时才返回相对路径...
 func GetSavePath(path string) string {
 	dirStr := fmt.Sprintf("%s/%d_%s%s/.",
-		SaveDir,
+		Config.SaveDir,
 		ActiveBaiduUser.UID,
 		ActiveBaiduUser.Name,
 		path,
 	)
 
-	dir, err := filepath.Abs("./" + dirStr)
+	dir, err := filepath.Abs(dirStr)
 	if err != nil {
-		dir = filepath.Dir(dirStr)
+		dir = filepath.Dir(dirStr + "/.")
 	}
 	return dir
 }

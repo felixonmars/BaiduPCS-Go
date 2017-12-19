@@ -5,7 +5,7 @@ import (
 	"github.com/gobs/args"
 	"github.com/iikira/BaiduPCS-Go/command"
 	"github.com/iikira/BaiduPCS-Go/config"
-	"github.com/kardianos/osext"
+	"github.com/iikira/osext"
 	"github.com/peterh/liner"
 	"github.com/urfave/cli"
 	"io"
@@ -442,11 +442,13 @@ func main() {
 
 	OptionName		Value
 	------------------------------------------------------
-	max_parallel	下载最大线程 (并发量) - 建议值 ( 100 ~ 500 )
+	max_parallel	下载最大线程 (并发量) - 建议值 ( 50 ~ 500 )
+	savedir	下载文件的储存目录
 
 例子:
 
 	set max_parallel 250
+	set savedir D:\\download
 `,
 			Category: "配置",
 			Before:   reloadFn,
@@ -470,6 +472,11 @@ func main() {
 						fmt.Println("设置失败, 错误:", err)
 						return nil
 					}
+					fmt.Printf("设置成功, %s -> %v\n", c.Args().Get(0), c.Args().Get(1))
+
+				case "savedir":
+					pcsconfig.Config.SaveDir = c.Args().Get(1)
+					pcsconfig.Config.Save()
 					fmt.Printf("设置成功, %s -> %v\n", c.Args().Get(0), c.Args().Get(1))
 
 				default:
