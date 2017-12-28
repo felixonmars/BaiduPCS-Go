@@ -9,14 +9,14 @@ import (
 
 // FileDirectory 文件或目录的详细信息
 type FileDirectory struct {
-	FsID        int64
-	Path        string
-	Filename    string
-	Ctime       int64
-	MD5         string
-	Size        int64
-	Isdir       bool
-	Ifhassubdir bool
+	FsID        int64  // fs_id
+	Path        string // 路径
+	Filename    string // 文件名 或 目录名
+	Ctime       int64  // 创建日期
+	MD5         string // md5 值
+	Size        int64  // 文件大小 (目录为0)
+	Isdir       bool   // 是否为目录
+	Ifhassubdir bool   // 是否含有子目录 (只对目录有效)
 }
 
 // FileDirectoryList FileDirectory 的 数组
@@ -66,7 +66,7 @@ func (p PCSApi) FilesDirectoriesMeta(path string) (data FileDirectory, err error
 	return
 }
 
-// FileList 获取目录下的文件列表
+// FileList 获取目录下的文件和目录列表
 func (p PCSApi) FileList(path string) (data FileDirectoryList, err error) {
 	if path == "" {
 		path = "/"

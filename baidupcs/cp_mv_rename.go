@@ -8,10 +8,10 @@ import (
 	"strings"
 )
 
-// CpMvJSON 源文件地址和目标文件地址
+// CpMvJSON 源文件目录的地址和目标文件目录的地址
 type CpMvJSON struct {
-	From string `json:"from"`
-	To   string `json:"to"`
+	From string `json:"from"` // 源文件或目录
+	To   string `json:"to"`   // 目标文件或目录
 }
 
 // CpMvJSONList []CpMvJSON 对象数组
