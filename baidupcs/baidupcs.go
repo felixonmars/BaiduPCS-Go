@@ -24,7 +24,8 @@ func NewPCS(bduss string) *PCSApi {
 			Scheme:   "http",
 			Host:     "pcs.baidu.com",
 			Path:     "/rest/2.0/pcs/",
-			RawQuery: fmt.Sprintf("app_id=%d", appid)},
+			RawQuery: fmt.Sprintf("app_id=%d", appid),
+		},
 		bduss:  bduss,
 		writed: false,
 	}
