@@ -16,11 +16,10 @@ const (
 
 // ConvertFileSize 文件大小格式化输出
 func ConvertFileSize(size int64, precision ...int) string {
-	p := 6
+	pint := "6"
 	if len(precision) == 1 {
-		p = precision[0]
+		pint = fmt.Sprint(precision[0])
 	}
-	pint := fmt.Sprint(p)
 	if size <= 0 {
 		return "0"
 	}
@@ -44,13 +43,10 @@ func ConvertFileSize(size int64, precision ...int) string {
 
 // IntToBool int 类型转换为 bool
 func IntToBool(i int) bool {
-	if i == 0 {
-		return false
-	}
-	return true
+	return i != 0
 }
 
-// FormatTime 讲 Unix 时间戳, 转换为字符串
+// FormatTime 将 Unix 时间戳, 转换为字符串
 func FormatTime(t int64) string {
 	return time.Unix(t, 0).Format("2006-01-02 03:04:05")
 }
