@@ -3,9 +3,7 @@
 *.dll
 *.so
 *.dylib
-baidupcs_go
 BaiduPCS-Go
-httpserver
 
 # Test binary, build with `go test -c`
 *.test

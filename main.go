@@ -5,6 +5,7 @@ import (
 	"github.com/gobs/args"
 	"github.com/iikira/BaiduPCS-Go/command"
 	"github.com/iikira/BaiduPCS-Go/config"
+	"github.com/iikira/BaiduPCS-Go/web"
 	"github.com/iikira/osext"
 	"github.com/peterh/liner"
 	"github.com/urfave/cli"
@@ -97,6 +98,17 @@ func main() {
 	}
 
 	app.Commands = []cli.Command{
+		{
+			Name:     "web",
+			Usage:    "启用 web 客户端 (测试中)",
+			Category: "其他",
+			Before:   reloadFn,
+			Action: func(c *cli.Context) error {
+				fmt.Println("web 客户端功能为实验性功能, 测试中, 打开 http://localhost:8080 查看效果")
+				fmt.Println(pcsweb.StartServer())
+				return nil
+			},
+		},
 		{
 			Name:  "login",
 			Usage: "使用百度BDUSS登录百度账号",

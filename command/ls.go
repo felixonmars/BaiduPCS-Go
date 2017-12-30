@@ -14,8 +14,8 @@ func RunLs(path string) {
 		fmt.Println(err)
 		return
 	}
-	files, err := info.FileList(path)
 
+	files, err := info.FileList(path)
 	if err != nil {
 		fmt.Println(err)
 		return

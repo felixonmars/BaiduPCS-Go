@@ -1,0 +1,37 @@
+{{define "directory-list"}}
+<div id="page-content" class="container">
+    <style>
+        #directory-list-header {
+            font-family: "Microsoft YaHei", 微软雅黑, 黑体, 宋体, sans-serif;
+            font-weight: bold;
+            padding: 10px 15px;
+        }
+    </style>
+
+    <div id="directory-list-header">
+        <div class="row">
+            <div class="col-md-7 col-sm-6 col-xs-10">文件</div>
+            <div class="col-md-2 col-sm-2 col-xs-2 text-right">大小</div>
+            <div class="col-md-3 col-sm-4 hidden-xs text-right">创建时间</div>
+        </div>
+    </div>
+
+    <ul id="directory-listing" class="nav nav-pills nav-stacked">
+        {{range .}}
+        <li data-name="{{.Filename}}" data-href="?path={{.Path}}">
+            <a href="?path={{.Path}}" class="clearfix" data-name="{{.Filename}}">
+                <div class="row">
+                    <span class="file-name col-md-7 col-sm-6 col-xs-9">
+                        <i class="fa {{if .Isdir}}fa-folder{{else}}fa-file{{end}} fa-fw"></i>
+                        {{.Filename}} </span>
+                    <span class="file-size col-md-2 col-sm-2 col-xs-3 text-right">
+                        {{convertFileSize .Size}} </span>
+                    <span class="col-md-3 col-sm-4 hidden-xs text-right">
+                        {{timeFmt .Ctime}} </span>
+                </div>
+            </a>
+        </li>
+        {{end}}
+    </ul>
+</div>
+{{end}}
