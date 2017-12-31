@@ -1,5 +1,13 @@
-{{define "directory-list"}}
-<div id="page-content" class="container">
+{{define "title"}}主页{{end}} {{define "contents"}}
+<div class="panel panel-default">
+    <div class="panel-heading">
+        <span>用户信息</span>
+    </div>
+    <div class="panel-body">
+        <div id="qrcodeTable"></div>
+    </div>
+</div>
+<div class="container">
     <style>
         #directory-list-header {
             font-family: "Microsoft YaHei", 微软雅黑, 黑体, 宋体, sans-serif;
@@ -7,6 +15,13 @@
             padding: 10px 15px;
         }
     </style>
+
+    <div class="form-group" style="padding: 5px 0px;">
+        <div class="input-group">
+            <span class="input-group-addon">当前路径</span>
+            <input class="form-control" id="contents" value='"{{getPath}}"' />
+        </div>
+    </div>
 
     <div id="directory-list-header">
         <div class="row">
