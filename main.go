@@ -446,6 +446,26 @@ func main() {
 			},
 		},
 		{
+			Name:        "upload",
+			Aliases:     []string{"u"},
+			Usage:       "上传文件或目录(目前只支持秒传文件)",
+			UsageText:   fmt.Sprintf("%s upload <本地文件或目录的路径1> <文件或目录2> <文件或目录3> ... <网盘的目标目录>", filepath.Base(os.Args[0])),
+			Description: "上传的文件将会保存到 网盘的目标目录.\n   遇到同名文件将会自动覆盖! \n",
+			Category:    "网盘操作",
+			Before:      reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() <= 1 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+
+				subArgs := getSubArgs(c)
+
+				baidupcscmd.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1])
+				return nil
+			},
+		},
+		{
 			Name:      "set",
 			Usage:     "设置配置",
 			UsageText: fmt.Sprintf("%s set OptionName Value", filepath.Base(os.Args[0])),
