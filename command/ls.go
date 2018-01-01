@@ -9,7 +9,7 @@ import (
 
 // RunLs 执行列目录
 func RunLs(path string) {
-	path, err := toAbsPath(path)
+	path, err := getAbsPath(path)
 	if err != nil {
 		fmt.Println(err)
 		return

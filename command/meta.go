@@ -6,7 +6,7 @@ import (
 
 // RunGetMeta 执行 获取单个文件/目录的元信息
 func RunGetMeta(path string) {
-	p, err := toAbsPath(path)
+	p, err := getAbsPath(path)
 	if err != nil {
 		fmt.Println(err)
 		return

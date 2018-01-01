@@ -13,7 +13,11 @@ func RunDownload(paths ...string) {
 	downloader.SetCacheSize(2048)
 	downloader.SetMaxParallel(pcsconfig.Config.MaxParallel)
 
-	paths = getAllPaths(paths...)
+	paths, err := getAllAbsPaths(paths...)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	fmt.Println()
 	for k := range paths {

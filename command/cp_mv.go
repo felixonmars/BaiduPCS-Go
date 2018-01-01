@@ -23,7 +23,12 @@ func runCpMvOp(op string, paths ...string) {
 		return
 	}
 
-	paths = getAllPaths(paths...)
+	paths, err = getAllAbsPaths(paths...)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	froms, to := cpmvParsePath(paths...)
 
 	toInfo, err := info.FilesDirectoriesMeta(to)

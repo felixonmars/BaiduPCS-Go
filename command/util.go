@@ -12,33 +12,60 @@ var (
 	patternRE = regexp.MustCompile(`[\[\]\*\?]`)
 )
 
-// getAbsPath 获取绝对路径, 忽略通配符
-func getAbsPath(path string) string {
+// getAbsPathNoMatch 获取绝对路径, 不检测通配符
+func getAbsPathNoMatch(path string) string {
 	if !fpath.IsAbs(path) {
 		path = fpath.Dir(pcsconfig.ActiveBaiduUser.Workdir + "/" + path + "/")
 	}
 	return path
 }
 
-func getAllPaths(paths ...string) (_paths []string) {
+// getAllAbsPaths 获取所有绝对路径
+func getAllAbsPaths(paths ...string) (_paths []string, err error) {
 	for k := range paths {
-		_paths = append(_paths, parsePath(paths[k])...)
+		p, err := parsePath(paths[k])
+		if err != nil {
+			return nil, err
+		}
+		_paths = append(_paths, p...)
 	}
 	return
 }
 
-func toAbsPath(path string) (string, error) {
-	p := parsePath(path)
-	if len(p) == 0 {
-		return "", fmt.Errorf("文件路径匹配失败, 请检查通配符")
+// getAbsPath 获取绝对路径, 获取错误将会返回 原路径 和 错误信息
+func getAbsPath(path string) (string, error) {
+	p, err := parsePath(path)
+	if err != nil {
+		return path, err
 	}
-	return p[0], nil
+
+	if len(p) != 0 {
+		return p[0], nil
+	}
+	return "", fmt.Errorf("未找到路径")
 }
 
 // parsePath 递归解析通配符
-func parsePath(path string) (paths []string) {
-	path = getAbsPath(path)
+func parsePath(path string) (paths []string, err error) {
+	path = getAbsPathNoMatch(path)
 
+	if patternRE.MatchString(path) {
+		paths = recurseParsePath(path)
+		if len(paths) == 0 {
+			return nil, fmt.Errorf("文件路径匹配失败, 请检查通配符")
+		}
+		return paths, nil
+	}
+
+	_, err = info.FilesDirectoriesMeta(path)
+	if err != nil {
+		return nil, err
+	}
+	paths = []string{path}
+	return
+}
+
+func recurseParsePath(path string) (paths []string) {
 	if !patternRE.MatchString(path) {
 		paths = []string{path}
 		return
@@ -67,7 +94,7 @@ func parsePath(path string) (paths []string) {
 				if k >= len(names)-1 {
 					paths = append(paths, strings.Join(names[:k], "/")+"/"+pfiles[k2].Filename)
 				} else if pfiles[k2].Isdir {
-					paths = append(paths, parsePath(pfiles[k2].Path+"/"+strings.Join(names[k+1:], "/"))...)
+					paths = append(paths, recurseParsePath(pfiles[k2].Path+"/"+strings.Join(names[k+1:], "/"))...)
 				}
 			}
 		}

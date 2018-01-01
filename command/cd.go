@@ -7,7 +7,7 @@ import (
 
 // RunChangeDirectory 执行更改工作目录
 func RunChangeDirectory(path string) {
-	path, err := toAbsPath(path)
+	path, err := getAbsPath(path)
 	if err != nil {
 		fmt.Println(err)
 		return
