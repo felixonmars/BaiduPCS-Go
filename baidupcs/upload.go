@@ -3,7 +3,9 @@ package baidupcs
 import (
 	"fmt"
 	"github.com/bitly/go-simplejson"
-	"github.com/iikira/BaiduPCS-Go/downloader"
+	"github.com/iikira/BaiduPCS-Go/requester"
+	"net/http"
+	"net/http/cookiejar"
 )
 
 // RapidUpload 秒传文件
@@ -17,7 +19,7 @@ func (p PCSApi) RapidUpload(targetPath, md5, smd5, crc32 string, length int64) (
 		"ondup":          "overwrite",        // overwrite: 表示覆盖同名文件; newcopy: 表示生成文件副本并进行重命名，命名规则为“文件名_日期.后缀”
 	})
 
-	h := downloader.NewHTTPClient()
+	h := requester.NewHTTPClient()
 	body, err := h.Fetch("POST", p.url.String(), nil, map[string]string{
 		"Cookie": "BDUSS=" + p.bduss,
 	})
@@ -42,4 +44,21 @@ func (p PCSApi) RapidUpload(targetPath, md5, smd5, crc32 string, length int64) (
 	}
 
 	return nil
+}
+
+func (p PCSApi) Upload(targetPath string, uploadFunc func(uploadURL string, jar *cookiejar.Jar) error) (err error) {
+	p.addItem("file", "upload", map[string]string{
+		"path":  targetPath,
+		"ondup": "overwrite",
+	})
+
+	jar, _ := cookiejar.New(nil)
+	jar.SetCookies(&p.url, []*http.Cookie{
+		&http.Cookie{
+			Name:  "BDUSS",
+			Value: p.bduss,
+		},
+	})
+
+	return uploadFunc(p.url.String(), jar)
 }
