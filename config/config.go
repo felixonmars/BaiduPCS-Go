@@ -8,10 +8,10 @@ import (
 
 var (
 	// Config 配置信息, 由外部调用
-	Config = new(PCSConfig)
+	Config = NewConfig()
 
 	// ActiveBaiduUser 当前百度帐号
-	ActiveBaiduUser *Baidu
+	ActiveBaiduUser = new(Baidu)
 
 	configFileName = "pcs_config.json"
 )
@@ -25,57 +25,56 @@ type PCSConfig struct {
 	SaveDir     string `json:"savedir"`      // 下载储存路径
 }
 
+// NewConfig 返回 PCSConfig 指针对象
+func NewConfig() *PCSConfig {
+	return &PCSConfig{
+		BaiduActiveUID: 0,
+		MaxParallel:    100,
+		SaveDir:        "download",
+	}
+}
+
 // Init 初始化配置
 func Init() {
 	// 检查配置
-	cfg, err := loadConfig()
+	err := loadConfig()
 	if err != nil {
 		fmt.Printf("错误: %s, 自动初始化配置文件\n", err)
 
-		cfg = &PCSConfig{
-			BaiduActiveUID: 0,
-			MaxParallel:    100,
-			SaveDir:        "download",
-		}
-
-		err = cfg.Save()
+		err = Config.Save()
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
-	Config = cfg
 
-	if UpdateActiveBaiduUser() != nil {
-		ActiveBaiduUser = new(Baidu)
-	}
+	UpdateActiveBaiduUser()
 }
 
-func loadConfig() (*PCSConfig, error) {
+func loadConfig() error {
 	data, err := ioutil.ReadFile(configFileName)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	conf := new(PCSConfig)
-	err = json.Unmarshal(data, conf)
+
+	err = json.Unmarshal(data, Config)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// 下载目录为空处理
-	if conf.SaveDir == "" {
-		conf.SaveDir = "download"
+	if Config.SaveDir == "" {
+		Config.SaveDir = "download"
 	}
 
-	return conf, nil
+	return nil
 }
 
 // Reload 从配置文件重载更新 Config
 func Reload() error {
-	cfg, err := loadConfig()
+	err := loadConfig()
 	if err != nil {
 		return err
 	}
-	Config = cfg
 
 	// 更新 当前百度帐号
 	return UpdateActiveBaiduUser()
@@ -99,9 +98,10 @@ func (c *PCSConfig) Save() error {
 // UpdateActiveBaiduUser 更新 当前百度帐号
 func UpdateActiveBaiduUser() error {
 	baidu, err := Config.GetBaiduUserByUID(Config.BaiduActiveUID)
-	if err == nil {
-		ActiveBaiduUser = baidu
-		return nil
+	if err != nil {
+		return err
 	}
-	return err
+
+	ActiveBaiduUser = baidu
+	return nil
 }

@@ -3,7 +3,7 @@ package baidupcs
 import (
 	"fmt"
 	"github.com/bitly/go-simplejson"
-	"github.com/iikira/BaiduPCS-Go/downloader"
+	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/util"
 )
 
@@ -34,7 +34,7 @@ func (p PCSApi) FilesDirectoriesMeta(path string) (data FileDirectory, err error
 		"path": path,
 	})
 
-	h := downloader.NewHTTPClient()
+	h := requester.NewHTTPClient()
 	body, err := h.Fetch("GET", p.url.String(), nil, map[string]string{
 		"Cookie": "BDUSS=" + p.bduss,
 	})
@@ -79,7 +79,7 @@ func (p PCSApi) FileList(path string) (data FileDirectoryList, err error) {
 		"limit": "0-2147483647",
 	})
 
-	h := downloader.NewHTTPClient()
+	h := requester.NewHTTPClient()
 	body, err := h.Fetch("GET", p.url.String(), nil, map[string]string{
 		"Cookie": "BDUSS=" + p.bduss,
 	})

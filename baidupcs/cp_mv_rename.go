@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/bitly/go-simplejson"
-	"github.com/iikira/BaiduPCS-Go/downloader"
+	"github.com/iikira/BaiduPCS-Go/requester"
 	"strings"
 )
 
@@ -52,7 +52,7 @@ func (p PCSApi) cpmvOp(op string, cpmvJSON ...CpMvJSON) (err error) {
 		"param": ejs,
 	})
 
-	h := downloader.NewHTTPClient()
+	h := requester.NewHTTPClient()
 	body, err := h.Fetch("POST", p.url.String(), nil, map[string]string{
 		"Cookie": "BDUSS=" + p.bduss,
 	})

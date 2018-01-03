@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/bitly/go-simplejson"
-	"github.com/iikira/BaiduPCS-Go/downloader"
+	"github.com/iikira/BaiduPCS-Go/requester"
 )
 
 // Remove 批量删除文件/目录
@@ -32,7 +32,7 @@ func (p PCSApi) Remove(paths ...string) (err error) {
 		"param": string(ej[:]),
 	})
 
-	h := downloader.NewHTTPClient()
+	h := requester.NewHTTPClient()
 	body, err := h.Fetch("POST", p.url.String(), nil, map[string]string{
 		"Cookie": "BDUSS=" + p.bduss,
 	})
@@ -59,7 +59,7 @@ func (p PCSApi) Mkdir(path string) (err error) {
 		"path": path,
 	})
 
-	h := downloader.NewHTTPClient()
+	h := requester.NewHTTPClient()
 	body, err := h.Fetch("POST", p.url.String(), nil, map[string]string{
 		"Cookie": "BDUSS=" + p.bduss,
 	})

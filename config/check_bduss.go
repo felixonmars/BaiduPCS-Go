@@ -3,7 +3,7 @@ package pcsconfig
 import (
 	"fmt"
 	"github.com/bitly/go-simplejson"
-	"github.com/iikira/BaiduPCS-Go/downloader"
+	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/util"
 	"strconv"
 )
@@ -19,7 +19,7 @@ type Baidu struct {
 
 // NewWithBDUSS 检测BDUSS有效性, 同时获取百度详细信息
 func NewWithBDUSS(bduss string) (*Baidu, error) {
-	h := downloader.NewHTTPClient()
+	h := requester.NewHTTPClient()
 	timestamp := pcsutil.BeijingTimeOption("")
 	post := map[string]string{
 		"bdusstoken":  bduss + "|null",
@@ -82,7 +82,7 @@ func GetUserNameByUID(uid uint64) (username string, err error) {
 	rawQuery := "has_plist=0&need_post_count=1&rn=1&uid=" + fmt.Sprint(uid)
 	urlStr := "http://c.tieba.baidu.com/c/u/user/profile?" + pcsutil.TiebaClientRawQuerySignature(rawQuery)
 
-	body, err := downloader.HTTPGet(urlStr)
+	body, err := requester.HTTPGet(urlStr)
 	if err != nil {
 		return "", err
 	}

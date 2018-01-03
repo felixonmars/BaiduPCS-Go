@@ -135,7 +135,7 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 		request.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", f.BlockList[id].Begin, f.BlockList[id].End))
 	}
 
-	resp, err := f.Client.Do(request) // 开始 http 请求
+	resp, err := f.client.Do(request) // 开始 http 请求
 	if err != nil {
 		return 2, err
 	}

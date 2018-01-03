@@ -3,14 +3,14 @@ package baidupcs
 import (
 	"fmt"
 	"github.com/bitly/go-simplejson"
-	"github.com/iikira/BaiduPCS-Go/downloader"
+	"github.com/iikira/BaiduPCS-Go/requester"
 )
 
 // QuotaInfo 获取当前用户空间配额信息
 func (p PCSApi) QuotaInfo() (quota, used int64, err error) {
 	p.addItem("quota", "info")
 
-	h := downloader.NewHTTPClient()
+	h := requester.NewHTTPClient()
 	body, err := h.Fetch("GET", p.url.String(), nil, map[string]string{
 		"Cookie": "BDUSS=" + p.bduss,
 	})

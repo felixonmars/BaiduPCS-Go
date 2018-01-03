@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/requester"
 	"os"
 	"strings"
 	"time"
@@ -9,9 +10,9 @@ import (
 
 // DoDownload 简单网络下载器, 使用默认下载线程,
 // 通过调用 SetMaxThread 来修改默认下载线程
-func DoDownload(url string, fileName string, sizeofFile int64) {
-	h := NewHTTPClient()
-	fileDl, err := NewFileDl(h, url, fileName, sizeofFile)
+func DoDownload(url string, fileName string) {
+	h := requester.NewHTTPClient()
+	fileDl, err := NewFileDl(h, url, fileName)
 	if err != nil {
 		return
 	}

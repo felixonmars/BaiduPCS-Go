@@ -16,7 +16,7 @@
  补充: 此 inplememt 基于 https://github.com/Bluek404/downloader
  针对百度网盘下载, 做出一些修改
 
- 增加功能: 线程控制
+ 增加功能: 线程控制等
  删去功能: 暂停下载, 恢复下载
 */
 
@@ -24,6 +24,7 @@ package downloader
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/requester"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -40,7 +41,7 @@ type FileDl struct {
 
 	BlockList blockList // 用于记录未下载的文件块起始位置
 
-	*HTTPClient // http client
+	client *requester.HTTPClient // http client
 
 	onStart  func()
 	onFinish func()
@@ -52,14 +53,14 @@ type FileDl struct {
 // NewFileDl 创建新的文件下载
 //
 // 如果 size <= 0 则自动获取文件大小
-func NewFileDl(h *HTTPClient, url, savePath string, size int64) (*FileDl, error) {
+func NewFileDl(h *requester.HTTPClient, url, savePath string) (*FileDl, error) {
 	// 获取文件信息
 	request, err := http.NewRequest("HEAD", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := h.Client.Do(request)
+	resp, err := h.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -107,17 +108,13 @@ func NewFileDl(h *HTTPClient, url, savePath string, size int64) (*FileDl, error)
 		return nil, err
 	}
 
-	if size != resp.ContentLength {
-		size = resp.ContentLength
-	}
-
 	resp.Body.Close()
 
 	f := &FileDl{
-		URL:        url,
-		Size:       size,
-		File:       file,
-		HTTPClient: h,
+		URL:    url,
+		Size:   resp.ContentLength,
+		File:   file,
+		client: h,
 	}
 
 	return f, nil
