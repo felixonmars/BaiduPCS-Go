@@ -11,7 +11,7 @@ import (
 
 func DoUpload(uploadURL string, uploadReader io.Reader) {
 	h := requester.NewHTTPClient()
-	u := NewUploader(uploadURL, uploadReader, h)
+	u := NewUploader(uploadURL, uploadReader, 0, h)
 
 	exit := make(chan struct{})
 	exit2 := make(chan struct{})

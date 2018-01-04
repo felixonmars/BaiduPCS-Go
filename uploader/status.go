@@ -18,14 +18,14 @@ func (u *Uploader) GetStatusChan() <-chan UploadStatus {
 	go func() {
 		for {
 			old := u.Reader.getReaded()
-			if u.Reader.length != 0 && old == u.Reader.length {
+			if u.Reader.Len() != 0 && old == u.Reader.Len() {
 				// 上传完毕, 结束
 				return
 			}
 
 			time.Sleep(1 * time.Second) // 每秒统计
 			c <- UploadStatus{
-				Length:   u.Reader.length,
+				Length:   u.Reader.Len(),
 				Uploaded: u.Reader.getReaded(),
 				Speed:    u.Reader.getReaded() - old,
 			}

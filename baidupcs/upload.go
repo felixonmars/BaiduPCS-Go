@@ -1,10 +1,10 @@
 package baidupcs
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/bitly/go-simplejson"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"net/http"
 	"net/http/cookiejar"
 )
 
@@ -20,9 +20,9 @@ func (p PCSApi) RapidUpload(targetPath, md5, smd5, crc32 string, length int64) (
 	})
 
 	h := requester.NewHTTPClient()
-	body, err := h.Fetch("POST", p.url.String(), nil, map[string]string{
-		"Cookie": "BDUSS=" + p.bduss,
-	})
+	h.SetCookiejar(p.getJar())
+
+	body, err := h.Fetch("POST", p.url.String(), nil, nil)
 	if err != nil {
 		return
 	}
@@ -46,19 +46,60 @@ func (p PCSApi) RapidUpload(targetPath, md5, smd5, crc32 string, length int64) (
 	return nil
 }
 
+// Upload 上传单个文件
 func (p PCSApi) Upload(targetPath string, uploadFunc func(uploadURL string, jar *cookiejar.Jar) error) (err error) {
 	p.addItem("file", "upload", map[string]string{
 		"path":  targetPath,
 		"ondup": "overwrite",
 	})
 
-	jar, _ := cookiejar.New(nil)
-	jar.SetCookies(&p.url, []*http.Cookie{
-		&http.Cookie{
-			Name:  "BDUSS",
-			Value: p.bduss,
-		},
+	return uploadFunc(p.url.String(), p.getJar())
+}
+
+// UploadTmpFile 分片上传—文件分片及上传
+func (p PCSApi) UploadTmpFile(targetPath string, uploadFunc func(uploadURL string, jar *cookiejar.Jar) error) (err error) {
+	p.addItem("file", "upload", map[string]string{
+		"path": targetPath,
+		"type": "tmpfile",
 	})
 
-	return uploadFunc(p.url.String(), jar)
+	return uploadFunc(p.url.String(), p.getJar())
+}
+
+// UploadCreateSuperFile 分片上传—合并分片文件
+func (p PCSApi) UploadCreateSuperFile(targetPath string, blockList ...string) (err error) {
+	bl := struct {
+		BlockList []string `json:"block_list"`
+	}{
+		BlockList: blockList,
+	}
+
+	data, _ := json.Marshal(&bl)
+
+	p.addItem("file", "createsuperfile", map[string]string{
+		"path":  targetPath,
+		"param": string(data),
+		"ondup": "overwrite",
+	})
+
+	h := requester.NewHTTPClient()
+	h.SetCookiejar(p.getJar())
+
+	body, err := h.Fetch("POST", p.url.String(), nil, nil)
+	if err != nil {
+		return
+	}
+
+	sjson, err := simplejson.NewJson(body)
+	if err != nil {
+		return
+	}
+
+	code, err := checkErr(sjson)
+
+	if err != nil {
+		return fmt.Errorf("合并分片文件 遇到错误, 错误代码: %d, 消息: %s", code, err)
+	}
+
+	return nil
 }

@@ -1,15 +1,14 @@
 package uploader
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/BaiduPCS-Go/util"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
-	"os"
-	"path/filepath"
+	"strings"
 )
 
 // Uploader 上传
@@ -24,22 +23,19 @@ type Uploader struct {
 }
 
 // NewUploader 返回 uploader 对象, url: 上传地址, uploadReader: 实现 io.Reader 接口的对象, 例如文件
-func NewUploader(url string, uploadReader io.Reader, h *requester.HTTPClient) (uploader *Uploader) {
+func NewUploader(url string, uploadReader io.Reader, size int64, h *requester.HTTPClient) (uploader *Uploader) {
 	uploader = new(Uploader)
 	uploader.URL = url
 	uploader.Reader = &reader{
-		reader: uploadReader,
+		uploadReader: uploadReader,
+		size:         size,
 	}
 
 	// 设置不超时
-	defer func() {
-		h.SetResponseHeaderTimeout(0)
-		h.SetTimeout(0)
-	}()
+	defer h.SetTimeout(0)
 
 	if h == nil {
-		h = requester.NewHTTPClient()
-		uploader.client = h
+		uploader.client = requester.NewHTTPClient()
 		return
 	}
 	uploader.client = h
@@ -62,30 +58,12 @@ func (u *Uploader) Execute(checkFunc func(respBodyContents []byte, err error)) {
 }
 
 func (u *Uploader) execute() (respBodyContents []byte, code int, err error) {
-	// 缓存文件示例: /tmp/BaiduPCS-GO_uploading_0CF81040068E7893B998D20DC66FD438
-	tempfilePath := filepath.Join(os.TempDir(), "BaiduPCS-GO_uploading"+pcsutil.Md5Encrypt(u.URL))
-	tempfile, err := os.Create(tempfilePath)
-	if err != nil {
-		return nil, 1, fmt.Errorf("uploader: temp file failed, %s", err)
-	}
+	multipartWriter := &bytes.Buffer{}
+	writer := multipart.NewWriter(multipartWriter)
+	writer.CreateFormFile("uploadedfile", "")
 
-	writer := multipart.NewWriter(tempfile)
-	part, err := writer.CreateFormFile("uploadedfile", "")
-	if err != nil {
-		return nil, 1, err
-	}
-
-	io.Copy(part, u.Reader.reader)
-
-	writer.Close()
-
-	tempfile, _ = os.Open(tempfilePath) // 重新打开文件
-	tempfileInfo, _ := tempfile.Stat()
-
-	u.Reader = &reader{
-		reader: tempfile,
-		length: tempfileInfo.Size(),
-	}
+	u.Reader.multipart = multipartWriter
+	u.Reader.multipartEnd = strings.NewReader(fmt.Sprintf("\r\n--%s--\r\n", writer.Boundary()))
 
 	req, err := http.NewRequest("POST", u.URL, u.Reader)
 	if err != nil {
@@ -95,20 +73,15 @@ func (u *Uploader) execute() (respBodyContents []byte, code int, err error) {
 	req.Header.Add("Content-Type", writer.FormDataContentType())
 
 	// 设置 Content-Length 不然请求会卡住不动!!!
-	req.ContentLength = tempfileInfo.Size()
+	req.ContentLength = u.Reader.Len()
 
 	resp, err := u.client.Do(req)
 	if err != nil {
+		fmt.Println(err)
 		return nil, 2, err
 	}
 
-	defer func() {
-		resp.Body.Close()
-
-		// 移除缓存文件
-		tempfile.Close()
-		os.Remove(tempfilePath)
-	}()
+	defer resp.Body.Close()
 
 	respBodyContents, err = ioutil.ReadAll(resp.Body)
 	if err != nil {

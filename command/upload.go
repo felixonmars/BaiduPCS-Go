@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/md5"
 	"fmt"
+	"github.com/bitly/go-simplejson"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/uploader"
 	"github.com/iikira/BaiduPCS-Go/util"
@@ -42,7 +43,7 @@ func (lp *localPathInfo) check() bool {
 	return true
 }
 
-func (lp *localPathInfo) getSum() {
+func (lp *localPathInfo) sum() {
 	bf := bufio.NewReader(lp.file)
 
 	// 获取前 256KB 文件切片的 md5
@@ -125,12 +126,14 @@ func RunUpload(localPaths []string, targetPath string) {
 
 				defer localPathInfo.file.Close() // 关闭文件
 
+				_targetPath := targetPath + "/" + strings.TrimPrefix(localPathInfo.path, uploadInfo.dir)
+
 				if localPathInfo.length >= requiredSliceLen {
 					fmt.Printf("检测秒传中, 请稍候...\n")
 
-					localPathInfo.getSum()
+					localPathInfo.sum()
 
-					err := info.RapidUpload(targetPath+"/"+strings.TrimLeft(localPathInfo.path, uploadInfo.dir), localPathInfo.md5, localPathInfo.sliceMD5, localPathInfo.crc32, localPathInfo.length)
+					err := info.RapidUpload(_targetPath, localPathInfo.md5, localPathInfo.sliceMD5, localPathInfo.crc32, localPathInfo.length)
 					if err == nil {
 						fmt.Printf("秒传成功\n")
 						return
@@ -138,11 +141,11 @@ func RunUpload(localPaths []string, targetPath string) {
 					fmt.Printf("秒传失败, 开始上传文件...\n")
 				}
 
-				err = info.Upload(targetPath+"/"+strings.TrimLeft(localPathInfo.path, uploadInfo.dir), func(uploadURL string, jar *cookiejar.Jar) error {
+				err = info.Upload(_targetPath, func(uploadURL string, jar *cookiejar.Jar) (uperr error) {
 					h := requester.NewHTTPClient()
 					h.SetCookiejar(jar)
 
-					u := uploader.NewUploader(uploadURL, localPathInfo.file, h)
+					u := uploader.NewUploader(uploadURL, localPathInfo.file, -1, h)
 
 					exit := make(chan struct{})
 					exit2 := make(chan struct{})
@@ -176,10 +179,29 @@ func RunUpload(localPaths []string, targetPath string) {
 						exit2 <- struct{}{}
 					})
 
-					u.Execute(nil)
+					u.Execute(func(respBodyContents []byte, err error) {
+						if err != nil {
+							uperr = err
+							return
+						}
+
+						json, err := simplejson.NewJson(respBodyContents)
+						if err != nil {
+							uperr = fmt.Errorf("json parse error, %s", err)
+							return
+						}
+
+						pj, ok := json.CheckGet("path")
+						if !ok {
+							uperr = fmt.Errorf("unknown response data, path not found, %s", string(respBodyContents))
+							return
+						}
+
+						_targetPath = pj.MustString()
+					})
 
 					<-exit2
-					return nil
+					return uperr
 				})
 
 				fmt.Printf("\n")
@@ -188,7 +210,7 @@ func RunUpload(localPaths []string, targetPath string) {
 					fmt.Printf("上传文件失败, %s\n", err)
 					return
 				}
-				fmt.Printf("上传文件成功, 保存位置: %s\n", targetPath)
+				fmt.Printf("上传文件成功, 保存位置: %s\n", _targetPath)
 			}()
 		}
 	}
