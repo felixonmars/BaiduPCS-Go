@@ -30,7 +30,7 @@ func ConvertFileSize(size int64, precision ...int) string {
 		return "0"
 	}
 	if size < KB {
-		return fmt.Sprintf("%."+pint+"fB", float64(size)/float64(B))
+		return fmt.Sprintf("%."+pint+"fB", float64(size))
 	}
 	if size < MB {
 		return fmt.Sprintf("%."+pint+"fKB", float64(size)/float64(KB))
