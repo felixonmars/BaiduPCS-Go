@@ -2,7 +2,6 @@ package baidupcs
 
 import (
 	"github.com/iikira/BaiduPCS-Go/config"
-	"net/http"
 	"net/http/cookiejar"
 )
 
@@ -13,13 +12,5 @@ func (p PCSApi) FileDownload(path string, downloadFunc func(downloadURL string, 
 		"path": path,
 	})
 
-	jar, _ := cookiejar.New(nil)
-	jar.SetCookies(&p.url, []*http.Cookie{
-		&http.Cookie{
-			Name:  "BDUSS",
-			Value: p.bduss,
-		},
-	})
-
-	return downloadFunc(p.url.String(), jar, pcsconfig.GetSavePath(path))
+	return downloadFunc(p.url.String(), p.getJar(), pcsconfig.GetSavePath(path))
 }

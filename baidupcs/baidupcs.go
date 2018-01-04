@@ -2,6 +2,8 @@ package baidupcs
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 )
 
@@ -45,4 +47,15 @@ func (p *PCSApi) addItem(subPath, method string, param ...map[string]string) {
 	}
 	p.url.RawQuery = uv.Encode()
 	p.writed = true
+}
+
+func (p *PCSApi) getJar() *cookiejar.Jar {
+	jar, _ := cookiejar.New(nil)
+	jar.SetCookies(&p.url, []*http.Cookie{
+		&http.Cookie{
+			Name:  "BDUSS",
+			Value: p.bduss,
+		},
+	})
+	return jar
 }
