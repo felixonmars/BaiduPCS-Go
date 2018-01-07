@@ -17,13 +17,13 @@ func RunMove(paths ...string) {
 }
 
 func runCpMvOp(op string, paths ...string) {
-	err := cpmvPathValid(paths...)
+	err := cpmvPathValid(paths...) // 检查路径的有效性, 目前只是判断数量
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("%s path error, %s\n", op, err)
 		return
 	}
 
-	froms, to := cpmvParsePath(paths...)
+	froms, to := cpmvParsePath(paths...) // 分割
 
 	froms, err = getAllAbsPaths(froms...)
 	if err != nil {
@@ -35,6 +35,9 @@ func runCpMvOp(op string, paths ...string) {
 
 	toInfo, err := info.FilesDirectoriesMeta(to)
 	if err != nil {
+		// 判断路径是否存在
+		// 如果不存在, 则为重命名或同目录拷贝操作
+		// 如果 froms 数不是1, 则意义不明确.
 		if len(froms) != 1 {
 			fmt.Println(err)
 			return
@@ -101,7 +104,7 @@ func runCpMvOp(op string, paths ...string) {
 		fmt.Println("操作成功, 以下文件/目录移动成功: ")
 		fmt.Println(cj)
 	default:
-		panic("Unknown op:" + op)
+		panic("Unknown operation:" + op)
 	}
 	return
 }
