@@ -23,13 +23,15 @@ func runCpMvOp(op string, paths ...string) {
 		return
 	}
 
-	paths, err = getAllAbsPaths(paths...)
+	froms, to := cpmvParsePath(paths...)
+
+	froms, err = getAllAbsPaths(froms...)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("解析路径出错, %s\n", err)
 		return
 	}
 
-	froms, to := cpmvParsePath(paths...)
+	to = getAbsPathNoMatch(to)
 
 	toInfo, err := info.FilesDirectoriesMeta(to)
 	if err != nil {
