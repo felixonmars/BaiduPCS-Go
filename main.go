@@ -5,8 +5,8 @@ import (
 	"github.com/gobs/args"
 	"github.com/iikira/BaiduPCS-Go/command"
 	"github.com/iikira/BaiduPCS-Go/config"
+	"github.com/iikira/BaiduPCS-Go/util"
 	"github.com/iikira/BaiduPCS-Go/web"
-	"github.com/iikira/osext"
 	"github.com/peterh/liner"
 	"github.com/urfave/cli"
 	"io"
@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	historyFile = "pcs_command_history.txt"
+	historyFile = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
 
 	reloadFn = func(c *cli.Context) error {
 		baidupcscmd.ReloadIfInConsole()
@@ -28,16 +28,6 @@ var (
 )
 
 func init() {
-	// change work directory
-	folderPath, err := osext.ExecutableFolder()
-	if err != nil {
-		folderPath, err = filepath.Abs(filepath.Dir(os.Args[0]))
-		if err != nil {
-			folderPath = filepath.Dir(os.Args[0])
-		}
-	}
-	os.Chdir(folderPath)
-
 	pcsconfig.Init()
 	baidupcscmd.ReloadInfo()
 }
@@ -45,7 +35,7 @@ func init() {
 func main() {
 	app := cli.NewApp()
 	app.Name = "BaiduPCS-Go"
-	app.Version = "beta-v3"
+	app.Version = "beta-v3.1"
 	app.Author = "iikira/BaiduPCS-Go: https://github.com/iikira/BaiduPCS-Go"
 	app.Usage = "百度网盘工具箱 for " + runtime.GOOS + "/" + runtime.GOARCH
 	app.Description = `BaiduPCS-Go 使用 Go语言编写, 为操作百度网盘, 提供实用功能.

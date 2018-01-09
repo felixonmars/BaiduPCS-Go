@@ -1,4 +1,4 @@
-# BaiduPCS-Go 百度网盘工具箱 beta-v3
+# BaiduPCS-Go 百度网盘工具箱 beta-v3.1
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
 
 # 特色
@@ -20,7 +20,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 > 自己感受一下吧
 
 # 程序 编译/交叉编译 说明
-参见 [交叉编译帮助](https://github.com/iikira/BaiduPCS-Go/wiki/交叉编译帮助) 
+参见 [编译/交叉编译帮助](https://github.com/iikira/BaiduPCS-Go/wiki/编译-交叉编译帮助) 
 
 # 程序 下载/运行 说明
 
@@ -28,7 +28,7 @@ Go语言程序, 可直接下载使用, [点此查看发布页面 / 下载汇总]
 
 如果程序运行时输出乱码, 请检查下终端的编码方式是否为 `UTF-8`.
 
-使用本程序, 强烈建议学习一些 linux 基础知识, [Linux20个常用命令](http://blog.csdn.net/xufei512/article/details/53321980).
+使用本程序之前, 建议学习一些 linux 基础知识 和 基础命令.
 
 如果未带任何参数运行程序, 程序将会进入独有的 console 模式, 可直接运行相关命令.
 
@@ -60,7 +60,7 @@ console 模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`
 
 # 命令列表及说明
 
-## 注意
+## 注意 ! ! !
 
 命令的前缀 `BaiduPCS-Go` 为指向程序运行的全路径名 (ARGv 的第一个参数)
 
@@ -76,6 +76,15 @@ BaiduPCS-Go login
 请输入百度BDUSS值, 回车键提交 > 
 ```
 
+#### 例子
+```
+BaiduPCS-Go login -bduss=1234567
+```
+```
+BaiduPCS-Go login
+请输入百度BDUSS值, 回车键提交 > 1234567
+```
+
 ## 获取当前帐号, 和所有已登录的百度帐号
 ```
 BaiduPCS-Go loglist
@@ -83,10 +92,10 @@ BaiduPCS-Go loglist
 
 ## 切换已登录的百度帐号
 ```
-BaiduPCS-Go chuser -uid=12345678
+BaiduPCS-Go su -uid=12345678
 ```
 ```
-BaiduPCS-Go chuser
+BaiduPCS-Go su
 
 请输入要切换帐号的 index 值 > 
 ```
@@ -111,6 +120,16 @@ BaiduPCS-Go quota
 BaiduPCS-Go cd <目录>
 ```
 
+#### 例子
+```
+# 切换 /我的资源 工作目录
+BaiduPCS-Go cd /我的资源
+BaiduPCS-Go cd 我的资源
+
+# 使用通配符
+BaiduPCS-Go cd /我的*
+```
+
 ## 输出当前所在目录
 ```
 BaiduPCS-Go pwd
@@ -124,6 +143,14 @@ BaiduPCS-Go ls
 BaiduPCS-Go ls <目录>
 ```
 
+#### 例子
+```
+BaiduPCS-Go ls 我的资源
+
+# 使用通配符
+BaiduPCS-Go ls /我的*
+```
+
 ## 获取单个文件/目录的元信息 (详细信息)
 ```
 BaiduPCS-Go meta <文件/目录>
@@ -133,24 +160,85 @@ BaiduPCS-Go meta <文件/目录>
 BaiduPCS-Go meta
 ```
 
+#### 例子
+```
+BaiduPCS-Go meta 我的资源
+BaiduPCS-Go meta /
+```
+
 ## 下载文件, 网盘文件或目录的绝对路径或相对路径
 ```
 BaiduPCS-Go download <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...
 BaiduPCS-Go d <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...
 ```
 
-已支持多个文件或目录的下载.
+支持多个文件或目录的下载.
 
-下载的文件将会保存到, **程序所在目录**的 download/ 目录 (文件夹), 暂不支持指定目录, 重名的文件会自动跳过!
+下载的文件默认保存到 **程序所在目录** 的 download/ 目录, 支持设置指定目录, 重名的文件会自动跳过!
+
+#### 例子
+```
+# 设置保存目录, 保存到 D:\Downloads (注意两个反斜杠 "\" !!)
+BaiduPCS-Go set savedir D:\\Downloads
+
+# 下载 /我的资源/1.mp4
+BaiduPCS-Go d /我的资源/1.mp4
+
+# 下载 /我的资源 整个目录!!
+BaiduPCS-Go d /我的资源
+
+# 下载网盘内的全部文件!!
+BaiduPCS-Go d /
+BaiduPCS-Go d *
+```
+
+## 上传文件
+```
+BaiduPCS-Go upload <本地文件或目录的路径1> <文件或目录2> <文件或目录3> ... <网盘的目标目录>
+BaiduPCS-Go u <本地文件或目录的路径1> <文件或目录2> <文件或目录3> ... <网盘的目标目录>
+```
+
+#### 例子:
+```
+# 将本地的 C:\Users\Administrator\Desktop\1.mp4 上传到网盘 /视频 目录
+# 注意区别反斜杠 "\" 和 斜杠 "/" !!!
+BaiduPCS-Go upload C:\\Users\\Administrator\\Desktop\\1.mp4 /视频
+
+# 将本地的 C:\Users\Administrator\Desktop\1.mp4 和 C:\Users\Administrator\Desktop\2.mp4 上传到网盘 /视频 目录
+BaiduPCS-Go upload C:\\Users\\Administrator\\Desktop\\1.mp4 C:\\Users\\Administrator\\Desktop\\2.mp4 /视频
+
+# 将本地的 C:\Users\Administrator\Desktop 整个目录上传到网盘 /视频 目录
+BaiduPCS-Go upload C:\\Users\\Administrator\\Desktop /视频
+```
 
 ## 创建目录
 ```
 BaiduPCS-Go mkdir <目录>
 ```
 
+#### 例子
+```
+BaiduPCS-Go mkdir 123
+```
+
 ## 删除 单个/多个 文件/目录
 ```
 BaiduPCS-Go rm <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...
+```
+
+### 例子
+```
+# 删除 /我的资源/1.mp4
+BaiduPCS-Go rm /我的资源/1.mp4
+
+# 删除 /我的资源/1.mp4 和 /我的资源/2.mp4
+BaiduPCS-Go rm /我的资源/1.mp4 /我的资源/2.mp4
+
+# 删除 /我的资源 内的所有文件和目录, 但不删除该目录
+BaiduPCS-Go rm /我的资源/*
+
+# 删除 /我的资源 整个目录 !!
+BaiduPCS-Go rm /我的资源
 ```
 
 注意: 删除多个文件和目录时, 请确保每一个文件和目录都存在, 否则删除操作会失败.
@@ -163,6 +251,15 @@ BaiduPCS-Go cp <文件/目录1> <文件/目录2> <文件/目录3> ... <目标目
 
 注意: 拷贝(复制) 多个文件和目录时, 请确保每一个文件和目录都存在, 否则拷贝操作会失败.
 
+#### 例子
+```
+# 将 /我的资源/1.mp4 复制到 根目录 /
+BaiduPCS-Go cp /我的资源/1.mp4 /
+
+# 将 /我的资源/1.mp4 和 /我的资源/2.mp4 复制到 根目录 /
+BaiduPCS-Go cp /我的资源/1.mp4 /我的资源/2.mp4 /
+```
+
 ## 移动/重命名 单个/多个 文件/目录
 ```
 # 移动: 
@@ -172,6 +269,32 @@ BaiduPCS-Go mv <文件/目录> <重命名的文件/目录>
 ```
 
 注意: 移动多个文件和目录时, 请确保每一个文件和目录都存在, 否则移动操作会失败.
+
+#### 例子
+```
+# 将 /我的资源/1.mp4 移动到 根目录 /
+BaiduPCS-Go mv /我的资源/1.mp4 /
+
+# 将 /我的资源/1.mp4 重命名为 /我的资源/3.mp4
+BaiduPCS-Go mv /我的资源/1.mp4 /我的资源/3.mp4
+```
+
+## 设置
+```
+BaiduPCS-Go set OptionName Value
+```
+
+#### 例子
+```
+# 查看所有可以设置的值
+BaiduPCS-Go set -h
+
+# 设置下载文件的储存目录
+BaiduPCS-Go set savedir D:\\Downloads
+
+# 设置下载最大并发量为 150
+BaiduPCS-Go set max_parallel 150
+```
 
 # 举一些例子 
 
@@ -268,8 +391,9 @@ console 模式下, 运行命令 `set max_parallel 250` 将下载最大并发数�
 运行命令 `quit` 或 `exit` 或 组合键 `Ctrl+C` 或 组合键 `Ctrl+D`
 
 # 已知问题
-下载进度到最后的时候, 下载速度会大幅降低.
+下载进度到最后的时候, 下载速度会降低.
 
 # TODO
 
-1. 上传文件
+1. 上传大文件
+2. 直接登录百度帐号, 不用手动获取bduss了
