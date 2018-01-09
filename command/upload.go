@@ -74,7 +74,7 @@ func (lp *localPathInfo) sum() {
 func RunUpload(localPaths []string, targetPath string) {
 	targetPath, err := getAbsPath(targetPath)
 	if err != nil {
-		fmt.Printf("上传文件, 获取网盘路径 %s 错误, %s\n", targetPath, err)
+		fmt.Printf("警告: 上传文件, 获取网盘路径 %s 错误, %s\n", targetPath, err)
 	}
 
 	switch len(localPaths) {

@@ -3,6 +3,7 @@ package pcsconfig
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/util"
 	"io/ioutil"
 )
 
@@ -13,7 +14,7 @@ var (
 	// ActiveBaiduUser 当前百度帐号
 	ActiveBaiduUser = new(Baidu)
 
-	configFileName = "pcs_config.json"
+	configFileName = pcsutil.ExecutablePathJoin("pcs_config.json")
 )
 
 // PCSConfig 配置详情
@@ -30,7 +31,7 @@ func NewConfig() *PCSConfig {
 	return &PCSConfig{
 		BaiduActiveUID: 0,
 		MaxParallel:    100,
-		SaveDir:        "download",
+		SaveDir:        pcsutil.ExecutablePathJoin("download"),
 	}
 }
 
@@ -61,9 +62,9 @@ func loadConfig() error {
 		return err
 	}
 
-	// 下载目录为空处理
-	if Config.SaveDir == "" {
-		Config.SaveDir = "download"
+	// 下载目录为空处理, 旧版本兼容
+	if Config.SaveDir == "" || Config.SaveDir == "download" {
+		Config.SaveDir = pcsutil.ExecutablePathJoin("download")
 	}
 
 	return nil
