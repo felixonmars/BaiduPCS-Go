@@ -1,10 +1,28 @@
 package pcsutil
 
 import (
+	"github.com/iikira/osext"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+// ExecutablePath 获取程序所在目录
+func ExecutablePath() string {
+	folderPath, err := osext.ExecutableFolder()
+	if err != nil {
+		folderPath, err = filepath.Abs(filepath.Dir(os.Args[0]))
+		if err != nil {
+			folderPath = filepath.Dir(os.Args[0])
+		}
+	}
+	return folderPath
+}
+
+// ExecutablePathJoin 返回程序所在目录的子目录
+func ExecutablePathJoin(subPath string) string {
+	return filepath.Join(ExecutablePath(), subPath)
+}
 
 // WalkDir 获取指定目录及所有子目录下的所有文件，可以匹配后缀过滤。
 func WalkDir(dirPth, suffix string) (files []string, err error) {
