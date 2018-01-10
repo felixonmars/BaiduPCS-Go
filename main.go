@@ -144,12 +144,13 @@ func main() {
 			},
 		},
 		{
-			Name:  "chuser",
-			Usage: "切换已登录的百度帐号",
+			Name:    "su",
+			Aliases: []string{"chuser"}, // 兼容旧版本
+			Usage:   "切换已登录的百度帐号",
 			Description: fmt.Sprintf("%s\n   示例:\n\n      %s\n      %s\n",
 				"如果运行该条命令没有提供参数, 程序将会列出所有的百度帐号, 供选择切换",
-				filepath.Base(os.Args[0])+" chuser --uid=123456789",
-				filepath.Base(os.Args[0])+" chuser",
+				filepath.Base(os.Args[0])+" su --uid=123456789",
+				filepath.Base(os.Args[0])+" su",
 			),
 			Category: "百度帐号操作",
 			Before:   reloadFn,
@@ -294,7 +295,7 @@ func main() {
 		},
 		{
 			Name:      "cd",
-			Usage:     "切换工作目录",
+			Usage:     "切换工作���录",
 			UsageText: fmt.Sprintf("%s cd <目录 绝对路径或相对路径>", filepath.Base(os.Args[0])),
 			Category:  "网盘操作",
 			Before:    reloadFn,
