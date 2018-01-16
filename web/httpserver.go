@@ -12,11 +12,11 @@ import (
 )
 
 var (
-	staticBox    *rice.Box // go.rice 文件盒子
-	templatesBox *rice.Box // go.rice 文件盒子
+	staticBox    = new(rice.Box) // go.rice 文件盒子
+	templatesBox = new(rice.Box) // go.rice 文件盒子
 )
 
-func init() {
+func boxInit() {
 	hb, err := rice.FindBox("static")
 	if err != nil {
 		fmt.Println(err)
@@ -32,7 +32,10 @@ func init() {
 	templatesBox = hb
 }
 
+// StartServer 开启web服务
 func StartServer() error {
+	boxInit()
+
 	http.Handle("/lib/", http.StripPrefix("/lib/", http.FileServer(staticBox.HTTPBox())))
 	http.HandleFunc("/about.html", aboutPage)
 	http.HandleFunc("/", indexPage)
