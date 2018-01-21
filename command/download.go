@@ -62,7 +62,7 @@ func downloadFunc(downloadURL string, jar *cookiejar.Jar, savePath string) error
 
 // RunDownload 执行下载网盘内文件
 func RunDownload(paths ...string) {
-	downloader.SetCacheSize(2048)
+	downloader.SetCacheSize(pcsconfig.Config.CacheSize)
 	downloader.SetMaxParallel(pcsconfig.Config.MaxParallel)
 
 	paths, err := getAllAbsPaths(paths...)

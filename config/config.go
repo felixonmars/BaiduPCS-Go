@@ -22,6 +22,7 @@ type PCSConfig struct {
 	BaiduActiveUID uint64   `json:"baidu_active_uid"`
 	BaiduUserList  []*Baidu `json:"baidu_user_list"`
 
+	CacheSize   int    `json:"cache_size"`   // 下载缓存
 	MaxParallel int    `json:"max_parallel"` // 最大下载并发量
 	SaveDir     string `json:"savedir"`      // 下载储存路径
 }
@@ -30,6 +31,7 @@ type PCSConfig struct {
 func NewConfig() *PCSConfig {
 	return &PCSConfig{
 		BaiduActiveUID: 0,
+		CacheSize:      1024,
 		MaxParallel:    100,
 		SaveDir:        pcsutil.ExecutablePathJoin("download"),
 	}
@@ -93,7 +95,12 @@ func (c *PCSConfig) Save() error {
 		return err
 	}
 
-	return Reload()
+	err = Reload()
+	if err != nil {
+		fmt.Printf("warning: %s\n", err)
+	}
+
+	return nil
 }
 
 // UpdateActiveBaiduUser 更新 当前百度帐号

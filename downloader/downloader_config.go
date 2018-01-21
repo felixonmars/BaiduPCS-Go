@@ -5,8 +5,8 @@ import (
 )
 
 var (
-	maxParallel       = 5
-	cacheSize   int64 = 2048
+	maxParallel = 5
+	cacheSize   = 1024
 
 	// FileNameRE 正则表达式: 匹配文件名
 	FileNameRE = regexp.MustCompile("filename=\"(.*?)\"")
@@ -21,7 +21,7 @@ func SetMaxParallel(t int) {
 }
 
 // SetCacheSize 设置缓冲大小
-func SetCacheSize(size int64) {
+func SetCacheSize(size int) {
 	if size < 1024 {
 		cacheSize = 1024
 		return

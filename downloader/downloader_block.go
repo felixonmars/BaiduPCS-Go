@@ -305,7 +305,7 @@ func (f *FileDl) blockMonitor() <-chan struct{} {
 						}
 
 						// 设置偏移量 offset, 尽量减少流量的浪费
-						offset := cacheSize - ((middle - f.BlockList[k].Begin) % cacheSize) - 2
+						offset := int64(cacheSize) - ((middle - f.BlockList[k].Begin) % int64(cacheSize)) - 2
 						f.BlockList[index].Begin = middle + offset + 1
 						f.BlockList[index].End = f.BlockList[k].End
 						f.BlockList[index].Final = f.BlockList[k].Final

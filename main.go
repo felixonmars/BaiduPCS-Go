@@ -465,11 +465,13 @@ func main() {
 
 	OptionName		Value
 	------------------------------------------------------
+	cache_size	下载缓存, 如果硬盘占用高, 请尝试调大此值, 建议值 ( 1024 ~ 1048576 )
 	max_parallel	下载最大线程 (并发量) - 建议值 ( 50 ~ 500 )
 	savedir	下载文件的储存目录
 
 例子:
 
+	set cache_size 2048
 	set max_parallel 250
 	set savedir D:\\download
 `,
@@ -482,34 +484,9 @@ func main() {
 					return nil
 				}
 
-				switch c.Args().Get(0) {
-				case "max_parallel":
-					parallel, err := strconv.Atoi(c.Args().Get(1))
-					if err != nil {
-						fmt.Printf("max_parallel 设置值不合法, 错误: %s\n", err)
-						return err
-					}
-
-					if parallel <= 0 {
-						fmt.Printf("max_parallel 设置值不合法, parallel 值应为一个正整数\n")
-						return nil
-					}
-
-					pcsconfig.Config.MaxParallel = parallel
-					err = pcsconfig.Config.Save()
-					if err != nil {
-						fmt.Println("设置失败, 错误:", err)
-						return nil
-					}
-					fmt.Printf("设置成功, %s -> %v\n", c.Args().Get(0), c.Args().Get(1))
-
-				case "savedir":
-					pcsconfig.Config.SaveDir = c.Args().Get(1)
-					pcsconfig.Config.Save()
-					fmt.Printf("设置成功, %s -> %v\n", c.Args().Get(0), c.Args().Get(1))
-
-				default:
-					fmt.Printf("未知设定值: %s\n\n", c.Args().Get(0))
+				err := pcsconfig.Config.Set(c.Args().Get(0), c.Args().Get(1)) // 设置
+				if err != nil {
+					fmt.Println(err)
 					cli.ShowCommandHelp(c, "set")
 				}
 				return nil
