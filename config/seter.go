@@ -2,6 +2,7 @@ package pcsconfig
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/requester"
 	"strconv"
 )
 
@@ -17,6 +18,11 @@ func (c *PCSConfig) SetBDUSS(bduss string) (username string, err error) {
 	c.BaiduUserList = append(c.BaiduUserList, b)
 	c.BaiduActiveUID = b.UID
 	return b.Name, c.Save()
+}
+
+func setUserAgent(ua string) {
+	Config.UserAgent = ua
+	requester.UserAgent = ua
 }
 
 func (c *PCSConfig) Set(key, value string) (err error) {
@@ -49,8 +55,14 @@ func (c *PCSConfig) Set(key, value string) (err error) {
 		}
 		fmt.Printf("设置成功, %s -> %v\n", key, value)
 
-	case "savedir":
-		c.SaveDir = value
+	case "user_agent", "savedir":
+		switch key {
+		case "user_agent":
+			setUserAgent(value)
+		case "savedir":
+			c.SaveDir = value
+		}
+
 		c.Save()
 		fmt.Printf("设置成功, %s -> %v\n", key, value)
 

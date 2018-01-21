@@ -48,6 +48,9 @@ func (h *HTTPClient) Fetch(method string, urlStr string, post interface{}, heade
 		return nil, err
 	}
 
+	// 设置浏览器标识
+	req.Header.Set("User-Agent", UserAgent)
+
 	if header != nil {
 		for key := range header {
 			req.Header.Add(key, header[key])

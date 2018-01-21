@@ -26,9 +26,11 @@ type PCSConfig struct {
 
 	AppID int `json:"appid"` // appid
 
-	CacheSize   int    `json:"cache_size"`   // 下载缓存
-	MaxParallel int    `json:"max_parallel"` // 最大下载并发量
-	SaveDir     string `json:"savedir"`      // 下载储存路径
+	CacheSize   int `json:"cache_size"`   // 下载缓存
+	MaxParallel int `json:"max_parallel"` // 最大下载并发量
+
+	UserAgent string `json:"user_agent"` // 浏览器标识
+	SaveDir   string `json:"savedir"`    // 下载储存路径
 }
 
 // NewConfig 返回 PCSConfig 指针对象
@@ -72,6 +74,11 @@ func loadConfig() error {
 	// 下载目录为空处理, 旧版本兼容
 	if Config.SaveDir == "" || Config.SaveDir == "download" {
 		Config.SaveDir = pcsutil.ExecutablePathJoin("download")
+	}
+
+	// 设置浏览器标识ß
+	if Config.UserAgent != "" {
+		setUserAgent(Config.UserAgent)
 	}
 
 	if Config.AppID <= 0 {
