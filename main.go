@@ -295,9 +295,9 @@ func main() {
 		},
 		{
 			Name:      "cd",
-			Usage:     "切换工作����录",
-			UsageText: fmt.Sprintf("%s cd <目录 绝对路径或相对路径>", filepath.Base(os.Args[0])),
 			Category:  "网盘操作",
+			Usage:     "切换工作目录",
+			UsageText: fmt.Sprintf("%s cd <目录 绝对路径或相对路径>", filepath.Base(os.Args[0])),
 			Before:    reloadFn,
 			After:     reloadFn,
 			Action: func(c *cli.Context) error {
