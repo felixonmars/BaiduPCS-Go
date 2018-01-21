@@ -15,12 +15,16 @@ var (
 	ActiveBaiduUser = new(Baidu)
 
 	configFileName = pcsutil.ExecutablePathJoin("pcs_config.json")
+
+	defaultAppID = 260149
 )
 
 // PCSConfig 配置详情
 type PCSConfig struct {
 	BaiduActiveUID uint64   `json:"baidu_active_uid"`
 	BaiduUserList  []*Baidu `json:"baidu_user_list"`
+
+	AppID int `json:"appid"` // appid
 
 	CacheSize   int    `json:"cache_size"`   // 下载缓存
 	MaxParallel int    `json:"max_parallel"` // 最大下载并发量
@@ -31,6 +35,7 @@ type PCSConfig struct {
 func NewConfig() *PCSConfig {
 	return &PCSConfig{
 		BaiduActiveUID: 0,
+		AppID:          defaultAppID,
 		CacheSize:      1024,
 		MaxParallel:    100,
 		SaveDir:        pcsutil.ExecutablePathJoin("download"),
@@ -67,6 +72,10 @@ func loadConfig() error {
 	// 下载目录为空处理, 旧版本兼容
 	if Config.SaveDir == "" || Config.SaveDir == "download" {
 		Config.SaveDir = pcsutil.ExecutablePathJoin("download")
+	}
+
+	if Config.AppID <= 0 {
+		Config.AppID = defaultAppID
 	}
 
 	return nil

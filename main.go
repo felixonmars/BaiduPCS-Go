@@ -51,39 +51,39 @@ func main() {
 	前往 https://github.com/iikira/BaiduPCS-Go/releases 以获取程序更新信息!
 	---------------------------------------------------`
 	app.Action = func(c *cli.Context) {
-		if c.NArg() == 0 {
-			cli.ShowAppHelp(c)
+		if c.NArg() != 0 {
+			fmt.Printf("未找到命令: %s\n运行命令 %s help 获取帮助\n", c.Args().Get(0), app.Name)
+			return
+		}
+		cli.ShowAppHelp(c)
 
-			line := newLiner()
-			defer closeLiner(line)
+		line := newLiner()
+		defer closeLiner(line)
 
-			for {
-				if commandLine, err := line.Prompt("BaiduPCS-Go > "); err == nil {
-					line.AppendHistory(commandLine)
+		for {
+			if commandLine, err := line.Prompt("BaiduPCS-Go > "); err == nil {
+				line.AppendHistory(commandLine)
 
-					cmdArgs := args.GetArgs(commandLine)
-					if len(cmdArgs) == 0 {
-						continue
-					}
-
-					s := []string{os.Args[0]}
-					s = append(s, cmdArgs...)
-
-					closeLiner(line)
-
-					c.App.Run(s)
-
-					line = newLiner()
-
-				} else if err == liner.ErrPromptAborted || err == io.EOF {
-					break
-				} else {
-					log.Print("Error reading line: ", err)
+				cmdArgs := args.GetArgs(commandLine)
+				if len(cmdArgs) == 0 {
 					continue
 				}
+
+				s := []string{os.Args[0]}
+				s = append(s, cmdArgs...)
+
+				closeLiner(line)
+
+				c.App.Run(s)
+
+				line = newLiner()
+
+			} else if err == liner.ErrPromptAborted || err == io.EOF {
+				break
+			} else {
+				log.Print("Error reading line: ", err)
+				continue
 			}
-		} else {
-			fmt.Printf("未找到命令: %s\n运行命令 %s help 获取帮助\n", c.Args().Get(0), app.Name)
 		}
 	}
 
@@ -295,7 +295,7 @@ func main() {
 		},
 		{
 			Name:      "cd",
-			Usage:     "切换工作���录",
+			Usage:     "切换工作����录",
 			UsageText: fmt.Sprintf("%s cd <目录 绝对路径或相对路径>", filepath.Base(os.Args[0])),
 			Category:  "网盘操作",
 			Before:    reloadFn,
@@ -465,12 +465,15 @@ func main() {
 
 	OptionName		Value
 	------------------------------------------------------
+	appid	baidupcs应用ID, 没问题不要修改!
+
 	cache_size	下载缓存, 如果硬盘占用高, 请尝试调大此值, 建议值 ( 1024 ~ 1048576 )
 	max_parallel	下载最大线程 (并发量) - 建议值 ( 50 ~ 500 )
 	savedir	下载文件的储存目录
 
 例子:
 
+	set appid 260149
 	set cache_size 2048
 	set max_parallel 250
 	set savedir D:\\download

@@ -21,7 +21,7 @@ func (c *PCSConfig) SetBDUSS(bduss string) (username string, err error) {
 
 func (c *PCSConfig) Set(key, value string) (err error) {
 	switch key {
-	case "cache_size", "max_parallel":
+	case "appid", "cache_size", "max_parallel":
 		intVal, err := strconv.Atoi(value)
 		if err != nil {
 			fmt.Printf("%s 不合法, 错误: %s\n", key, err)
@@ -34,6 +34,8 @@ func (c *PCSConfig) Set(key, value string) (err error) {
 		}
 
 		switch key {
+		case "appid":
+			c.AppID = intVal
 		case "cache_size":
 			c.CacheSize = intVal
 		case "max_parallel":

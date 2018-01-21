@@ -2,13 +2,10 @@ package baidupcs
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/config"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-)
-
-var (
-	appid = 260149
 )
 
 // PCSApi 百度 PCS API 详情
@@ -26,7 +23,7 @@ func NewPCS(bduss string) *PCSApi {
 			Scheme:   "http",
 			Host:     "pcs.baidu.com",
 			Path:     "/rest/2.0/pcs/",
-			RawQuery: fmt.Sprintf("app_id=%d", appid),
+			RawQuery: fmt.Sprintf("app_id=%d", pcsconfig.Config.AppID),
 		},
 		bduss:  bduss,
 		writed: false,
