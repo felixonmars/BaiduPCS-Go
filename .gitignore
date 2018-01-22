@@ -21,3 +21,5 @@ out/
 .Ds_Store
 *.txt
 download/
+
+vendor
