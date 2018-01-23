@@ -293,17 +293,17 @@ func (f *FileDl) blockMonitor() <-chan struct{} {
 
 						f.BlockList[k].setDone() // 清除旧线程
 
-						mu.Unlock()              // �����
-						f.downloadBlockFn(index) // 添加任��
+						mu.Unlock()              // 解锁
+						f.downloadBlockFn(index) // 添加任务
 					}(k)
 
 					// 动态分配新线程
 					go func(k int) {
 						mu.Lock()
 
-						// ���选空闲的线��
+						// 筛选空闲的线程
 						index, ok := f.BlockList.avaliableThread()
-						if !ok { // 没���空的
+						if !ok { // 没有空的
 							mu.Unlock() // 解锁
 							return
 						}
