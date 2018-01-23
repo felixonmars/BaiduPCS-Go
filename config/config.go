@@ -76,7 +76,7 @@ func loadConfig() error {
 		Config.SaveDir = pcsutil.ExecutablePathJoin("download")
 	}
 
-	// 设置浏览器标识ß
+	// 设置浏览器标识
 	if Config.UserAgent != "" {
 		setUserAgent(Config.UserAgent)
 	}
