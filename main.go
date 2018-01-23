@@ -468,7 +468,7 @@ func main() {
 	appid	baidupcs应用ID, 没问题不要修改!
 
 	user_agent	浏览器标识
-	cache_size	下载缓存, 如果硬盘占用高, 请尝试调大此值, 建议值 ( 1024 ~ 1048576 )
+	cache_size	下载缓存, 如果硬盘占用高, 请尝试调大此值, 建议值 ( 1024 ~ 16384 )
 	max_parallel	下载最大线程 (并发量) - 建议值 ( 50 ~ 500 )
 	savedir	下载文件的储存目录
 
