@@ -126,8 +126,15 @@ func (f *FileDl) Start() {
 	parallel = maxParallel
 
 	// 如果文件不大, 或者线程数设置过高, 则调低线程数
-	if int64(maxParallel) > f.Size/int64(10*cacheSize) {
-		parallel = int(f.Size/int64(10*cacheSize)) + 1
+	if int64(maxParallel) > f.Size/int64(102400) {
+		parallel = int(f.Size/int64(102400)) + 1
+	}
+
+	blockSize := f.Size / int64(parallel)
+
+	// 如果 cache size 过高, 则调低
+	if int64(cacheSize) > blockSize {
+		cacheSize = int(blockSize)
 	}
 
 	if err := f.loadBreakPoint(); err != nil {
@@ -137,7 +144,6 @@ func (f *FileDl) Start() {
 				End:   -1,
 			})
 		} else {
-			blockSize := f.Size / int64(parallel)
 			var begin int64
 			// 数据平均分配给各个线程
 			for i := 0; i < parallel; i++ {

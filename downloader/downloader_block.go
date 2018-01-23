@@ -160,13 +160,16 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 
 	defer resp.Body.Close()
 
-	var buf = make([]byte, cacheSize)
+	buf := make([]byte, cacheSize)
+	loopSize := 0
 
 	for {
 		begin := f.BlockList[id].Begin // 用于下文比较
+
 		n, err := resp.Body.Read(buf)
 
 		bufSize := int64(n)
+		loopSize += n
 		if f.BlockList[id].End != -1 {
 			// 检查下载的大小是否超出需要下载的大小
 			// 这里End+1是因为http的Range的end是包括在需要下载的数据内的
@@ -174,9 +177,10 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 			needSize := f.BlockList[id].End + 1 - f.BlockList[id].Begin
 
 			// 已完成 (未雨绸缪)
-			if needSize < 0 {
+			if needSize <= 0 {
 				return 1, errors.New("already complete")
 			}
+
 			if bufSize > needSize {
 				// 数据大小不正常
 				// 一般是该线程已被重载
@@ -186,6 +190,7 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 
 				// 设置数据大小来去掉多余数据
 				// 并结束这个线程的下载
+
 				bufSize = needSize
 				n = int(needSize)
 				err = io.EOF
@@ -203,7 +208,12 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 
 		// 更新已下载大小
 		atomic.AddInt64(&f.status.Downloaded, bufSize)
-		atomic.AddInt64(&f.BlockList[id].Begin, bufSize)
+		atomic.AddInt64(&f.BlockList[id].Begin, int64(n))
+
+		// reload connection (百度的限制)
+		if loopSize == 256*1024 {
+			return 10, errors.New("reach to loop size, reload connection")
+		}
 
 		if err != nil {
 			// 下载数据可能出现异常, 重新下载
@@ -283,17 +293,17 @@ func (f *FileDl) blockMonitor() <-chan struct{} {
 
 						f.BlockList[k].setDone() // 清除旧线程
 
-						mu.Unlock()              // 解锁
-						f.downloadBlockFn(index) // 添加任务
+						mu.Unlock()              // �����
+						f.downloadBlockFn(index) // 添加任��
 					}(k)
 
 					// 动态分配新线程
 					go func(k int) {
 						mu.Lock()
 
-						// 筛选空闲的线程
+						// ���选空闲的线��
 						index, ok := f.BlockList.avaliableThread()
-						if !ok { // 没有空的
+						if !ok { // 没���空的
 							mu.Unlock() // 解锁
 							return
 						}
@@ -304,12 +314,11 @@ func (f *FileDl) blockMonitor() <-chan struct{} {
 							return
 						}
 
-						// 设置偏移量 offset, 尽量减少流量的浪费
-						offset := int64(cacheSize) - ((middle - f.BlockList[k].Begin) % int64(cacheSize)) - 2
-						f.BlockList[index].Begin = middle + offset + 1
+						// 折半
+						f.BlockList[index].Begin = middle + 1
 						f.BlockList[index].End = f.BlockList[k].End
 						f.BlockList[index].Final = f.BlockList[k].Final
-						f.BlockList[k].End = middle + offset
+						f.BlockList[k].End = middle
 
 						mu.Unlock()
 						// fmt.Println(k, f.BlockList[k], "=>", index, f.BlockList[index])
