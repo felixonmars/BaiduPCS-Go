@@ -20,8 +20,7 @@ import (
 
 var (
 	historyFile = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
-
-	reloadFn = func(c *cli.Context) error {
+	reloadFn    = func(c *cli.Context) error {
 		baidupcscmd.ReloadIfInConsole()
 		return nil
 	}

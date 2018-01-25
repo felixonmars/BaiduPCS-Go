@@ -15,6 +15,7 @@ type HTTPClient struct {
 // NewHTTPClient 返回 HTTPClient 的指针,
 // 预设了一些配置
 func NewHTTPClient() *HTTPClient {
+	jar, _ := cookiejar.New(nil)
 	return &HTTPClient{
 		Client: http.Client{
 			Transport: &http.Transport{
@@ -27,6 +28,7 @@ func NewHTTPClient() *HTTPClient {
 				ResponseHeaderTimeout: 10 * time.Second,
 				ExpectContinueTimeout: 10 * time.Second,
 			},
+			Jar: jar,
 		},
 	}
 }
