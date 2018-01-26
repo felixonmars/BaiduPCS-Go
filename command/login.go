@@ -19,7 +19,7 @@ func RunLogin() (bduss, ptoken, stoken string, err error) {
 		return
 	}
 
-	password, err := line.PasswordPrompt("请输入密码 (输入的密码无回显, 确认输入完成, 回车提交即可) > ")
+	password, err := line.PasswordPrompt("请输入密码(输入的密码无回显, 确认输入完成, 回车提交即可) > ")
 	if err != nil {
 		return
 	}

@@ -1,4 +1,4 @@
-# BaiduPCS-Go 百度网盘工具箱 beta-v3.1
+# BaiduPCS-Go 百度网盘工具箱 beta-v3.2
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
 
 # 特色
@@ -66,14 +66,16 @@ console 模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`
 
 未带任何其他参数运行程序, 则程序进入 console 模式, 前缀为 `BaiduPCS-Go >`, 则运行以下命令时, 要把命令的前缀 `BaiduPCS-Go` 去掉!
 
-## 使用百度 BDUSS 来登录百度帐号
-```
-BaiduPCS-Go login -bduss=<BDUSS>
-```
+## 登录百度帐号
+
+### 常规登录百度帐号
 ```
 BaiduPCS-Go login
+```
 
-请输入百度BDUSS值, 回车键提交 > 
+### 使用百度 BDUSS 来登录百度帐号
+```
+BaiduPCS-Go login -bduss=<BDUSS>
 ```
 
 #### 例子
@@ -82,7 +84,7 @@ BaiduPCS-Go login -bduss=1234567
 ```
 ```
 BaiduPCS-Go login
-请输入百度BDUSS值, 回车键提交 > 1234567
+请输入百度用户名(手机号/邮箱/用户名), 回车键提交 > 1234567
 ```
 
 ## 获取当前帐号, 和所有已登录的百度帐号
@@ -396,4 +398,3 @@ console 模式下, 运行命令 `set max_parallel 250` 将下载最大并发数�
 # TODO
 
 1. 上传大文件
-2. 直接登录百度帐号, 不用手动获取bduss了

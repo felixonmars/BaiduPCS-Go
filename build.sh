@@ -1,7 +1,7 @@
 name="BaiduPCS-Go"
-version="beta-v3.1"
+version="beta-v3.2"
 
-Build(){
+Build() {
     echo "Building $1..."
     export GOOS=$2 GOARCH=$3 GO386=sse2 CGO_ENABLED=0
     if [ $2 = "windows" ];then
@@ -9,6 +9,9 @@ Build(){
     else
         go build -ldflags "-s -w" -o "out/$1/$name"
     fi
+
+    cp README.md "out/$1"
+
     mkdir "out/$1/download"
     cd out
     zip -q -r "$1.zip" "$1"
@@ -16,13 +19,16 @@ Build(){
     echo Done!
 }
 
-ArmBuild(){
+ArmBuild() {
     echo "Building $1..."
     export GOOS=$2 GOARCH=$3 GOARM=$4 CGO_ENABLED=1
     go build -ldflags '-s -w -linkmode=external -extldflags=-pie' -o "out/$1/$name"
     if [ $2 = "darwin" -a $3 = "arm64" ];then
         ldid -S "out/$1/$name"
     fi
+
+    cp README.md "out/$1"
+
     mkdir "out/$1/download"
     cd out
     zip -q -r "$1.zip" "$1"
@@ -32,12 +38,12 @@ ArmBuild(){
 
 # android
 export NDK_INSTALL=$ANDROID_NDK_ROOT/bin
-# CC=$NDK_INSTALL/arm-linux-androideabi/bin/arm-linux-androideabi-gcc ArmBuild $name-$version"-android-16-armv5" android arm 5
-# CC=$NDK_INSTALL/arm-linux-androideabi/bin/arm-linux-androideabi-gcc ArmBuild $name-$version"-android-16-armv6" android arm 6
-CC=$NDK_INSTALL/arm-linux-androideabi/bin/arm-linux-androideabi-gcc ArmBuild $name-$version"-android-16-armv7" android arm 7
-CC=$NDK_INSTALL/aarch64-linux-android/bin/aarch64-linux-android-gcc ArmBuild $name-$version"-android-21-arm64" android arm64 7
-CC=$NDK_INSTALL/i686-linux-android/bin/i686-linux-android-gcc ArmBuild $name-$version"-android-16-386" android 386 7
-CC=$NDK_INSTALL/x86_64-linux-android/bin/x86_64-linux-android-gcc ArmBuild $name-$version"-android-21-amd64" android amd64 7
+# CC=$NDK_INSTALL/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-gcc ArmBuild $name-$version"-android-16-armv5" android arm 5
+# CC=$NDK_INSTALL/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-gcc ArmBuild $name-$version"-android-16-armv6" android arm 6
+CC=$NDK_INSTALL/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-gcc ArmBuild $name-$version"-android-16-armv7" android arm 7
+CC=$NDK_INSTALL/aarch64-linux-android-4.9/bin/aarch64-linux-android-gcc ArmBuild $name-$version"-android-21-arm64" android arm64 7
+CC=$NDK_INSTALL/i686-linux-android-4.9/bin/i686-linux-android-gcc ArmBuild $name-$version"-android-16-386" android 386 7
+CC=$NDK_INSTALL/x86_64-linux-android-4.9/bin/x86_64-linux-android-gcc ArmBuild $name-$version"-android-21-amd64" android amd64 7
 
 # ios 
 CC=/usr/local/go/misc/ios/clangwrap.sh ArmBuild $name-$version"-darwin-ios-5.0-armv7" darwin arm 7
