@@ -11,10 +11,19 @@
   revision = "c02ca9a983da5807ddf7d796784928f5be4afd09"
 
 [[projects]]
-  branch = "master"
+  name = "github.com/astaxie/beego"
+  packages = [
+    "session",
+    "utils"
+  ]
+  revision = "bf5c5626ab429e66d88602e1ab1ab5fbf4629a01"
+  version = "v1.9.2"
+
+[[projects]]
   name = "github.com/bitly/go-simplejson"
   packages = ["."]
-  revision = "0c965951289cce37dec52ad1f34200fefc816777"
+  revision = "aabad6e819789e569bd6aabf444c935aa9ba1e44"
+  version = "v0.5.0"
 
 [[projects]]
   branch = "master"
@@ -23,16 +32,31 @@
   revision = "a5fe2436ffcb3236e175e5149162b41cd28bd27d"
 
 [[projects]]
-  branch = "master"
   name = "github.com/fatih/color"
   packages = ["."]
-  revision = "5df930a27be2502f99b292b7cc09ebad4d0891f4"
+  revision = "1b35f289c47d5c73c398cea8e006b7bcb6234a96"
+  version = "v0.1"
 
 [[projects]]
   branch = "master"
   name = "github.com/gobs/args"
   packages = ["."]
   revision = "85dec0568397e293c778d50dd19b0e1bef42a2cb"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/iikira/Baidu-Login"
+  packages = [
+    ".",
+    "bdcrypto"
+  ]
+  revision = "b2ed974ad6fcf32adb2b5f91320666bd3ab0d5be"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/iikira/baidu-tools"
+  packages = ["util"]
+  revision = "276b04c6f1f9f1f5aa26da5743e046b06a945dc7"
 
 [[projects]]
   branch = "master"
@@ -47,17 +71,6 @@
   revision = "ae77be60afb1dcacde03767a8c37337fad28ac14"
 
 [[projects]]
-  name = "github.com/mattn/go-colorable"
-  packages = ["."]
-  revision = "586e6dcca296d085100876beb6dbf02287a247f7"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/mattn/go-isatty"
-  packages = ["."]
-  revision = "6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c"
-
-[[projects]]
   branch = "master"
   name = "github.com/peterh/liner"
   packages = ["."]
@@ -65,18 +78,19 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/urfave/cli"
+  name = "github.com/shiena/ansicolor"
   packages = ["."]
-  revision = "75104e932ac2ddb944a6ea19d9f9f26316ff1145"
+  revision = "a422bbe96644373c5753384a59d678f7d261ff10"
 
 [[projects]]
-  name = "golang.org/x/sys"
-  packages = ["unix"]
-  revision = "8dbc5d05d6edcc104950cc299a1ce6641235bc86"
+  name = "github.com/urfave/cli"
+  packages = ["."]
+  revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
+  version = "v1.20.0"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "51cba54a3f3b1600330eef9bece8d66ab608e0f33611ae927f773bd0d1a1311c"
+  inputs-digest = "994af2055f294eac169a8b814a7e00f5b1bd6fd84079a82cecd9e9342e4d8675"
   solver-name = "gps-cdcl"
   solver-version = 1

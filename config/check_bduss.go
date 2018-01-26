@@ -10,9 +10,11 @@ import (
 
 // Baidu 百度帐号对象
 type Baidu struct {
-	UID   uint64 `json:"uid"`
-	Name  string `json:"name"`
-	BDUSS string `json:"bduss"`
+	UID    uint64 `json:"uid"`
+	Name   string `json:"name"`
+	BDUSS  string `json:"bduss"`
+	PTOKEN string `json:"ptoken"`
+	STOKEN string `json:"stoken"`
 
 	Workdir string `json:"workdir"`
 }

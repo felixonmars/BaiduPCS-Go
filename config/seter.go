@@ -6,8 +6,8 @@ import (
 	"strconv"
 )
 
-// SetBDUSS 设置百度 bduss 并保存
-func (c *PCSConfig) SetBDUSS(bduss string) (username string, err error) {
+// SetBDUSS 设置百度 bduss, ptoken, stoken 并保存
+func (c *PCSConfig) SetBDUSS(bduss, ptoken, stoken string) (username string, err error) {
 	b, err := NewWithBDUSS(bduss)
 	if err != nil {
 		return "", err
@@ -15,6 +15,10 @@ func (c *PCSConfig) SetBDUSS(bduss string) (username string, err error) {
 	if c.CheckUIDExist(b.UID) {
 		return "", fmt.Errorf("登录失败, 用户 %s 已存在", b.Name)
 	}
+
+	b.PTOKEN = ptoken
+	b.STOKEN = stoken
+
 	c.BaiduUserList = append(c.BaiduUserList, b)
 	c.BaiduActiveUID = b.UID
 	return b.Name, c.Save()

@@ -101,10 +101,10 @@ func main() {
 		{
 			Name:  "login",
 			Usage: "使用百度BDUSS登录百度账号",
-			Description: fmt.Sprintf("\n   示例: \n\n      %s\n\n      %s\n\n   %s\n\n      %s\n\n      %s\n",
+			Description: fmt.Sprintf("\n   示例: \n      %s\n      %s\n\n   正常登录: \n      %s\n\n   百度BDUSS获取方法: \n      %s\n      %s",
 				filepath.Base(os.Args[0])+" login --bduss=123456789",
 				filepath.Base(os.Args[0])+" login",
-				"百度BDUSS获取方法: ",
+				"按提示一步一步来即可.",
 				"参考这篇 Wiki: https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS",
 				"或者百度搜索: 获取百度BDUSS",
 			),
@@ -112,21 +112,24 @@ func main() {
 			Before:   reloadFn,
 			After:    reloadFn,
 			Action: func(c *cli.Context) error {
-				bduss := ""
+				var bduss, ptoken, stoken string
 				if c.IsSet("bduss") {
 					bduss = c.String("bduss")
 				} else if c.NArg() == 0 {
 					cli.ShowCommandHelp(c, c.Command.Name)
-					line := liner.NewLiner()
-					line.SetCtrlCAborts(true)
-					defer line.Close()
-					bduss, _ = line.Prompt("请输入百度BDUSS值, 回车键提交 > ")
+
+					var err error
+					bduss, ptoken, stoken, err = baidupcscmd.RunLogin()
+					if err != nil {
+						fmt.Println(err)
+						return err
+					}
 				} else {
 					cli.ShowCommandHelp(c, c.Command.Name)
 					return nil
 				}
 
-				username, err := pcsconfig.Config.SetBDUSS(bduss)
+				username, err := pcsconfig.Config.SetBDUSS(bduss, ptoken, stoken)
 				if err != nil {
 					fmt.Println(err)
 					return nil
@@ -464,7 +467,7 @@ func main() {
 
 	OptionName		Value
 	------------------------------------------------------
-	appid	baidupcs应用ID, 没问题不要修改!
+	appid	baidupcs的应用ID, 没问题不要修改!
 
 	user_agent	浏览器标识
 	cache_size	下载缓存, 如果硬盘占用高, 请尝试调大此值, 建议值 ( 1024 ~ 16384 )
