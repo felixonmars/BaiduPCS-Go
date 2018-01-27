@@ -38,6 +38,9 @@ func (c *PCSConfig) GetAllBaiduUser() string {
 
 // CheckUIDExist 检查 百度uid 是否存在于已登录列表
 func (c *PCSConfig) CheckUIDExist(uid uint64) bool {
+	if uid == 0 {
+		return false
+	}
 	for k := range c.BaiduUserList {
 		if uid == c.BaiduUserList[k].UID {
 			return true

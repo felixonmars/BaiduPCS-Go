@@ -13,7 +13,7 @@ func (c *PCSConfig) SetBDUSS(bduss, ptoken, stoken string) (username string, err
 		return "", err
 	}
 	if c.CheckUIDExist(b.UID) {
-		return "", fmt.Errorf("登录失败, 用户 %s 已存在", b.Name)
+		c.DeleteBaiduUserByUID(b.UID) // 删除旧的信息
 	}
 
 	b.PTOKEN = ptoken
