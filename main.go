@@ -34,7 +34,7 @@ func init() {
 func main() {
 	app := cli.NewApp()
 	app.Name = "BaiduPCS-Go"
-	app.Version = "beta-v3.2"
+	app.Version = "v3.2.1"
 	app.Author = "iikira/BaiduPCS-Go: https://github.com/iikira/BaiduPCS-Go"
 	app.Usage = "百度网盘工具箱 for " + runtime.GOOS + "/" + runtime.GOARCH
 	app.Description = `BaiduPCS-Go 使用 Go语言编写, 为操作百度网盘, 提供实用功能.
@@ -100,7 +100,7 @@ func main() {
 		},
 		{
 			Name:  "login",
-			Usage: "使用百度BDUSS登录百度账号",
+			Usage: "登录百度账号",
 			Description: fmt.Sprintf("\n   示例: \n      %s\n      %s\n\n   正常登录: \n      %s\n\n   百度BDUSS获取方法: \n      %s\n      %s",
 				filepath.Base(os.Args[0])+" login --bduss=123456789",
 				filepath.Base(os.Args[0])+" login",
@@ -141,7 +141,7 @@ func main() {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "bduss",
-					Usage: "百度BDUSS",
+					Usage: "使用百度 BDUSS 来登录百度帐号",
 				},
 			},
 		},

@@ -1,5 +1,5 @@
 name="BaiduPCS-Go"
-version="beta-v3.2"
+version="v3.2.1"
 
 Build() {
     echo "Building $1..."

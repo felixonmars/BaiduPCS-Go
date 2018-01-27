@@ -1,9 +1,9 @@
-# BaiduPCS-Go 百度网盘工具箱 beta-v3.2
+# BaiduPCS-Go 百度网盘工具箱 v3.2.1
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
 
 # 特色
 
-使用百度 BDUSS 登录百度网盘, 支持多用户, [关于 获取百度 BDUSS](https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS);
+百度帐号多用户支持;
 
 网盘内列出文件和目录, **支持通配符匹配路径**, [通配符_百度百科](https://baike.baidu.com/item/通配符);
 
@@ -69,11 +69,16 @@ console 模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`
 ## 登录百度帐号
 
 ### 常规登录百度帐号
+
+支持在线验证绑定的手机号或邮箱,
 ```
 BaiduPCS-Go login
 ```
 
 ### 使用百度 BDUSS 来登录百度帐号
+
+[关于 获取百度 BDUSS](https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS)
+
 ```
 BaiduPCS-Go login -bduss=<BDUSS>
 ```
@@ -312,15 +317,11 @@ console 模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`
 
 console 模式下, 运行命令 `help`
 
-## 2. 使用百度 BDUSS 来登录百度帐号 (必做)
-
-[关于 获取百度 BDUSS](https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS)
+## 2. 登录百度帐号 (必做)
 
 console 模式下, 运行命令 `login -h` (注意空格) 查看帮助
 
-console 模式下, 运行命令 `login` 程序将会提示你输入 百度BDUSS 值
-
-console 模式下, 运行命令 `login -bduss=<BDUSS>` 来设置 百度BDUSS 值, 设置时请替换掉 `<BDUSS>`
+console 模式下, 运行命令 `login` 程序将会提示你输入百度用户名(手机号/邮箱/用户名)和密码, 必要时还可以在线验证绑定的手机号或邮箱
 
 ## 3. 切换网盘工作目录
 
@@ -393,7 +394,10 @@ console 模式下, 运行命令 `set max_parallel 250` 将下载最大并发数�
 运行命令 `quit` 或 `exit` 或 组合键 `Ctrl+C` 或 组合键 `Ctrl+D`
 
 # 已知问题
-下载进度到最后的时候, 下载速度会降低.
+
+1. 下载进度到最后的时候, 下载速度会降低.
+
+2. 程序的 console 模式在 windows 下部分中文无法正常输入.
 
 # TODO
 
