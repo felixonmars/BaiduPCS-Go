@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"github.com/gobs/args"
-	"github.com/iikira/BaiduPCS-Go/command"
-	"github.com/iikira/BaiduPCS-Go/config"
-	"github.com/iikira/BaiduPCS-Go/util"
-	"github.com/iikira/BaiduPCS-Go/web"
+	"github.com/iikira/BaiduPCS-Go/pcscommand"
+	"github.com/iikira/BaiduPCS-Go/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsweb"
 	"github.com/peterh/liner"
 	"github.com/urfave/cli"
 	"io"
@@ -21,14 +21,14 @@ import (
 var (
 	historyFile = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
 	reloadFn    = func(c *cli.Context) error {
-		baidupcscmd.ReloadIfInConsole()
+		pcscommand.ReloadIfInConsole()
 		return nil
 	}
 )
 
 func init() {
 	pcsconfig.Init()
-	baidupcscmd.ReloadInfo()
+	pcscommand.ReloadInfo()
 }
 
 func main() {
@@ -101,9 +101,10 @@ func main() {
 		{
 			Name:  "login",
 			Usage: "登录百度账号",
-			Description: fmt.Sprintf("\n   示例: \n      %s\n      %s\n\n   正常登录: \n      %s\n\n   百度BDUSS获取方法: \n      %s\n      %s",
-				filepath.Base(os.Args[0])+" login --bduss=123456789",
+			Description: fmt.Sprintf("\n   示例: \n      %s\n      %s\n      %s\n\n   正常登录: \n      %s\n\n   百度BDUSS获取方法: \n      %s\n      %s",
 				filepath.Base(os.Args[0])+" login",
+				filepath.Base(os.Args[0])+" login --username=liuhua",
+				filepath.Base(os.Args[0])+" login --bduss=123456789",
 				"按提示一步一步来即可.",
 				"参考这篇 Wiki: https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS",
 				"或者百度搜索: 获取百度BDUSS",
@@ -116,10 +117,8 @@ func main() {
 				if c.IsSet("bduss") {
 					bduss = c.String("bduss")
 				} else if c.NArg() == 0 {
-					cli.ShowCommandHelp(c, c.Command.Name)
-
 					var err error
-					bduss, ptoken, stoken, err = baidupcscmd.RunLogin()
+					bduss, ptoken, stoken, err = pcscommand.RunLogin(c.String("username"), c.String("password"))
 					if err != nil {
 						fmt.Println(err)
 						return err
@@ -139,6 +138,14 @@ func main() {
 				return nil
 			},
 			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "username",
+					Usage: "登录百度帐号的用户名(手机号/邮箱/用户名)",
+				},
+				cli.StringFlag{
+					Name:  "password",
+					Usage: "登录百度帐号的用户名的密码",
+				},
 				cli.StringFlag{
 					Name:  "bduss",
 					Usage: "使用百度 BDUSS 来登录百度帐号",
@@ -291,7 +298,7 @@ func main() {
 			Category: "网盘操作",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
-				baidupcscmd.RunGetQuota()
+				pcscommand.RunGetQuota()
 				return nil
 			},
 		},
@@ -307,7 +314,7 @@ func main() {
 					cli.ShowCommandHelp(c, c.Command.Name)
 					return nil
 				}
-				baidupcscmd.RunChangeDirectory(c.Args().Get(0))
+				pcscommand.RunChangeDirectory(c.Args().Get(0))
 				return nil
 			},
 		},
@@ -319,7 +326,7 @@ func main() {
 			Category:  "网盘操作",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
-				baidupcscmd.RunLs(c.Args().Get(0))
+				pcscommand.RunLs(c.Args().Get(0))
 				return nil
 			},
 		},
@@ -341,7 +348,7 @@ func main() {
 			Category:  "网盘操作",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
-				baidupcscmd.RunGetMeta(c.Args().Get(0))
+				pcscommand.RunGetMeta(c.Args().Get(0))
 				return nil
 			},
 		},
@@ -360,7 +367,7 @@ func main() {
 					return nil
 				}
 
-				baidupcscmd.RunRemove(getSubArgs(c)...)
+				pcscommand.RunRemove(getSubArgs(c)...)
 				return nil
 			},
 		},
@@ -376,7 +383,7 @@ func main() {
 					return nil
 				}
 
-				baidupcscmd.RunMkdir(c.Args().Get(0))
+				pcscommand.RunMkdir(c.Args().Get(0))
 				return nil
 			},
 		},
@@ -396,7 +403,7 @@ func main() {
 					return nil
 				}
 
-				baidupcscmd.RunCopy(getSubArgs(c)...)
+				pcscommand.RunCopy(getSubArgs(c)...)
 				return nil
 			},
 		},
@@ -416,7 +423,7 @@ func main() {
 					return nil
 				}
 
-				baidupcscmd.RunMove(getSubArgs(c)...)
+				pcscommand.RunMove(getSubArgs(c)...)
 				return nil
 			},
 		},
@@ -434,7 +441,7 @@ func main() {
 					return nil
 				}
 
-				baidupcscmd.RunDownload(getSubArgs(c)...)
+				pcscommand.RunDownload(getSubArgs(c)...)
 				return nil
 			},
 		},
@@ -454,7 +461,7 @@ func main() {
 
 				subArgs := getSubArgs(c)
 
-				baidupcscmd.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1])
+				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1])
 				return nil
 			},
 		},

@@ -50,13 +50,7 @@
     ".",
     "bdcrypto"
   ]
-  revision = "51f76cb19e0821e6a407b1266d1708f538dfc2e8"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/iikira/baidu-tools"
-  packages = ["util"]
-  revision = "276b04c6f1f9f1f5aa26da5743e046b06a945dc7"
+  revision = "d38727f5eddefaf6626a869f0589551a900818e3"
 
 [[projects]]
   branch = "master"

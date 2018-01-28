@@ -1,13 +1,13 @@
-package baidupcscmd
+package pcscommand
 
 import (
 	"bufio"
 	"crypto/md5"
 	"fmt"
 	"github.com/bitly/go-simplejson"
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/uploader"
-	"github.com/iikira/BaiduPCS-Go/util"
 	"hash/crc32"
 	"net/http/cookiejar"
 	"os"

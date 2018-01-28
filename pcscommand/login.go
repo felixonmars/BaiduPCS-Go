@@ -1,4 +1,4 @@
-package baidupcscmd
+package pcscommand
 
 import (
 	"fmt"
@@ -7,21 +7,25 @@ import (
 )
 
 // RunLogin 登录百度帐号
-func RunLogin() (bduss, ptoken, stoken string, err error) {
+func RunLogin(username, password string) (bduss, ptoken, stoken string, err error) {
 	line := liner.NewLiner()
 	line.SetCtrlCAborts(true)
 	defer line.Close()
 
 	bc := baidulogin.NewBaiduClinet()
 
-	username, err := line.Prompt("请输入百度用户名(手机号/邮箱/用户名), 回车键提交 > ")
-	if err != nil {
-		return
+	if username == "" {
+		username, err = line.Prompt("请输入百度用户名(手机号/邮箱/用户名), 回车键提交 > ")
+		if err != nil {
+			return
+		}
 	}
 
-	password, err := line.PasswordPrompt("请输入密码(输入的密码无回显, 确认输入完成, 回车提交即可) > ")
-	if err != nil {
-		return
+	if password == "" {
+		password, err = line.PasswordPrompt("请输入密码(输入的密码无回显, 确认输入完成, 回车提交即可) > ")
+		if err != nil {
+			return
+		}
 	}
 
 	var vcode, vcodestr string

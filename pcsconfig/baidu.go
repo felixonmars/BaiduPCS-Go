@@ -3,8 +3,8 @@ package pcsconfig
 import (
 	"fmt"
 	"github.com/bitly/go-simplejson"
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/BaiduPCS-Go/util"
 	"strconv"
 )
 
@@ -19,8 +19,8 @@ type Baidu struct {
 	Workdir string `json:"workdir"`
 }
 
-// NewWithBDUSS 检测BDUSS有效性, 同时获取百度详细信息
-func NewWithBDUSS(bduss string) (*Baidu, error) {
+// NewWithBDUSS 检测BDUSS有效性, 同时获取百度详细信息 (无法获取 ptoken 和 stoken)
+func NewWithBDUSS(bduss string) (b *Baidu, err error) {
 	h := requester.NewHTTPClient()
 	timestamp := pcsutil.BeijingTimeOption("")
 	post := map[string]string{
@@ -64,37 +64,40 @@ func NewWithBDUSS(bduss string) (*Baidu, error) {
 	}
 
 	uidStr := json.GetPath("user", "id").MustString()
-	uid, _ := strconv.ParseUint(uidStr, 10, 64)
 
-	username, err := GetUserNameByUID(uid)
+	b = new(Baidu) // 初始化 Baidu
+	b.UID, _ = strconv.ParseUint(uidStr, 10, 64)
+
+	err = b.GetUserName()
 	if err != nil {
 		return nil, err
 	}
 
-	return &Baidu{
-		UID:     uid,
-		Name:    username,
-		BDUSS:   bduss,
-		Workdir: "/",
-	}, nil
+	b.BDUSS = bduss
+	b.Workdir = "/"
+
+	return b, nil
 }
 
-// GetUserNameByUID 通过百度uid获取百度用户名
-func GetUserNameByUID(uid uint64) (username string, err error) {
-	rawQuery := "has_plist=0&need_post_count=1&rn=1&uid=" + fmt.Sprint(uid)
+// GetUserName 通过百度uid获取百度用户名
+func (b *Baidu) GetUserName() error {
+	if b.UID == 0 {
+		return fmt.Errorf("Baidu.UID not set")
+	}
+	rawQuery := "has_plist=0&need_post_count=1&rn=1&uid=" + fmt.Sprint(b.UID)
 	urlStr := "http://c.tieba.baidu.com/c/u/user/profile?" + pcsutil.TiebaClientRawQuerySignature(rawQuery)
 
 	body, err := requester.HTTPGet(urlStr)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	json, err := simplejson.NewJson(body)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	userJSON := json.GetPath("user")
-	username = userJSON.Get("name").MustString()
-	return
+	b.Name = userJSON.Get("name").MustString()
+	return nil
 }

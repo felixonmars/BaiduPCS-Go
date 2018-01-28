@@ -1,8 +1,8 @@
-package baidupcscmd
+package pcscommand
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/util"
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"os"
 	"text/template"
 )

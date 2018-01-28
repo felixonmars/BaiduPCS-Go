@@ -1,8 +1,8 @@
-package baidupcscmd
+package pcscommand
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/config"
+	"github.com/iikira/BaiduPCS-Go/pcsconfig"
 	fpath "path"
 	"regexp"
 	"strings"

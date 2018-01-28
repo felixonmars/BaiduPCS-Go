@@ -1,11 +1,11 @@
-package baidupcscmd
+package pcscommand
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/config"
 	"github.com/iikira/BaiduPCS-Go/downloader"
+	"github.com/iikira/BaiduPCS-Go/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/BaiduPCS-Go/util"
 	"net/http/cookiejar"
 	"os"
 	"strings"

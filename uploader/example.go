@@ -2,8 +2,8 @@ package uploader
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/BaiduPCS-Go/util"
 	"io"
 	"strings"
 	"time"

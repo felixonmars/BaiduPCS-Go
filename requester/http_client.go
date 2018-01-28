@@ -24,11 +24,12 @@ func NewHTTPClient() *HTTPClient {
 				},
 				TLSHandshakeTimeout:   10 * time.Second,
 				DisableKeepAlives:     false,
-				DisableCompression:    false,
+				DisableCompression:    false, // gzip
 				ResponseHeaderTimeout: 10 * time.Second,
 				ExpectContinueTimeout: 10 * time.Second,
 			},
-			Jar: jar,
+			Jar:     jar,
+			Timeout: 30 * time.Second,
 		},
 	}
 }
@@ -43,7 +44,7 @@ func (h *HTTPClient) ClearCookiejar() {
 	h.Jar, _ = cookiejar.New(nil)
 }
 
-// SetHTTPSecure 是否启用 https 安全检查
+// SetHTTPSecure 是否启用 https 安全检查, 默认不检查
 func (h *HTTPClient) SetHTTPSecure(b bool) {
 	h.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = !b
 }
@@ -63,7 +64,7 @@ func (h *HTTPClient) SetResponseHeaderTimeout(t time.Duration) {
 	h.Transport.(*http.Transport).ResponseHeaderTimeout = t
 }
 
-// SetTimeout 设置 http 请求超时时间 默认30s
+// SetTimeout 设置 http 请求超时时间, 默认30s
 func (h *HTTPClient) SetTimeout(t time.Duration) {
 	h.Timeout = t
 }

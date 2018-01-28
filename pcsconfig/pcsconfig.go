@@ -3,7 +3,7 @@ package pcsconfig
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/util"
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"io/ioutil"
 )
 

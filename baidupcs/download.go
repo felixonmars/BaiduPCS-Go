@@ -1,7 +1,7 @@
 package baidupcs
 
 import (
-	"github.com/iikira/BaiduPCS-Go/config"
+	"github.com/iikira/BaiduPCS-Go/pcsconfig"
 	"net/http/cookiejar"
 )
 

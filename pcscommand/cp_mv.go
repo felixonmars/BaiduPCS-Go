@@ -1,4 +1,4 @@
-package baidupcscmd
+package pcscommand
 
 import (
 	"fmt"

@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/GeertJohan/go.rice"
-	"github.com/iikira/BaiduPCS-Go/command"
-	"github.com/iikira/BaiduPCS-Go/util"
+	"github.com/iikira/BaiduPCS-Go/pcscommand"
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"html/template"
 	"net/http"
 	"path/filepath"
@@ -16,25 +16,28 @@ var (
 	templatesBox = new(rice.Box) // go.rice 文件盒子
 )
 
-func boxInit() {
+func boxInit() error {
 	hb, err := rice.FindBox("static")
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	staticBox = hb
 
 	hb, err = rice.FindBox("template")
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 	templatesBox = hb
+	return nil
 }
 
 // StartServer 开启web服务
 func StartServer() error {
-	boxInit()
+	err := boxInit()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
 
 	http.Handle("/lib/", http.StripPrefix("/lib/", http.FileServer(staticBox.HTTPBox())))
 	http.HandleFunc("/about.html", aboutPage)
@@ -75,7 +78,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files, err := baidupcscmd.GetPCSInfo().FileList(r.Form.Get("path"))
+	files, err := pcscommand.GetPCSInfo().FileList(r.Form.Get("path"))
 	if err != nil {
 		fmt.Println(err)
 		return

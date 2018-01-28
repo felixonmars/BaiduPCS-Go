@@ -1,8 +1,8 @@
-package baidupcscmd
+package pcscommand
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/util"
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
 )
 
 // RunGetQuota 执行 获取当前用户空间配额信息, 并输出

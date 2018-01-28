@@ -3,8 +3,8 @@ package baidupcs
 import (
 	"fmt"
 	"github.com/bitly/go-simplejson"
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/BaiduPCS-Go/util"
 )
 
 // FileDirectory 文件或目录的详细信息

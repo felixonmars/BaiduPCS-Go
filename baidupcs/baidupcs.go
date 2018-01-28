@@ -2,7 +2,7 @@ package baidupcs
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/config"
+	"github.com/iikira/BaiduPCS-Go/pcsconfig"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
