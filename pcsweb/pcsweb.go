@@ -32,17 +32,20 @@ func boxInit() error {
 }
 
 // StartServer 开启web服务
-func StartServer() error {
+func StartServer(port uint) error {
+	if port <= 0 || port >= 0x10000 {
+		return fmt.Errorf("invalid port %d", port)
+	}
+
 	err := boxInit()
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 
 	http.Handle("/lib/", http.StripPrefix("/lib/", http.FileServer(staticBox.HTTPBox())))
 	http.HandleFunc("/about.html", aboutPage)
 	http.HandleFunc("/", indexPage)
-	return http.ListenAndServe(":8080", nil)
+	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
 func aboutPage(w http.ResponseWriter, r *http.Request) {

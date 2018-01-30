@@ -93,9 +93,16 @@ func main() {
 			Category: "其他",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
-				fmt.Println("web 客户端功能为实验性功能, 测试中, 打开 http://localhost:8080 查看效果")
-				fmt.Println(pcsweb.StartServer())
+				fmt.Printf("web 客户端功能为实验性功能, 测试中, 打开 http://localhost:%d 查看效果\n", c.Uint("port"))
+				fmt.Println(pcsweb.StartServer(c.Uint("port")))
 				return nil
+			},
+			Flags: []cli.Flag{
+				cli.UintFlag{
+					Name:  "port",
+					Usage: "自定义端口",
+					Value: 8080,
+				},
 			},
 		},
 		{
