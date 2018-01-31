@@ -2,6 +2,7 @@ package requester
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -19,11 +20,11 @@ func HTTPGet(urlStr string) (body []byte, err error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-// Fetch 实现 http／https 访问 和 GET／POST 请求，
+// Req 实现 http／https 访问，
 // 根据给定的 method (GET, POST, HEAD, PUT 等等), urlStr (网址),
 // post (post 数据), header (header 请求头数据), 进行网站访问。
-// 返回值分别为 网站主体, 错误
-func (h *HTTPClient) Fetch(method string, urlStr string, post interface{}, header map[string]string) (body []byte, err error) {
+// 返回值分别为 *http.Response, 错误信息
+func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header map[string]string) (resp *http.Response, err error) {
 	var (
 		req   *http.Request
 		obody io.Reader
@@ -41,6 +42,8 @@ func (h *HTTPClient) Fetch(method string, urlStr string, post interface{}, heade
 			obody = strings.NewReader(value)
 		case []byte:
 			obody = bytes.NewReader(value[:])
+		default:
+			return nil, fmt.Errorf("requester.Req: unknown post type: %s", value)
 		}
 	}
 	req, err = http.NewRequest(method, urlStr, obody)
@@ -57,7 +60,15 @@ func (h *HTTPClient) Fetch(method string, urlStr string, post interface{}, heade
 		}
 	}
 
-	resp, err := h.Client.Do(req)
+	return h.Client.Do(req)
+}
+
+// Fetch 实现 http／https 访问，
+// 根据给定的 method (GET, POST, HEAD, PUT 等等), urlStr (网址),
+// post (post 数据), header (header 请求头数据), 进行网站访问。
+// 返回值分别为 网站主体, 错误信息
+func (h *HTTPClient) Fetch(method string, urlStr string, post interface{}, header map[string]string) (body []byte, err error) {
+	resp, err := h.Req(method, urlStr, post, header)
 	if err != nil {
 		return nil, err
 	}
