@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"github.com/gobs/args"
+	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcscommand"
 	"github.com/iikira/BaiduPCS-Go/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/pcsweb"
 	"github.com/peterh/liner"
 	"github.com/urfave/cli"
@@ -29,6 +31,8 @@ var (
 func init() {
 	pcsconfig.Init()
 	pcscommand.ReloadInfo()
+
+	pcscache.DirCache.GC() // 启动缓存垃圾回收
 }
 
 func main() {
@@ -49,12 +53,21 @@ func main() {
 	---------------------------------------------------
 	前往 https://github.com/iikira/BaiduPCS-Go/releases 以获取程序更新信息!
 	---------------------------------------------------`
+	app.Flags = []cli.Flag{
+		cli.BoolFlag{
+			Name:        "verbose",
+			Usage:       "启用调试",
+			EnvVar:      "BAIDUPCS_GO_VERBOSE",
+			Destination: &pcsverbose.IsVerbose,
+		},
+	}
 	app.Action = func(c *cli.Context) {
 		if c.NArg() != 0 {
 			fmt.Printf("未找到命令: %s\n运行命令 %s help 获取帮助\n", c.Args().Get(0), app.Name)
 			return
 		}
 		cli.ShowAppHelp(c)
+		pcsverbose.Verbosef("\n这是一条调试信息\n\n")
 
 		line := newLiner()
 		defer closeLiner(line)
@@ -275,10 +288,10 @@ func main() {
 				}
 
 				if !pcsconfig.Config.DeleteBaiduUserByUID(uid) {
-					fmt.Printf("退出用户失败, %s\n", baidu.Name)
+					fmt.Printf("退出用户失��, %s\n", baidu.Name)
 				}
 
-				fmt.Printf("退出用户成功, %v\n", baidu.Name)
+				fmt.Printf("退出用��成功, %v\n", baidu.Name)
 				return nil
 			},
 			Flags: []cli.Flag{
@@ -290,7 +303,7 @@ func main() {
 		},
 		{
 			Name:     "loglist",
-			Usage:    "获取当前帐号, 和所有已登录的百度帐号",
+			Usage:    "获取当前帐号, 和�����有已登录的百度帐号",
 			Category: "百度帐号操作",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
