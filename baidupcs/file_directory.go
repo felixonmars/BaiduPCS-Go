@@ -13,19 +13,20 @@ type FileDirectory struct {
 	Path        string // 路径
 	Filename    string // 文件名 或 目录名
 	Ctime       int64  // 创建日期
+	Mtime       int64  // 修改日期
 	MD5         string // md5 值
 	Size        int64  // 文件大小 (目录为0)
 	Isdir       bool   // 是否为目录
 	Ifhassubdir bool   // 是否含有子目录 (只对目录有效)
 }
 
-// FileDirectoryList FileDirectory 的 数组
-type FileDirectoryList []FileDirectory
+// FileDirectoryList FileDirectory 的 指针数组
+type FileDirectoryList []*FileDirectory
 
 // FilesDirectoriesMeta 获取单个文件/目录的元信息
 //
 // 可用信息: 是否是目录isdir 是否含有子目录ifhassubdir 修改时间mtime 文件大小size
-func (p PCSApi) FilesDirectoriesMeta(path string) (data FileDirectory, err error) {
+func (p PCSApi) FilesDirectoriesMeta(path string) (data *FileDirectory, err error) {
 	if path == "" {
 		path = "/"
 	}
@@ -52,11 +53,12 @@ func (p PCSApi) FilesDirectoriesMeta(path string) (data FileDirectory, err error
 
 	json = json.Get("list").GetIndex(0)
 
-	data = FileDirectory{
+	data = &FileDirectory{
 		FsID:        json.Get("fs_id").MustInt64(),
 		Path:        json.Get("path").MustString(),
 		Filename:    json.Get("server_filename").MustString(),
 		Ctime:       json.Get("ctime").MustInt64(),
+		Mtime:       json.Get("mtime").MustInt64(),
 		MD5:         json.Get("md5").MustString(),
 		Size:        json.Get("size").MustInt64(),
 		Isdir:       pcsutil.IntToBool(json.Get("isdir").MustInt()),
@@ -105,11 +107,12 @@ func (p PCSApi) FileList(path string) (data FileDirectoryList, err error) {
 		if fsID == 0 {
 			break
 		}
-		data = append(data, FileDirectory{
+		data = append(data, &FileDirectory{
 			FsID:     fsID,
 			Path:     index.Get("path").MustString(),
 			Filename: index.Get("server_filename").MustString(),
 			Ctime:    index.Get("ctime").MustInt64(),
+			Mtime:    index.Get("mtime").MustInt64(),
 			MD5:      index.Get("md5").MustString(),
 			Size:     index.Get("size").MustInt64(),
 			Isdir:    pcsutil.IntToBool(index.Get("isdir").MustInt()),
@@ -120,22 +123,24 @@ func (p PCSApi) FileList(path string) (data FileDirectoryList, err error) {
 
 func (f FileDirectory) String() string {
 	if f.Isdir {
-		return fmt.Sprintf("类型: 目录 \n目录名称: %s \n目录路径: %s \nfs_id: %d \n创建时间: %s \n是否含有子目录: %t\n",
+		return fmt.Sprintf("类型: 目录 \n目录名称: %s \n目录路径: %s \nfs_id: %d \n创建日期: %s \n修改日期: %s \n是否含有子目录: %t\n",
 			f.Filename,
 			f.Path,
 			f.FsID,
 			pcsutil.FormatTime(f.Ctime),
+			pcsutil.FormatTime(f.Mtime),
 			f.Ifhassubdir,
 		)
 	}
 
-	return fmt.Sprintf("类型: 文件 \n文件名: %s \n文件路径: %s \n文件大小: %d \nmd5: %s \nfs_id: %d \n创建时间: %s \n",
+	return fmt.Sprintf("类型: 文件 \n文件名: %s \n文件路径: %s \n文件大小: %d, (%s) \nmd5: %s \nfs_id: %d \n创建日期: %s \n修改日期: %s \n",
 		f.Filename,
 		f.Path,
-		f.Size,
+		f.Size, pcsutil.ConvertFileSize(f.Size),
 		f.MD5,
 		f.FsID,
 		pcsutil.FormatTime(f.Ctime),
+		pcsutil.FormatTime(f.Mtime),
 	)
 }
 

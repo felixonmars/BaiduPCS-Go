@@ -17,9 +17,9 @@ out/
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
 .glide/
 
-# others
+# Others
 .Ds_Store
 *.txt
+test/
 download/
-
-vendor
+vendor/

@@ -1,39 +1,42 @@
 name="BaiduPCS-Go"
 version="v3.2.1"
 
+output="out/"
+
 Build() {
     echo "Building $1..."
     export GOOS=$2 GOARCH=$3 GO386=sse2 CGO_ENABLED=0
     if [ $2 = "windows" ];then
-        go build -ldflags "-s -w" -o "out/$1/$name.exe"
+        go build -ldflags "-s -w" -o "$output/$1/$name.exe"
     else
-        go build -ldflags "-s -w" -o "out/$1/$name"
+        go build -ldflags "-s -w" -o "$output/$1/$name"
     fi
 
-    cp README.md "out/$1"
-
-    mkdir "out/$1/download"
-    cd out
-    zip -q -r "$1.zip" "$1"
-    cd ..
-    echo Done!
+    Pack $1
 }
 
 ArmBuild() {
     echo "Building $1..."
     export GOOS=$2 GOARCH=$3 GOARM=$4 CGO_ENABLED=1
-    go build -ldflags '-s -w -linkmode=external -extldflags=-pie' -o "out/$1/$name"
+    go build -ldflags '-s -w -linkmode=external -extldflags=-pie' -o "$output/$1/$name"
     if [ $2 = "darwin" -a $3 = "arm64" ];then
-        ldid -S "out/$1/$name"
+        ldid -S "$output/$1/$name"
     fi
 
-    cp README.md "out/$1"
+    Pack $1
+}
 
-    mkdir "out/$1/download"
-    cd out
+# 打包
+Pack() {
+    # rice 打包
+    rice -i github.com/iikira/BaiduPCS-Go/pcsweb append --exec "$output/$1/$name"
+
+    mkdir "$output/$1/download"
+    cp README.md "$output/$1"
+
+    cd $output
     zip -q -r "$1.zip" "$1"
     cd ..
-    echo Done!
 }
 
 # android
