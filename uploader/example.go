@@ -3,15 +3,13 @@ package uploader
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
-	"github.com/iikira/BaiduPCS-Go/requester"
-	"io"
 	"strings"
 	"time"
 )
 
-func DoUpload(uploadURL string, uploadReader io.Reader) {
-	h := requester.NewHTTPClient()
-	u := NewUploader(uploadURL, uploadReader, 0, h)
+// DoUpload 执行上传
+func DoUpload(uploadURL string, uploadReaderLen ReaderLen) {
+	u := NewUploader(uploadURL, uploadReaderLen, nil)
 
 	exit := make(chan struct{})
 	exit2 := make(chan struct{})

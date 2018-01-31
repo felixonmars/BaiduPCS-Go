@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"strings"
@@ -13,8 +11,8 @@ import (
 
 // Uploader 上传
 type Uploader struct {
-	URL    string  // 上传地址
-	Reader *reader // 要上传的对象
+	URL  string  // 上传地址
+	Body *reader // 要上传的对象
 
 	client *requester.HTTPClient
 
@@ -22,50 +20,48 @@ type Uploader struct {
 	onFinish  func()
 }
 
-// NewUploader 返回 uploader 对象, url: 上传地址, uploadReader: 实现 io.Reader 接口的对象, 例如文件
-func NewUploader(url string, uploadReader io.Reader, size int64, h *requester.HTTPClient) (uploader *Uploader) {
+// NewUploader 返回 uploader 对象, url: 上传地址, uploadReaderLen: 实现 uploader.ReaderLen 接口的对象, 例如文件
+func NewUploader(url string, uploadReaderLen ReaderLen, h *requester.HTTPClient) (uploader *Uploader) {
 	uploader = new(Uploader)
 	uploader.URL = url
-	uploader.Reader = &reader{
-		uploadReader: uploadReader,
-		size:         size,
+	uploader.Body = &reader{
+		uploadReaderLen: uploadReaderLen,
 	}
-
-	// 设置不超时
-	defer h.SetTimeout(0)
 
 	if h == nil {
 		uploader.client = requester.NewHTTPClient()
-		return
+	} else {
+		uploader.client = h
 	}
-	uploader.client = h
+
+	h.SetTimeout(0) // 设置不超时
 	return
 }
 
 // Execute 执行上传
-func (u *Uploader) Execute(checkFunc func(respBodyContents []byte, err error)) {
+func (u *Uploader) Execute(checkFunc func(resp *http.Response, err error)) {
 	go func() {
 		u.touch(u.onExecute)
 
 		// 开始上传
-		respBodyContents, _, err := u.execute()
+		resp, _, err := u.execute()
 
 		u.touch(u.onFinish)
 		if checkFunc != nil {
-			checkFunc(respBodyContents, err)
+			checkFunc(resp, err)
 		}
 	}()
 }
 
-func (u *Uploader) execute() (respBodyContents []byte, code int, err error) {
+func (u *Uploader) execute() (resp *http.Response, code int, err error) {
 	multipartWriter := &bytes.Buffer{}
 	writer := multipart.NewWriter(multipartWriter)
 	writer.CreateFormFile("uploadedfile", "")
 
-	u.Reader.multipart = multipartWriter
-	u.Reader.multipartEnd = strings.NewReader(fmt.Sprintf("\r\n--%s--\r\n", writer.Boundary()))
+	u.Body.multipart = multipartWriter
+	u.Body.multipartEnd = strings.NewReader(fmt.Sprintf("\r\n--%s--\r\n", writer.Boundary()))
 
-	req, err := http.NewRequest("POST", u.URL, u.Reader)
+	req, err := http.NewRequest("POST", u.URL, u.Body)
 	if err != nil {
 		return nil, 1, err
 	}
@@ -73,22 +69,14 @@ func (u *Uploader) execute() (respBodyContents []byte, code int, err error) {
 	req.Header.Add("Content-Type", writer.FormDataContentType())
 
 	// 设置 Content-Length 不然请求会卡住不动!!!
-	req.ContentLength = u.Reader.Len()
+	req.ContentLength = u.Body.totalLen()
 
-	resp, err := u.client.Do(req)
+	resp, err = u.client.Do(req)
 	if err != nil {
-		fmt.Println(err)
 		return nil, 2, err
 	}
 
-	defer resp.Body.Close()
-
-	respBodyContents, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return respBodyContents, 3, fmt.Errorf("uploader: read response body error, %s", err)
-	}
-
-	return respBodyContents, 0, nil
+	return resp, 0, nil
 }
 
 // touch 用于触发事件

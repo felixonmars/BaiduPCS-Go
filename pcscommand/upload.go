@@ -5,12 +5,15 @@ import (
 	"crypto/md5"
 	"fmt"
 	"github.com/bitly/go-simplejson"
+	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/uploader"
 	"hash/crc32"
+	"net/http"
 	"net/http/cookiejar"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -43,21 +46,26 @@ func (lp *localPathInfo) check() bool {
 	return true
 }
 
-func (lp *localPathInfo) sum() {
+// md5Sum 获取 文件 md5
+func (lp *localPathInfo) md5Sum() {
 	bf := bufio.NewReader(lp.file)
-
-	// 获取前 256KB 文件切片的 md5
-	buf := make([]byte, requiredSliceLen)
-	lp.file.ReadAt(buf[:], requiredSliceLen)
-	lp.sliceMD5 = pcsutil.Md5Encrypt(buf[:])
-
-	// 获取 文件 md5
 	m := md5.New()
 	bf.WriteTo(m)
 	lp.md5 = fmt.Sprintf("%x", m.Sum(nil))
 
 	// reset
 	lp.file, _ = os.Open(lp.path)
+}
+
+// otherSum 获取其他的校验值
+func (lp *localPathInfo) otherSum() {
+	bf := bufio.NewReader(lp.file)
+
+	// 获取前 256KB 文件切片的 md5
+	buf := make([]byte, requiredSliceLen)
+	lp.file.ReadAt(buf[:], requiredSliceLen)
+	lp.sliceMD5 = fmt.Sprintf("%x", md5.Sum(buf[:]))
+
 	bf.Reset(lp.file)
 
 	// 获取 文件 crc32
@@ -83,7 +91,7 @@ func RunUpload(localPaths []string, targetPath string) {
 		return
 	}
 
-	var _localPaths []upload
+	var uploads []upload
 	for k := range localPaths {
 		_paths, err := filepath.Glob(localPaths[k])
 		if err != nil {
@@ -98,21 +106,23 @@ func RunUpload(localPaths []string, targetPath string) {
 				continue
 			}
 
-			_localPaths = append(_localPaths, upload{
+			uploads = append(uploads, upload{
 				dir:   filepath.Dir(_paths[k2]),
 				files: _files,
 			})
 		}
 	}
 
-	filesTotalNum := len(_localPaths)
+	filesTotalNum := len(uploads)
 
-	for ftN, uploadInfo := range _localPaths {
+	for ftN, uploadInfo := range uploads {
 
 		filesNum := len(uploadInfo.files)
 
 		for fN, file := range uploadInfo.files {
 			func() {
+				defer fmt.Println()
+
 				fmt.Printf("[%d/%d - %d/%d] - [%s]: 任务开始\n", ftN+1, filesTotalNum, fN+1, filesNum, file)
 
 				localPathInfo := localPathInfo{
@@ -128,10 +138,32 @@ func RunUpload(localPaths []string, targetPath string) {
 
 				_targetPath := targetPath + "/" + strings.TrimPrefix(localPathInfo.path, uploadInfo.dir)
 
+				panDir, panFile := path.Split(_targetPath)
+
+				// 设置缓存
+				if !pcscache.DirCache.Existed(panDir) {
+					fdl, err := info.FileList(panDir)
+					if err == nil {
+						pcscache.DirCache.Set(panDir, &fdl)
+					}
+				}
+
+				localPathInfo.md5Sum()
+
+				// 检测缓存
+				fd := pcscache.DirCache.FindFileDirectory(panDir, panFile)
+				if fd != nil {
+					if fd.MD5 == localPathInfo.md5 {
+						fmt.Printf("目标文件已存在, 跳过...\n")
+						return
+					}
+				}
+
+				// 文件大于256kb, 检测秒传
 				if localPathInfo.length >= requiredSliceLen {
 					fmt.Printf("检测秒传中, 请稍候...\n")
 
-					localPathInfo.sum()
+					localPathInfo.otherSum()
 
 					err := info.RapidUpload(_targetPath, localPathInfo.md5, localPathInfo.sliceMD5, localPathInfo.crc32, localPathInfo.length)
 					if err == nil {
@@ -141,11 +173,12 @@ func RunUpload(localPaths []string, targetPath string) {
 					fmt.Printf("秒传失败, 开始上传文件...\n")
 				}
 
+				// 秒传失败, 开始上传文件
 				err = info.Upload(_targetPath, func(uploadURL string, jar *cookiejar.Jar) (uperr error) {
 					h := requester.NewHTTPClient()
 					h.SetCookiejar(jar)
 
-					u := uploader.NewUploader(uploadURL, localPathInfo.file, -1, h)
+					u := uploader.NewUploader(uploadURL, uploader.NewFileReaderLen(localPathInfo.file), h)
 
 					exit := make(chan struct{})
 					exit2 := make(chan struct{})
@@ -179,13 +212,13 @@ func RunUpload(localPaths []string, targetPath string) {
 						exit2 <- struct{}{}
 					})
 
-					u.Execute(func(respBodyContents []byte, err error) {
+					u.Execute(func(resp *http.Response, err error) {
 						if err != nil {
 							uperr = err
 							return
 						}
 
-						json, err := simplejson.NewJson(respBodyContents)
+						json, err := simplejson.NewFromReader(resp.Body)
 						if err != nil {
 							uperr = fmt.Errorf("json parse error, %s", err)
 							return
@@ -193,7 +226,7 @@ func RunUpload(localPaths []string, targetPath string) {
 
 						pj, ok := json.CheckGet("path")
 						if !ok {
-							uperr = fmt.Errorf("unknown response data, path not found, %s", string(respBodyContents))
+							uperr = fmt.Errorf("unknown response data, file saved path not found")
 							return
 						}
 
