@@ -50,7 +50,7 @@
     ".",
     "bdcrypto"
   ]
-  revision = "26b9e29496114d855a4f64506d9be86cb5a0907a"
+  revision = "4ff0419998440bb381537c85aed55dbe9e5d6b7b"
 
 [[projects]]
   branch = "master"

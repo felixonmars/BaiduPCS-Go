@@ -32,6 +32,8 @@ func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header 
 
 	if post != nil {
 		switch value := post.(type) {
+		case io.Reader:
+			obody = value
 		case map[string]string:
 			query := url.Values{}
 			for k := range value {
