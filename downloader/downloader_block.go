@@ -56,9 +56,20 @@ func (b *Block) setDone() {
 }
 
 // isComplete 判断线程是否空闲,
-// 即 线程已完成下载任务 且 线程的载入量 (running 值) 为 0
+// 即 线程已完成下载任务
 func (b *Block) isComplete() bool {
 	return b.isDone() && b.running == 0
+}
+
+// expectedContentLength 获取期望的 Content-Length
+func (b *Block) expectedContentLength() int64 {
+	if b.isDone() {
+		return 0
+	}
+	if b.Final {
+		return b.End - b.Begin
+	}
+	return b.End - b.Begin + 1
 }
 
 // avaliableThread 筛选空闲的线程,
@@ -140,6 +151,11 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 		return 2, err
 	}
 
+	// 检测 响应Body 的错误
+	if resp.ContentLength != f.BlockList[id].expectedContentLength() {
+		return 3, fmt.Errorf("Content-Length is unexpected: %d", resp.ContentLength)
+	}
+
 	switch resp.StatusCode {
 	case 200, 206:
 		// do nothing, continue
@@ -160,13 +176,15 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 
 	defer resp.Body.Close()
 
-	buf := make([]byte, cacheSize)
-	loopSize := 0
+	var (
+		buf         = make([]byte, cacheSize)
+		n, loopSize int
+	)
 
 	for {
 		begin := f.BlockList[id].Begin // 用于下文比较
 
-		n, err := resp.Body.Read(buf)
+		n, err = resp.Body.Read(buf)
 
 		bufSize := int64(n)
 		loopSize += n
