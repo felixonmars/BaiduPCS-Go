@@ -67,7 +67,7 @@ func main() {
 			return
 		}
 		cli.ShowAppHelp(c)
-		pcsverbose.Verbosef("\n这是一条调试信息\n\n")
+		pcsverbose.Verbosef("这是一条调试信息\n\n")
 
 		line := newLiner()
 		defer closeLiner(line)
@@ -288,7 +288,7 @@ func main() {
 				}
 
 				if !pcsconfig.Config.DeleteBaiduUserByUID(uid) {
-					fmt.Printf("退出用户失��, %s\n", baidu.Name)
+					fmt.Printf("退出用户失������, %s\n", baidu.Name)
 				}
 
 				fmt.Printf("退出用��成功, %v\n", baidu.Name)

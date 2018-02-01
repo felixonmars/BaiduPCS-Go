@@ -12,18 +12,24 @@ var (
 
 	// Output 输出
 	Output io.Writer = os.Stderr
+
+	// Prefix 调试信息前缀
+	Prefix = func() string {
+		return "verbose: "
+	}
 )
 
 // Verbosef 调试格式输出
 func Verbosef(format string, a ...interface{}) {
 	if IsVerbose {
-		fmt.Fprintf(Output, format, a...)
+		fmt.Fprintf(Output, Prefix()+format, a...)
 	}
 }
 
 // Verboseln 调试输出一行
 func Verboseln(a ...interface{}) {
 	if IsVerbose {
+		fmt.Fprint(Output, Prefix())
 		fmt.Fprintln(Output, a...)
 	}
 }
