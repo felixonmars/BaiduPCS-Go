@@ -23,14 +23,18 @@ type reader struct {
 
 func (r *reader) Read(p []byte) (n int, err error) {
 	var n1, n2, n3 int
-	n1, err = r.multipart.Read(p[:])
-	r.addReaded(int64(n))
+	if r.multipart != nil {
+		n1, err = r.multipart.Read(p[:])
+		r.addReaded(int64(n))
+	}
 	if n1 < len(p) {
 		n2, err = r.uploadReaderLen.Read(p[n1:])
 		r.addReaded(int64(n2))
 		if n1+n2 < len(p) {
-			n3, err = r.multipartEnd.Read(p[n1+n2:])
-			r.addReaded(int64(n3))
+			if r.multipartEnd != nil {
+				n3, err = r.multipartEnd.Read(p[n1+n2:])
+				r.addReaded(int64(n3))
+			}
 		}
 	}
 	n = n1 + n2 + n3
@@ -38,8 +42,12 @@ func (r *reader) Read(p []byte) (n int, err error) {
 }
 
 func (r *reader) totalLen() int64 {
-	if r.uploadReaderLen == nil || r.multipart == nil || r.multipartEnd == nil {
+	if r.uploadReaderLen == nil {
 		return 0
+	}
+
+	if r.multipart == nil || r.multipartEnd == nil {
+		return r.uploadReaderLen.Len()
 	}
 
 	laceLen := int64(r.multipart.Len()) + int64(r.multipartEnd.Len())

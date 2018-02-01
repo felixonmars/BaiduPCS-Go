@@ -178,7 +178,7 @@ func RunUpload(localPaths []string, targetPath string) {
 					h := requester.NewHTTPClient()
 					h.SetCookiejar(jar)
 
-					u := uploader.NewUploader(uploadURL, uploader.NewFileReaderLen(localPathInfo.file), h)
+					u := uploader.NewUploader(uploadURL, true, uploader.NewFileReaderLen(localPathInfo.file), h)
 
 					exit := make(chan struct{})
 					exit2 := make(chan struct{})

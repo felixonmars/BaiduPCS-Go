@@ -3,13 +3,14 @@ package uploader
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"net/http"
 	"strings"
 	"time"
 )
 
 // DoUpload 执行上传
-func DoUpload(uploadURL string, uploadReaderLen ReaderLen) {
-	u := NewUploader(uploadURL, uploadReaderLen, nil)
+func DoUpload(uploadURL string, isMultipart bool, uploadReaderLen ReaderLen, checkFunc func(resp *http.Response, err error)) {
+	u := NewUploader(uploadURL, isMultipart, uploadReaderLen, nil)
 
 	exit := make(chan struct{})
 	exit2 := make(chan struct{})
@@ -38,7 +39,7 @@ func DoUpload(uploadURL string, uploadReaderLen ReaderLen) {
 		exit2 <- struct{}{}
 	})
 
-	u.Execute(nil)
+	u.Execute(checkFunc)
 
 	<-exit2
 	return

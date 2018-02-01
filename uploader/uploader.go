@@ -2,7 +2,6 @@ package uploader
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"mime/multipart"
 	"net/http"
@@ -11,7 +10,9 @@ import (
 
 // Uploader 上传
 type Uploader struct {
-	URL  string  // 上传地址
+	URL         string // 上传地址
+	IsMultiPart bool   // 是否表单上传
+
 	Body *reader // 要上传的对象
 
 	client *requester.HTTPClient
@@ -20,12 +21,14 @@ type Uploader struct {
 	onFinish  func()
 }
 
-// NewUploader 返回 uploader 对象, url: 上传地址, uploadReaderLen: 实现 uploader.ReaderLen 接口的对象, 例如文件
-func NewUploader(url string, uploadReaderLen ReaderLen, h *requester.HTTPClient) (uploader *Uploader) {
-	uploader = new(Uploader)
-	uploader.URL = url
-	uploader.Body = &reader{
-		uploadReaderLen: uploadReaderLen,
+// NewUploader 返回 uploader 对象, url: 上传地址, isMultipart: 是否表单上传,uploadReaderLen: 实现 uploader.ReaderLen 接口的对象, 例如文件
+func NewUploader(url string, isMultipart bool, uploadReaderLen ReaderLen, h *requester.HTTPClient) (uploader *Uploader) {
+	uploader = &Uploader{
+		URL:         url,
+		IsMultiPart: isMultipart,
+		Body: &reader{
+			uploadReaderLen: uploadReaderLen,
+		},
 	}
 
 	if h == nil {
@@ -34,7 +37,9 @@ func NewUploader(url string, uploadReaderLen ReaderLen, h *requester.HTTPClient)
 		uploader.client = h
 	}
 
-	h.SetTimeout(0) // 设置不超时
+	// 设置不超时
+	uploader.client.SetTimeout(0)
+	uploader.client.SetResponseHeaderTimeout(0)
 	return
 }
 
@@ -46,27 +51,33 @@ func (u *Uploader) Execute(checkFunc func(resp *http.Response, err error)) {
 		// 开始上传
 		resp, _, err := u.execute()
 
-		u.touch(u.onFinish)
 		if checkFunc != nil {
 			checkFunc(resp, err)
 		}
+		u.touch(u.onFinish)
 	}()
 }
 
 func (u *Uploader) execute() (resp *http.Response, code int, err error) {
-	multipartWriter := &bytes.Buffer{}
-	writer := multipart.NewWriter(multipartWriter)
-	writer.CreateFormFile("uploadedfile", "")
+	var contentType string
+	if u.IsMultiPart {
+		multipartWriter := &bytes.Buffer{}
+		writer := multipart.NewWriter(multipartWriter)
+		writer.CreateFormFile("uploadedfile", "")
 
-	u.Body.multipart = multipartWriter
-	u.Body.multipartEnd = strings.NewReader(fmt.Sprintf("\r\n--%s--\r\n", writer.Boundary()))
+		u.Body.multipart = multipartWriter
+		u.Body.multipartEnd = strings.NewReader("\r\n--" + writer.Boundary() + "--\r\n")
+		contentType = writer.FormDataContentType()
+	} else {
+		contentType = "application/x-www-form-urlencoded"
+	}
 
 	req, err := http.NewRequest("POST", u.URL, u.Body)
 	if err != nil {
 		return nil, 1, err
 	}
 
-	req.Header.Add("Content-Type", writer.FormDataContentType())
+	req.Header.Add("Content-Type", contentType)
 
 	// 设置 Content-Length 不然请求会卡住不动!!!
 	req.ContentLength = u.Body.totalLen()
