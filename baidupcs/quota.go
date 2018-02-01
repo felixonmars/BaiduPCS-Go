@@ -23,7 +23,7 @@ func (p PCSApi) QuotaInfo() (quota, used int64, err error) {
 		return
 	}
 
-	code, err := checkErr(json)
+	code, err := CheckErr(json)
 	if err != nil {
 		return 0, 0, fmt.Errorf("获取当前用户空间配额信息, 错误代码: %d, 消息: %s", code, err)
 	}

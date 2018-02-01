@@ -45,7 +45,7 @@ func (p PCSApi) Remove(paths ...string) (err error) {
 		return
 	}
 
-	code, err := checkErr(json)
+	code, err := CheckErr(json)
 	if err != nil {
 		return fmt.Errorf("删除文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, err)
 	}
@@ -72,7 +72,7 @@ func (p PCSApi) Mkdir(path string) (err error) {
 		return
 	}
 
-	code, err := checkErr(json)
+	code, err := CheckErr(json)
 	if err != nil {
 		return fmt.Errorf("创建目录 遇到错误, 错误代码: %d, 消息: %s", code, err)
 	}

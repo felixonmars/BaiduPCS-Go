@@ -65,7 +65,7 @@ func (p PCSApi) cpmvOp(op string, cpmvJSON ...CpMvJSON) (err error) {
 		return
 	}
 
-	code, err := checkErr(json)
+	code, err := CheckErr(json)
 	if err != nil {
 		switch op {
 		case "copy":

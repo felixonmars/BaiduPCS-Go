@@ -32,7 +32,7 @@ func (p PCSApi) RapidUpload(targetPath, md5, smd5, crc32 string, length int64) (
 		return
 	}
 
-	code, err := checkErr(json)
+	code, err := CheckErr(json)
 
 	switch code {
 	case 31079:
@@ -95,7 +95,7 @@ func (p PCSApi) UploadCreateSuperFile(targetPath string, blockList ...string) (e
 		return
 	}
 
-	code, err := checkErr(sjson)
+	code, err := CheckErr(sjson)
 
 	if err != nil {
 		return fmt.Errorf("合并分片文件 遇到错误, 错误代码: %d, 消息: %s", code, err)
