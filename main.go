@@ -288,10 +288,10 @@ func main() {
 				}
 
 				if !pcsconfig.Config.DeleteBaiduUserByUID(uid) {
-					fmt.Printf("退出用户失������, %s\n", baidu.Name)
+					fmt.Printf("退出用户失败, %s\n", baidu.Name)
 				}
 
-				fmt.Printf("退出用��成功, %v\n", baidu.Name)
+				fmt.Printf("退出用户成功, %v\n", baidu.Name)
 				return nil
 			},
 			Flags: []cli.Flag{
@@ -303,7 +303,7 @@ func main() {
 		},
 		{
 			Name:     "loglist",
-			Usage:    "获取当前帐号, 和�����有已登录的百度帐号",
+			Usage:    "获取当前帐号, 和所有已登录的百度帐号",
 			Category: "百度帐号操作",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
