@@ -54,6 +54,16 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/iikira/baidu-tools"
+  packages = [
+    ".",
+    "tieba",
+    "tieba/tiebautil"
+  ]
+  revision = "6c7bd5008842794a35fe03703a52f32466de0a97"
+
+[[projects]]
+  branch = "master"
   name = "github.com/iikira/osext"
   packages = ["."]
   revision = "f808bcd957c382e32d377c68935d94bbafd0d5d0"
@@ -85,6 +95,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "994af2055f294eac169a8b814a7e00f5b1bd6fd84079a82cecd9e9342e4d8675"
+  inputs-digest = "71034c50e7357e04a3ad9e3466d3223237095a73eb3e2598ed0fc8aee7061522"
   solver-name = "gps-cdcl"
   solver-version = 1
