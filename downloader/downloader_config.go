@@ -12,7 +12,7 @@ var (
 	FileNameRE = regexp.MustCompile("filename=\"(.*?)\"")
 )
 
-// SetMaxParallel 设置最大线程
+// SetMaxParallel 设置最大下载并发量
 func SetMaxParallel(t int) {
 	if t <= 0 {
 		panic("downloader.SetMaxParallel: zero or negative parallel")

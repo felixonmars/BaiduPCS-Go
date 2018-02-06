@@ -6,6 +6,8 @@ import "sync"
 type WaitGroup struct {
 	wg sync.WaitGroup
 	p  chan struct{}
+
+	sync.RWMutex
 }
 
 // NewWaitGroup returns a pointer to a new `WaitGroup` object.

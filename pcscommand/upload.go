@@ -142,7 +142,7 @@ func RunUpload(localPaths []string, targetPath string) {
 
 				// 设置缓存
 				if !pcscache.DirCache.Existed(panDir) {
-					fdl, err := info.FileList(panDir)
+					fdl, err := info.FilesDirectoriesList(panDir, false)
 					if err == nil {
 						pcscache.DirCache.Set(panDir, &fdl)
 					}

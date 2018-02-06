@@ -39,8 +39,8 @@ func (h *HTTPClient) SetCookiejar(c *cookiejar.Jar) {
 	h.Jar = c
 }
 
-// ClearCookiejar 清空 cookie
-func (h *HTTPClient) ClearCookiejar() {
+// ResetCookiejar 清空 cookie
+func (h *HTTPClient) ResetCookiejar() {
 	h.Jar, _ = cookiejar.New(nil)
 }
 
@@ -54,12 +54,12 @@ func (h *HTTPClient) SetKeepAlive(b bool) {
 	h.Transport.(*http.Transport).DisableKeepAlives = !b
 }
 
-//SetGzip 是否启用Gzip
+// SetGzip 是否启用Gzip
 func (h *HTTPClient) SetGzip(b bool) {
 	h.Transport.(*http.Transport).DisableCompression = !b
 }
 
-//SetResponseHeaderTimeout 设置目标服务器响应超时时间
+// SetResponseHeaderTimeout 设置目标服务器响应超时时间
 func (h *HTTPClient) SetResponseHeaderTimeout(t time.Duration) {
 	h.Transport.(*http.Transport).ResponseHeaderTimeout = t
 }

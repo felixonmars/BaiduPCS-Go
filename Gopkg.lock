@@ -50,7 +50,7 @@
     ".",
     "bdcrypto"
   ]
-  revision = "4ff0419998440bb381537c85aed55dbe9e5d6b7b"
+  revision = "f4eaff53647ff235647cfcc6524875f0a319a337"
 
 [[projects]]
   branch = "master"
@@ -60,7 +60,7 @@
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "6c7bd5008842794a35fe03703a52f32466de0a97"
+  revision = "8aa9a788170f9d11df821844b8221d6a1134b9c4"
 
 [[projects]]
   branch = "master"

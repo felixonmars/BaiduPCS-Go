@@ -162,7 +162,11 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 	case 416: //Requested Range Not Satisfiable
 		// 可能是线程在等待响应时, 已被其他线程重载
 		return 1, errors.New("thread already reload")
+	case 403: // Forbidden
+		fallthrough
 	case 406: // Not Acceptable
+		// 暂时不知道出错的原因......
+		return 1, errors.New(resp.Status)
 	case 429, 509: // Too Many Requests
 		for f.status.Speeds >= f.status.MaxSpeeds/5 {
 			// 下载速度若不减慢, 循环就不会退出
@@ -170,7 +174,7 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 		}
 		return 3, errors.New(resp.Status)
 	default:
-		fmt.Println("不知道的错误", id, resp.StatusCode, resp.Status) // 调试
+		fmt.Printf("unexpected http status code, %d, %s\n", resp.StatusCode, resp.Status) // 调试
 		return 2, errors.New(resp.Status)
 	}
 
@@ -262,16 +266,17 @@ func (f *FileDl) blockMonitor() <-chan struct{} {
 				c <- struct{}{}
 				os.Remove(f.File.Name() + DownloadingFileSuffix) // 删除断点信息
 
-				if f.Size <= 0 {
-					fileInfo, err := f.File.Stat()
-					if err == nil && fileInfo.Size() > f.status.Downloaded {
-						f.File.Truncate(f.status.Downloaded)
-					}
-				} else {
-					f.File.Truncate(f.Size)
-				}
+				// 修剪文件
+				// if f.Size <= 0 {
+				// 	fileInfo, err := f.File.Stat()
+				// 	if err == nil && fileInfo.Size() > f.status.Downloaded {
+				// 		f.File.Truncate(f.status.Downloaded)
+				// 	}
+				// } else {
+				// 	f.File.Truncate(f.Size)
+				// }
 
-				break
+				return
 			}
 
 			f.recordBreakPoint()
@@ -300,11 +305,11 @@ func (f *FileDl) blockMonitor() <-chan struct{} {
 						// 筛选空闲的线程
 						index, ok := f.BlockList.avaliableThread()
 						if !ok { // 没有空的
-							mu.Unlock() // 解锁
+							mu.Unlock() // ��锁
 							return
 						}
 
-						// 复制 旧线程 的信息到 空闲的新线程
+						// 复制 旧线程 的信息到 空闲的��线程
 						f.BlockList[index].End = f.BlockList[k].End
 						f.BlockList[index].Begin = f.BlockList[k].Begin
 						f.BlockList[index].Final = f.BlockList[k].Final

@@ -2,16 +2,9 @@ package uploader
 
 import (
 	"bytes"
-	"io"
 	"strings"
 	"sync/atomic"
 )
-
-// ReaderLen 实现 读 和 长度 接口
-type ReaderLen interface {
-	io.Reader
-	Len() int64
-}
 
 type reader struct {
 	uploadReaderLen ReaderLen

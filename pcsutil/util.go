@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"unsafe"
 )
 
 var (
@@ -25,16 +24,6 @@ func init() {
 		return
 	}
 	PipeInput = (fileInfo.Mode() & os.ModeNamedPipe) == os.ModeNamedPipe
-}
-
-// ToString 将 []byte 转换为 string
-func ToString(p []byte) string {
-	return *(*string)(unsafe.Pointer(&p))
-}
-
-// ToBytes 将 string 转换为 []byte
-func ToBytes(str string) []byte {
-	return *(*[]byte)(unsafe.Pointer(&str))
 }
 
 // GetURLCookieString 返回cookie字串

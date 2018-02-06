@@ -3,6 +3,7 @@ package pcsutil
 import (
 	"fmt"
 	"time"
+	"unsafe"
 )
 
 const (
@@ -45,6 +46,16 @@ func ConvertFileSize(size int64, precision ...int) string {
 		return fmt.Sprintf("%."+pint+"fTB", float64(size)/float64(TB))
 	}
 	return fmt.Sprintf("%."+pint+"fPB", float64(size)/float64(PB))
+}
+
+// ToString 将 []byte 转换为 string
+func ToString(p []byte) string {
+	return *(*string)(unsafe.Pointer(&p))
+}
+
+// ToBytes 将 string 转换为 []byte
+func ToBytes(str string) []byte {
+	return *(*[]byte)(unsafe.Pointer(&str))
 }
 
 // IntToBool int 类型转换为 bool

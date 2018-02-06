@@ -23,7 +23,7 @@ func (c *PCSConfig) GetBaiduUserByUID(uid uint64) (*Baidu, error) {
 	return nil, fmt.Errorf("未找到uid 为 %d 的百度帐号", c.BaiduActiveUID)
 }
 
-// GetAllBaiduUser 返回所有已登录百度帐号
+// GetAllBaiduUser 格式输出所有已登录百度帐号
 func (c *PCSConfig) GetAllBaiduUser() string {
 	var s bytes.Buffer
 	s.WriteString("\nindex\t\tuid\t用户名\n")

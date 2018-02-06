@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	// CSTLocation CST Location
+	// CSTLocation 东八区时区
 	CSTLocation = time.FixedZone("CST", 8*3600)
 )
 
