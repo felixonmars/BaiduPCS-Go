@@ -6,11 +6,11 @@ import (
 )
 
 // FileDownload 下载网盘内文件
-func (p PCSApi) FileDownload(path string, downloadFunc func(downloadURL string, jar *cookiejar.Jar, savePath string) error) (err error) {
+func (p *PCSApi) FileDownload(path string, downloadFunc func(downloadURL string, jar *cookiejar.Jar, savePath string) error) (err error) {
 	// addItem 放在最后
-	p.addItem("file", "download", map[string]string{
+	p.setApi("file", "download", map[string]string{
 		"path": path,
 	})
 
-	return downloadFunc(p.url.String(), p.getJar(), pcsconfig.GetSavePath(path))
+	return downloadFunc(p.url.String(), p.client.Jar.(*cookiejar.Jar), pcsconfig.GetSavePath(path))
 }

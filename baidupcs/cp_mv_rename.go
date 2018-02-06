@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/bitly/go-simplejson"
-	"github.com/iikira/BaiduPCS-Go/requester"
 	"strings"
 )
 
@@ -20,7 +19,7 @@ type CpMvJSONList struct {
 }
 
 // Rename 重命名文件/目录
-func (p PCSApi) Rename(from, to string) (err error) {
+func (p *PCSApi) Rename(from, to string) (err error) {
 	return p.cpmvOp("rename", CpMvJSON{
 		From: from,
 		To:   to,
@@ -28,16 +27,16 @@ func (p PCSApi) Rename(from, to string) (err error) {
 }
 
 // Copy 批量拷贝文件/目录
-func (p PCSApi) Copy(cpmvJSON ...CpMvJSON) (err error) {
+func (p *PCSApi) Copy(cpmvJSON ...CpMvJSON) (err error) {
 	return p.cpmvOp("copy", cpmvJSON...)
 }
 
 // Move 批量移动文件/目录
-func (p PCSApi) Move(cpmvJSON ...CpMvJSON) (err error) {
+func (p *PCSApi) Move(cpmvJSON ...CpMvJSON) (err error) {
 	return p.cpmvOp("move", cpmvJSON...)
 }
 
-func (p PCSApi) cpmvOp(op string, cpmvJSON ...CpMvJSON) (err error) {
+func (p *PCSApi) cpmvOp(op string, cpmvJSON ...CpMvJSON) (err error) {
 	ejs, err := cpmvJSONEncode(cpmvJSON...)
 	if err != nil {
 		return err
@@ -48,32 +47,31 @@ func (p PCSApi) cpmvOp(op string, cpmvJSON ...CpMvJSON) (err error) {
 		method = "move"
 	}
 
-	p.addItem("file", method, map[string]string{
+	p.setApi("file", method, map[string]string{
 		"param": ejs,
 	})
 
-	h := requester.NewHTTPClient()
-	body, err := h.Fetch("POST", p.url.String(), nil, map[string]string{
-		"Cookie": "BDUSS=" + p.bduss,
-	})
+	resp, err := p.client.Req("POST", p.url.String(), nil, nil)
 	if err != nil {
 		return err
 	}
 
-	json, err := simplejson.NewJson(body)
+	defer resp.Body.Close()
+
+	json, err := simplejson.NewFromReader(resp.Body)
 	if err != nil {
 		return
 	}
 
-	code, err := CheckErr(json)
-	if err != nil {
+	code, msg := CheckErr(json)
+	if msg != "" {
 		switch op {
 		case "copy":
-			return fmt.Errorf("拷贝文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, err)
+			return fmt.Errorf("拷贝文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, msg)
 		case "move":
-			return fmt.Errorf("移动文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, err)
+			return fmt.Errorf("移动文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, msg)
 		case "rename":
-			return fmt.Errorf("重命名文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, err)
+			return fmt.Errorf("重命名文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, msg)
 		default:
 			panic("Unknown op: " + op)
 		}

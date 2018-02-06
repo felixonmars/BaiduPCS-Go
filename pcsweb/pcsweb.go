@@ -81,7 +81,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	files, err := pcscommand.GetPCSInfo().FileList(r.Form.Get("path"))
+	files, err := pcscommand.GetPCSInfo().FilesDirectoriesList(r.Form.Get("path"), false)
 	if err != nil {
 		fmt.Println(err)
 		return

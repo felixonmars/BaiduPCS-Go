@@ -3,33 +3,30 @@ package baidupcs
 import (
 	"fmt"
 	"github.com/bitly/go-simplejson"
-	"github.com/iikira/BaiduPCS-Go/requester"
 )
 
 // QuotaInfo 获取当前用户空间配额信息
-func (p PCSApi) QuotaInfo() (quota, used int64, err error) {
-	p.addItem("quota", "info")
+func (p *PCSApi) QuotaInfo() (quota, used int64, err error) {
+	p.setApi("quota", "info")
 
-	h := requester.NewHTTPClient()
-	body, err := h.Fetch("GET", p.url.String(), nil, map[string]string{
-		"Cookie": "BDUSS=" + p.bduss,
-	})
+	resp, err := p.client.Req("GET", p.url.String(), nil, nil)
 	if err != nil {
 		return
 	}
 
-	json, err := simplejson.NewJson(body)
+	defer resp.Body.Close()
+
+	json, err := simplejson.NewFromReader(resp.Body)
 	if err != nil {
 		return
 	}
 
-	code, err := CheckErr(json)
-	if err != nil {
-		return 0, 0, fmt.Errorf("获取当前用户空间配额信息, 错误代码: %d, 消息: %s", code, err)
+	code, msg := CheckErr(json)
+	if msg != "" {
+		return 0, 0, fmt.Errorf("获取当前用户空间配额信息, 错误代码: %d, 消息: %s", code, msg)
 	}
 
 	quota = json.Get("quota").MustInt64()
 	used = json.Get("used").MustInt64()
-
 	return
 }

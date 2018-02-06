@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/bitly/go-simplejson"
-	"github.com/iikira/BaiduPCS-Go/requester"
 )
 
 // Remove 批量删除文件/目录
-func (p PCSApi) Remove(paths ...string) (err error) {
+func (p *PCSApi) Remove(paths ...string) (err error) {
 	pathsData := struct {
 		List []struct {
 			Path string `json:"path"`
@@ -28,53 +27,51 @@ func (p PCSApi) Remove(paths ...string) (err error) {
 		return
 	}
 
-	p.addItem("file", "delete", map[string]string{
+	p.setApi("file", "delete", map[string]string{
 		"param": string(ej[:]),
 	})
 
-	h := requester.NewHTTPClient()
-	body, err := h.Fetch("POST", p.url.String(), nil, map[string]string{
-		"Cookie": "BDUSS=" + p.bduss,
-	})
+	resp, err := p.client.Req("POST", p.url.String(), nil, nil)
 	if err != nil {
 		return
 	}
 
-	json, err := simplejson.NewJson(body)
+	defer resp.Body.Close()
+
+	json, err := simplejson.NewFromReader(resp.Body)
 	if err != nil {
 		return
 	}
 
-	code, err := CheckErr(json)
-	if err != nil {
-		return fmt.Errorf("删除文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, err)
+	code, msg := CheckErr(json)
+	if msg != "" {
+		return fmt.Errorf("删除文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, msg)
 	}
 
 	return nil
 }
 
 // Mkdir 创建目录
-func (p PCSApi) Mkdir(path string) (err error) {
-	p.addItem("file", "mkdir", map[string]string{
+func (p *PCSApi) Mkdir(path string) (err error) {
+	p.setApi("file", "mkdir", map[string]string{
 		"path": path,
 	})
 
-	h := requester.NewHTTPClient()
-	body, err := h.Fetch("POST", p.url.String(), nil, map[string]string{
-		"Cookie": "BDUSS=" + p.bduss,
-	})
+	resp, err := p.client.Req("POST", p.url.String(), nil, nil)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	json, err := simplejson.NewFromReader(resp.Body)
 	if err != nil {
 		return
 	}
 
-	json, err := simplejson.NewJson(body)
-	if err != nil {
-		return
-	}
-
-	code, err := CheckErr(json)
-	if err != nil {
-		return fmt.Errorf("创建目录 遇到错误, 错误代码: %d, 消息: %s", code, err)
+	code, msg := CheckErr(json)
+	if msg != "" {
+		return fmt.Errorf("创建目录 遇到错误, 错误代码: %d, 消息: %s", code, msg)
 	}
 	return
 }

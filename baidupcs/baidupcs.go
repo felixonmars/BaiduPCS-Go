@@ -3,56 +3,62 @@ package baidupcs
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/requester"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 )
 
+// AppID 百度 PCS 应用 ID
+var AppID int
+
 // PCSApi 百度 PCS API 详情
 type PCSApi struct {
-	url   url.URL
-	bduss string
-
-	writed bool
+	url    *url.URL
+	writed bool                  // 是否已写入
+	client *requester.HTTPClient // http 客户端
 }
 
 // NewPCS 提供 百度BDUSS, 返回 PCSApi 指针对象
 func NewPCS(bduss string) *PCSApi {
-	return &PCSApi{
-		url: url.URL{
-			Scheme:   "http",
-			Host:     "pcs.baidu.com",
-			Path:     "/rest/2.0/pcs/",
-			RawQuery: fmt.Sprintf("app_id=%d", pcsconfig.Config.AppID),
+	client := requester.NewHTTPClient()
+
+	pcsURL := &url.URL{
+		Scheme: "http",
+		Host:   "pcs.baidu.com",
+	}
+
+	jar, _ := cookiejar.New(nil)
+	jar.SetCookies(pcsURL, []*http.Cookie{
+		&http.Cookie{
+			Name:  "BDUSS",
+			Value: bduss,
 		},
-		bduss:  bduss,
-		writed: false,
+	})
+	client.SetCookiejar(jar)
+
+	return &PCSApi{
+		url:    pcsURL,
+		client: client,
 	}
 }
 
-func (p *PCSApi) addItem(subPath, method string, param ...map[string]string) {
-	if p.writed {
-		panic("addItem: Already writed")
+func (p *PCSApi) setApi(subPath, method string, param ...map[string]string) {
+	p.url = &url.URL{
+		Scheme: "http",
+		Host:   "pcs.baidu.com",
+		Path:   "/rest/2.0/pcs/" + subPath,
 	}
-	p.url.Path += subPath
+
 	uv := p.url.Query()
+	uv.Set("app_id", fmt.Sprint(pcsconfig.Config.AppID))
 	uv.Set("method", method)
 	for k := range param {
 		for k2 := range param[k] {
 			uv.Set(k2, param[k][k2])
 		}
 	}
+
 	p.url.RawQuery = uv.Encode()
 	p.writed = true
-}
-
-func (p *PCSApi) getJar() *cookiejar.Jar {
-	jar, _ := cookiejar.New(nil)
-	jar.SetCookies(&p.url, []*http.Cookie{
-		&http.Cookie{
-			Name:  "BDUSS",
-			Value: p.bduss,
-		},
-	})
-	return jar
 }
