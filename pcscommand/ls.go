@@ -2,6 +2,7 @@ package pcscommand
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"os"
 	"text/template"
@@ -15,20 +16,15 @@ func RunLs(path string) {
 		return
 	}
 
-	files, err := info.FileList(path)
+	files, err := info.FilesDirectoriesList(path, false)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	if len(files) == 0 {
-		RunGetMeta(path)
-		return
-	}
-
 	for k := range files {
 		if files[k].Isdir {
-			files[k].Path += "/"
+			files[k].Filename += "/"
 		}
 	}
 
@@ -47,22 +43,36 @@ func RunLs(path string) {
 			},
 			"fdCount": func() string {
 				fN, dN := files.Count()
-				return fmt.Sprintf("文件总数: %d,\t目录总数: %d", fN, dN)
+				s := fmt.Sprintf("文件总数: %d,\t目录总数: %d", fN, dN)
+				if fN+dN >= 50 {
+					s += fmt.Sprintf(",\t当前目录: %s", path)
+				}
+				return s
 			},
 		},
-	).Parse(
-		`
+	).Parse(`
+------------------------------------------------------------------------------
+当前目录: {{.ThisPath}}
+----
 文件大小	创建日期		文件(目录)
-------------------------------------------------------------------------------{{range .}}
-{{convertFileSize .Size}}	{{timeFmt .Ctime}}	{{.Path}} {{end}}
+------------------------------------------------------------------------------
+{{range .FilesInfo}}
+{{convertFileSize .Size}}	{{timeFmt .Ctime}}	{{.Filename}}{{end}}
 ------------------------------------------------------------------------------
 总大小: {{totalSize}}	{{fdCount}}
+------------------------------------------------------------------------------
 `)
 	if err != nil {
 		panic(err)
 	}
 
-	err = tmpl.Execute(os.Stdout, files)
+	err = tmpl.Execute(os.Stdout, struct {
+		ThisPath  string
+		FilesInfo baidupcs.FileDirectoryList
+	}{
+		ThisPath:  path,
+		FilesInfo: files,
+	})
 	if err != nil {
 		panic(err)
 	}

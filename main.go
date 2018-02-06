@@ -334,8 +334,16 @@ func main() {
 					cli.ShowCommandHelp(c, c.Command.Name)
 					return nil
 				}
-				pcscommand.RunChangeDirectory(c.Args().Get(0))
+
+				pcscommand.RunChangeDirectory(c.Args().Get(0), c.Bool("l"))
+
 				return nil
+			},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "l",
+					Usage: "切换工作目录后自动列出工作目录下的文件和目录",
+				},
 			},
 		},
 		{

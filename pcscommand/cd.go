@@ -6,7 +6,7 @@ import (
 )
 
 // RunChangeDirectory 执行更改工作目录
-func RunChangeDirectory(path string) {
+func RunChangeDirectory(path string, isList bool) {
 	path, err := getAbsPath(path)
 	if err != nil {
 		fmt.Println(err)
@@ -28,4 +28,8 @@ func RunChangeDirectory(path string) {
 	pcsconfig.Config.Save()
 
 	fmt.Printf("改变工作目录: %s\n", path)
+
+	if isList {
+		RunLs(".")
+	}
 }
