@@ -2,6 +2,7 @@ package pcscommand
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/downloader"
 	"github.com/iikira/BaiduPCS-Go/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
@@ -88,18 +89,26 @@ func RunDownload(paths ...string) {
 
 		// 如果是一个目录, 递归下载该目录下的所有文件
 		if downloadInfo.Isdir {
-			fmt.Printf("即将下载目录: %s\n\n", path)
+			fmt.Printf("即将下载目录: %s, 获取目录信息中...\n\n", path)
 
-			fileN, directoryN, size := recurseFDCountTotalSize(path)
+			dirInfo, err := info.FilesDirectoriesList(path, true)
+			if err != nil {
+				fmt.Printf("发生错误, %s\n", err)
+				continue
+			}
+
+			fN, dN := dirInfo.Count()
 			statText := fmt.Sprintf("统计: 目录总数: %d, 文件总数: %d, 文件总大小: %s\n\n",
-				directoryN,
-				fileN,
-				pcsutil.ConvertFileSize(size),
+				fN, dN,
+				pcsutil.ConvertFileSize(dirInfo.TotalSize()),
 			)
 
-			fmt.Printf(statText)
-			downloadDirectory(path)
-			fmt.Printf("目录 %s 下载完成, %s", path, statText)
+			fmt.Printf(statText) // 输出统计信息
+
+			downloadDirectory(path, dirInfo) // 开始下载目录
+
+			fmt.Printf("目录 %s 下载完成, %s", path, statText) // 再次输出统计信息
+
 			continue
 		}
 
@@ -112,37 +121,36 @@ func RunDownload(paths ...string) {
 	}
 }
 
-func downloadDirectory(path string) {
-	di, err := info.FileList(path)
-	if err != nil {
-		fmt.Println("发生错误,", err)
-	}
-
+func downloadDirectory(pcspath string, dirInfo baidupcs.FileDirectoryList) {
 	// 遇到空目录, 则创建目录
-	if len(di) == 0 {
-		os.MkdirAll(pcsconfig.GetSavePath(path), 0777)
+	if len(dirInfo) == 0 {
+		os.MkdirAll(pcsconfig.GetSavePath(pcspath), 0777)
 		return
 	}
 
-	for k := range di {
-		if di[k].Isdir {
-			downloadDirectory(di[k].Path)
+	for k := range dirInfo {
+		if dirInfo[k] == nil {
 			continue
+		}
+
+		if dirInfo[k].Children != nil {
+			downloadDirectory(dirInfo[k].Path, dirInfo[k].Children)
 		}
 
 		// 如果文件存在, 跳过
-		if pcsconfig.CheckFileExist(di[k].Path) {
-			fmt.Printf("文件已存在 (自动跳过): %s\n\n", pcsconfig.GetSavePath(di[k].Path))
+		if pcsconfig.CheckFileExist(dirInfo[k].Path) {
+			fmt.Printf("文件已存在 (自动跳过): %s\n\n", pcsconfig.GetSavePath(dirInfo[k].Path))
 			continue
 		}
 
-		fmt.Println(di[k])
-		fmt.Printf("即将开始下载文件: %s\n\n", di[k].Filename)
+		fmt.Println(dirInfo[k])
+		fmt.Printf("即将开始下载文件: %s\n\n", dirInfo[k].Filename)
 
-		err = info.FileDownload(di[k].Path, downloadFunc)
+		err := info.FileDownload(dirInfo[k].Path, downloadFunc)
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println("------------------------------------------------------------")
+
+		fmt.Println(strings.Repeat("-", 60))
 	}
 }

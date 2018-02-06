@@ -3,22 +3,17 @@ package pcscommand
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/pcspath"
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	fpath "path"
 	"regexp"
 	"strings"
 )
 
 var (
-	patternRE = regexp.MustCompile(`[\[\]\*\?]`)
+	// 通配符仅对 ? 和 * 起作用
+	patternRE = regexp.MustCompile(`[\*\?]`)
 )
-
-// getAbsPathNoMatch 获取绝对路径, 不检测通配符
-func getAbsPathNoMatch(path string) string {
-	if !fpath.IsAbs(path) {
-		path = fpath.Dir(pcsconfig.ActiveBaiduUser.Workdir + "/" + path + "/")
-	}
-	return path
-}
 
 // getAllAbsPaths 获取所有绝对路径
 func getAllAbsPaths(paths ...string) (_paths []string, err error) {
@@ -32,96 +27,91 @@ func getAllAbsPaths(paths ...string) (_paths []string, err error) {
 	return
 }
 
-// getAbsPath 获取绝对路径, 获取错误将会返回 原路径 和 错误信息
+// getAbsPath 使用通配符获取绝对路径, 返回值为第一个匹配结果, 获取错误将会返回 原路径 和 错误信息
 func getAbsPath(path string) (string, error) {
 	p, err := parsePath(path)
 	if err != nil {
 		return path, err
 	}
 
-	if len(p) != 0 {
+	if len(p) >= 0 {
 		return p[0], nil
 	}
-	return "", fmt.Errorf("未找到路径")
+	return path, fmt.Errorf("未找到路径")
 }
 
-// parsePath 递归解析通配符
+// parsePath 解析通配符
 func parsePath(path string) (paths []string, err error) {
-	path = getAbsPathNoMatch(path)
+	pcsPath := pcspath.NewPCSPath(&pcsconfig.ActiveBaiduUser.Workdir, path)
+	path = pcsPath.AbsPathNoMatch()
 
 	if patternRE.MatchString(path) {
+		// 递归
 		paths = recurseParsePath(path)
 		if len(paths) == 0 {
 			return nil, fmt.Errorf("文件路径匹配失败, 请检查通配符")
 		}
+
 		return paths, nil
 	}
 
-	_, err = info.FilesDirectoriesMeta(path)
-	if err != nil {
-		return nil, err
-	}
 	paths = []string{path}
 	return
 }
 
+// recurseParsePath 递归解析通配符
 func recurseParsePath(path string) (paths []string) {
 	if !patternRE.MatchString(path) {
+		// 检测路径是否存在
+		_, err := info.FilesDirectoriesMeta(path)
+		if err != nil {
+			return nil
+		}
 		paths = []string{path}
 		return
 	}
 
-	if _, err := fpath.Match(path, ""); err != nil {
-		return nil
-	}
-
-	names := strings.Split(path, "/")
+	names := pcspath.SplitAll(path)
+	namesLen := len(names)
 
 	for k := range names {
-		if names[k] == "" || !patternRE.MatchString(names[k]) {
+		if !patternRE.MatchString(names[k]) {
 			continue
 		}
 
-		pfiles, err := info.FileList(strings.Join(names[:k], "/"))
+		pfiles, err := info.FilesDirectoriesList(strings.Join(names[:k], ""), false)
 		if err != nil {
 			fmt.Println(err)
 			return nil
 		}
 
+		// 多线程获取信息
+		wg := pcsutil.NewWaitGroup(10)
+
 		for k2 := range pfiles {
-			ok, _ := fpath.Match(names[k], pfiles[k2].Filename)
-			if ok {
-				if k >= len(names)-1 {
-					paths = append(paths, strings.Join(names[:k], "/")+"/"+pfiles[k2].Filename)
-				} else if pfiles[k2].Isdir {
-					paths = append(paths, recurseParsePath(pfiles[k2].Path+"/"+strings.Join(names[k+1:], "/"))...)
+			wg.AddDelta()
+			go func(k2 int) {
+				ok, _ := fpath.Match(pcspath.EscapeBracketOne(names[k]), "/"+pfiles[k2].Filename)
+				if ok {
+					if k >= namesLen-1 {
+						wg.Lock()
+						paths = append(paths, pfiles[k2].Path) // 插入数据
+						wg.Unlock()
+					} else if pfiles[k2].Isdir {
+						recPaths := recurseParsePath(pfiles[k2].Path + strings.Join(names[k+1:], ""))
+						wg.Lock()
+						paths = append(paths, recPaths...) // 插入数据
+						wg.Unlock()
+					}
 				}
-			}
+
+				wg.Done()
+			}(k2)
 		}
+
+		wg.Wait()
 		break
 	}
 
-	return
-}
-
-func recurseFDCountTotalSize(path string) (fileN, directoryN, size int64) {
-	di, err := info.FileList(path)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	for k := range di {
-		if di[k].Isdir {
-			f, d, s := recurseFDCountTotalSize(di[k].Path)
-			fileN += f
-			directoryN += d
-			size += s
-		}
-	}
-	f, d := di.Count()
-	s := di.TotalSize()
-	fileN += f
-	directoryN += d
-	size += s
 	return
 }
