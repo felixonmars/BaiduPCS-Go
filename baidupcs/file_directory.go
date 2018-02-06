@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/bitly/go-simplejson"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
-	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 )
 
 // FileDirectory 文件或目录的详细信息
@@ -18,36 +18,39 @@ type FileDirectory struct {
 	Size        int64  // 文件大小 (目录为0)
 	Isdir       bool   // 是否为目录
 	Ifhassubdir bool   // 是否含有子目录 (只对目录有效)
+
+	Parent   *FileDirectory    // 父目录信息
+	Children FileDirectoryList // 子目录信息
 }
 
 // FileDirectoryList FileDirectory 的 指针数组
 type FileDirectoryList []*FileDirectory
 
 // FilesDirectoriesMeta 获取单个文件/目录的元信息
-//
-// 可用信息: 是否是目录isdir 是否含有子目录ifhassubdir 修改时间mtime 文件大小size
-func (p PCSApi) FilesDirectoriesMeta(path string) (data *FileDirectory, err error) {
+func (p *PCSApi) FilesDirectoriesMeta(path string) (data *FileDirectory, err error) {
 	if path == "" {
 		path = "/"
 	}
 
-	p.addItem("file", "meta", map[string]string{
+	p.setApi("file", "meta", map[string]string{
 		"path": path,
 	})
 
-	h := requester.NewHTTPClient()
-	body, err := h.Fetch("GET", p.url.String(), nil, map[string]string{
-		"Cookie": "BDUSS=" + p.bduss,
-	})
+	resp, err := p.client.Req("GET", p.url.String(), nil, nil)
 	if err != nil {
 		return
 	}
 
-	json, err := simplejson.NewJson(body)
+	defer resp.Body.Close()
 
-	code, err := CheckErr(json)
+	json, err := simplejson.NewFromReader(resp.Body)
 	if err != nil {
-		err = fmt.Errorf("获取单个文件/目录的元信息遇到错误, 路径: %s, 错误代码: %d, 消息: %s", path, code, err)
+		return
+	}
+
+	code, msg := CheckErr(json)
+	if msg != "" {
+		err = fmt.Errorf("获取单个文件/目录的元信息遇到错误, 路径: %s, 错误代码: %d, 消息: %s", path, code, msg)
 		return
 	}
 
@@ -68,35 +71,34 @@ func (p PCSApi) FilesDirectoriesMeta(path string) (data *FileDirectory, err erro
 	return
 }
 
-// FileList 获取目录下的文件和目录列表
-func (p PCSApi) FileList(path string) (data FileDirectoryList, err error) {
+// FilesDirectoriesList 获取目录下的文件和目录列表, 可选是否递归
+func (p *PCSApi) FilesDirectoriesList(path string, recurse bool) (data FileDirectoryList, err error) {
 	if path == "" {
 		path = "/"
 	}
 
-	p.addItem("file", "list", map[string]string{
+	p.setApi("file", "list", map[string]string{
 		"path":  path,
 		"by":    "name",
-		"order": "asc",
+		"order": "asc", // 升序
 		"limit": "0-2147483647",
 	})
 
-	h := requester.NewHTTPClient()
-	body, err := h.Fetch("GET", p.url.String(), nil, map[string]string{
-		"Cookie": "BDUSS=" + p.bduss,
-	})
+	resp, err := p.client.Req("GET", p.url.String(), nil, nil)
 	if err != nil {
 		return
 	}
 
-	json, err := simplejson.NewJson(body)
+	defer resp.Body.Close()
+
+	json, err := simplejson.NewFromReader(resp.Body)
 	if err != nil {
 		return
 	}
 
-	code, err := CheckErr(json)
-	if err != nil {
-		return nil, fmt.Errorf("获取目录下的文件列表遇到错误, 路径: %s, 错误代码: %d, 消息: %s", path, code, err)
+	code, msg := CheckErr(json)
+	if msg != "" {
+		return nil, fmt.Errorf("获取目录下的文件列表遇到错误, 路径: %s, 错误代码: %d, 消息: %s", path, code, msg)
 	}
 
 	json = json.Get("list")
@@ -107,7 +109,8 @@ func (p PCSApi) FileList(path string) (data FileDirectoryList, err error) {
 		if fsID == 0 {
 			break
 		}
-		data = append(data, &FileDirectory{
+
+		sub := &FileDirectory{
 			FsID:     fsID,
 			Path:     index.Get("path").MustString(),
 			Filename: index.Get("server_filename").MustString(),
@@ -116,12 +119,22 @@ func (p PCSApi) FileList(path string) (data FileDirectoryList, err error) {
 			MD5:      index.Get("md5").MustString(),
 			Size:     index.Get("size").MustInt64(),
 			Isdir:    pcsutil.IntToBool(index.Get("isdir").MustInt()),
-		})
+		}
+
+		// 递归获取子目录信息
+		if recurse && sub.Isdir {
+			sub.Children, err = p.FilesDirectoriesList(sub.Path, true)
+			if err != nil {
+				pcsverbose.Verboseln(err)
+			}
+		}
+
+		data = append(data, sub)
 	}
 	return
 }
 
-func (f FileDirectory) String() string {
+func (f *FileDirectory) String() string {
 	if f.Isdir {
 		return fmt.Sprintf("类型: 目录 \n目录名称: %s \n目录路径: %s \nfs_id: %d \n创建日期: %s \n修改日期: %s \n是否含有子目录: %t\n",
 			f.Filename,
@@ -144,22 +157,60 @@ func (f FileDirectory) String() string {
 	)
 }
 
-// TotalSize 获取总文件大小
-func (f *FileDirectoryList) TotalSize() int64 {
+// TotalSize 获取目录下文件的总大小
+func (fl FileDirectoryList) TotalSize() int64 {
 	var size int64
-	for k := range *f {
-		size += (*f)[k].Size
+	for k := range fl {
+		if fl[k] == nil {
+			continue
+		}
+
+		size += fl[k].Size
+
+		// 递归获取
+		if fl[k].Children != nil {
+			size += fl[k].Children.TotalSize()
+		}
 	}
 	return size
 }
 
 // Count 获取文件总数和目录总数
-func (f *FileDirectoryList) Count() (fileN, directoryN int64) {
-	for k := range *f {
-		if (*f)[k].Isdir {
+func (fl FileDirectoryList) Count() (fileN, directoryN int64) {
+	for k := range fl {
+		if fl[k] == nil {
+			continue
+		}
+
+		if fl[k].Isdir {
 			directoryN++
 		} else {
 			fileN++
+		}
+
+		// 递归获取
+		if fl[k].Children != nil {
+			fN, dN := fl[k].Children.Count()
+			fileN += fN
+			directoryN += dN
+		}
+	}
+	return
+}
+
+// AllFilePaths 返回所有的网盘路径, 包括子目录
+func (fl FileDirectoryList) AllFilePaths() (pcspaths []string) {
+	fN, dN := fl.Count()
+	pcspaths = make([]string, fN+dN)
+	for k := range fl {
+		if fl[k] == nil {
+			continue
+		}
+
+		pcspaths = append(pcspaths, fl[k].Path)
+
+		if fl[k].Children != nil {
+			pcspaths = append(pcspaths, fl[k].Children.AllFilePaths()...)
 		}
 	}
 	return
