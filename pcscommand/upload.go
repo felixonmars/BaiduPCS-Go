@@ -91,7 +91,7 @@ func RunRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64
 		fmt.Printf("警告: 尝试秒传文件, 获取网盘路径 %s 错误, %s\n", targetPath, err)
 	}
 
-	// 检测文件是否存在
+	// 检测文件是否存在于网盘路径
 	// 很重要, 如果文件存在会直接覆盖!!! 即使是根目录!
 	_, err = info.FilesDirectoriesMeta(targetPath)
 	if err == nil {

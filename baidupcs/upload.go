@@ -50,7 +50,7 @@ func (p *PCSApi) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, len
 // Upload 上传单个文件
 func (p *PCSApi) Upload(targetPath string, uploadFunc func(uploadURL string, jar *cookiejar.Jar) error) (err error) {
 	if targetPath == "/" {
-		return fmt.Errorf("秒传文件 遇到错误, 保存路径不能是根目录\n")
+		return fmt.Errorf("上传文件 遇到错误, 保存路径不能是根目录\n")
 	}
 
 	p.setApi("file", "upload", map[string]string{

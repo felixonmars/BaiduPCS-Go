@@ -1,5 +1,9 @@
 name="BaiduPCS-Go"
-version="v3.2.1"
+version=$1
+
+if [ "$1" = "" ];then
+    version=v3.2.1
+fi
 
 output="out/"
 
@@ -8,8 +12,10 @@ Build() {
     export GOOS=$2 GOARCH=$3 GO386=sse2 CGO_ENABLED=0
     if [ $2 = "windows" ];then
         go build -ldflags "-s -w" -o "$output/$1/$name.exe"
+        RicePack $1 $name.exe
     else
         go build -ldflags "-s -w" -o "$output/$1/$name"
+        RicePack $1 $name
     fi
 
     Pack $1
@@ -23,20 +29,27 @@ ArmBuild() {
         ldid -S "$output/$1/$name"
     fi
 
+    RicePack $1 $name
     Pack $1
 }
 
 # 打包
 Pack() {
-    # rice 打包
-    rice -i github.com/iikira/BaiduPCS-Go/pcsweb append --exec "$output/$1/$name"
-
     mkdir "$output/$1/download"
     cp README.md "$output/$1"
 
     cd $output
     zip -q -r "$1.zip" "$1"
+
+    # 删除
+    rm -rf "$1"
+
     cd ..
+}
+
+# rice 打包
+RicePack() {
+    rice -i github.com/iikira/BaiduPCS-Go/pcsweb append --exec "$output/$1/$2"
 }
 
 # android

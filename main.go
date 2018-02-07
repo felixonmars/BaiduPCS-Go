@@ -21,6 +21,9 @@ import (
 )
 
 var (
+	// Version 版本号
+	Version = "v3.2.1"
+
 	historyFile = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
 	reloadFn    = func(c *cli.Context) error {
 		pcscommand.ReloadIfInConsole()
@@ -38,7 +41,7 @@ func init() {
 func main() {
 	app := cli.NewApp()
 	app.Name = "BaiduPCS-Go"
-	app.Version = "v3.2.1"
+	app.Version = Version
 	app.Author = "iikira/BaiduPCS-Go: https://github.com/iikira/BaiduPCS-Go"
 	app.Usage = "百度网盘工具箱 for " + runtime.GOOS + "/" + runtime.GOARCH
 	app.Description = `BaiduPCS-Go 使用 Go语言编写, 为操作百度网盘, 提供实用功能.
@@ -496,8 +499,8 @@ func main() {
 		{
 			Name:        "rapidupload",
 			Aliases:     []string{"ru"},
-			Usage:       "秒传文件",
-			UsageText:   fmt.Sprintf("%s rapidupload -length=<文件的大小> -md5=<文件的 md5 值> -slicemd5=<文件前 256KB 切片的 md5 值> -crc32=<文件的 crc32 值> <保存的网盘路径, 需包含文件名>", filepath.Base(os.Args[0])),
+			Usage:       "手动秒传文件",
+			UsageText:   fmt.Sprintf("%s rapidupload -length=<文件的大小> -md5=<文件的 md5 值> -slicemd5=<文件前 256KB 切片的 md5 值> -crc32=<文件的 crc32 值 (可选)> <保存的网盘路径, 需包含文件名>", filepath.Base(os.Args[0])),
 			Description: "上传的文件将会保存到 网盘的目标目录.\n   遇到同名文件将会自动覆盖! \n",
 			Category:    "网盘操作",
 			Before:      reloadFn,
@@ -532,9 +535,9 @@ func main() {
 		{
 			Name:        "sumfile",
 			Aliases:     []string{"sf"},
-			Usage:       "获取文件的信息",
+			Usage:       "获取文件的秒传信息",
 			UsageText:   fmt.Sprintf("%s sumfile <本地文件的路径>", filepath.Base(os.Args[0])),
-			Description: "获取文件的大小, md5, 前256KB切片的 md5, crc32, 可用于秒传文件",
+			Description: "获取文件的大小, md5, 前256KB切片的 md5, crc32, 可用于秒传文件.",
 			Category:    "其他",
 			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
