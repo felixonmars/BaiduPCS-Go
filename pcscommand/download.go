@@ -15,48 +15,44 @@ import (
 
 func downloadFunc(downloadURL string, jar *cookiejar.Jar, savePath string) error {
 	h := requester.NewHTTPClient()
-
 	h.SetCookiejar(jar)
-	h.SetKeepAlive(true)
+	h.SetKeepAlive(false)
 	h.SetTimeout(2 * time.Minute)
 
-	fileDl, err := downloader.NewFileDl(h, downloadURL, savePath)
+	downloader, err := downloader.NewDownloader(downloadURL, savePath, h)
 	if err != nil {
 		return err
 	}
 
-	pa := make(chan struct{})
-	exit := make(chan bool)
+	exitDownloadFunc := make(chan struct{})
+	exitOnStartFunc := make(chan struct{})
 
-	fileDl.OnStart(func() {
+	downloader.OnStart(func() {
 		t1 := time.Now()
 		for {
-			status := fileDl.GetStatus()
+			c := downloader.GetStatusChan()
 
 			select {
-			case <-exit:
+			case <-exitOnStartFunc:
 				return
-			default:
-				time.Sleep(time.Second * 1)
-				fmt.Printf("\r%v/%v %v/s time: %s %v",
-					pcsutil.ConvertFileSize(status.Downloaded, 2),
-					pcsutil.ConvertFileSize(fileDl.Size, 2),
-					pcsutil.ConvertFileSize(status.Speeds, 2),
+			case v := <-c:
+				fmt.Printf("\r%s/%s %s/s time: %s [DOWNLOADING]",
+					pcsutil.ConvertFileSize(v.Downloaded, 2),
+					pcsutil.ConvertFileSize(downloader.Size, 2),
+					pcsutil.ConvertFileSize(v.Speeds, 2),
 					time.Since(t1)/1000000*1000000,
-					"[DOWNLOADING]"+strings.Repeat(" ", 10),
 				)
-				os.Stdout.Sync()
 			}
 		}
 	})
 
-	fileDl.OnFinish(func() {
-		exit <- true
-		pa <- struct{}{}
+	downloader.OnFinish(func() {
+		exitOnStartFunc <- struct{}{}
+		exitDownloadFunc <- struct{}{}
 	})
 
-	fileDl.Start()
-	<-pa
+	downloader.StartDownload()
+	<-exitDownloadFunc
 	fmt.Printf("\n\n下载完成, 保存位置: %s\n\n", savePath)
 	return nil
 }

@@ -23,18 +23,15 @@
 package downloader
 
 import (
-	"fmt"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 var parallel int
 
-// FileDl 下载详情
-type FileDl struct {
+// Downloader 下载详情
+type Downloader struct {
 	URL  string   // 下载地址
 	Size int64    // 文件大小
 	File *os.File // 要写入的文件
@@ -47,20 +44,25 @@ type FileDl struct {
 	onFinish func()
 	onError  func(int, error)
 
-	status status // 下载状态
+	status DownloadStatus // 下载状态
 }
 
-// NewFileDl 创建新的文件下载
-//
-// 如果 size <= 0 则自动获取文件大小
-func NewFileDl(h *requester.HTTPClient, url, savePath string) (*FileDl, error) {
-	// 获取文件信息
-	request, err := http.NewRequest("HEAD", url, nil)
-	if err != nil {
-		return nil, err
+// NewDownloader 创建新的文件下载
+func NewDownloader(url, savePath string, h *requester.HTTPClient) (der *Downloader, err error) {
+	// 如果文件存在, 取消下载
+	if savePath != "" {
+		err = checkFileExist(savePath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	resp, err := h.Do(request)
+	if h == nil {
+		h = requester.NewHTTPClient()
+	}
+
+	// 获取文件信息
+	resp, err := h.Req("HEAD", url, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -75,12 +77,11 @@ func NewFileDl(h *requester.HTTPClient, url, savePath string) (*FileDl, error) {
 			// 找不到文件名, 凑合吧
 			savePath = filepath.Base(url)
 		}
-	}
 
-	// 如果文件存在, 取消下载
-	if _, err = os.Stat(savePath); err == nil {
-		if _, err = os.Stat(savePath + DownloadingFileSuffix); err != nil {
-			return nil, fmt.Errorf("文件已存在: %s", savePath)
+		// 如果文件存在, 取消下载
+		err = checkFileExist(savePath)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -110,36 +111,36 @@ func NewFileDl(h *requester.HTTPClient, url, savePath string) (*FileDl, error) {
 
 	resp.Body.Close()
 
-	f := &FileDl{
+	der = &Downloader{
 		URL:    url,
 		Size:   resp.ContentLength,
 		File:   file,
 		client: h,
 	}
 
-	return f, nil
+	return der, nil
 }
 
-// Start 开始下载
-func (f *FileDl) Start() {
+// StartDownload 开始下载
+func (der *Downloader) StartDownload() {
 	// 控制线程
 	parallel = maxParallel
 
 	// 如果文件不大, 或者线程数设置过高, 则调低线程数
-	if int64(maxParallel) > f.Size/int64(102400) {
-		parallel = int(f.Size/int64(102400)) + 1
+	if int64(maxParallel) > der.Size/int64(102400) {
+		parallel = int(der.Size/int64(102400)) + 1
 	}
 
-	blockSize := f.Size / int64(parallel)
+	blockSize := der.Size / int64(parallel)
 
 	// 如果 cache size 过高, 则调低
 	if int64(cacheSize) > blockSize {
 		cacheSize = int(blockSize)
 	}
 
-	if err := f.loadBreakPoint(); err != nil {
-		if f.Size <= 0 { // 获取不到文件的大小, 关闭多线程下载 (暂时)
-			f.BlockList = append(f.BlockList, Block{
+	if err := der.loadBreakPoint(); err != nil {
+		if der.Size <= 0 { // 获取不到文件的大小, 关闭多线程下载 (暂时)
+			der.BlockList = append(der.BlockList, Block{
 				Begin: 0,
 				End:   -1,
 			})
@@ -148,100 +149,73 @@ func (f *FileDl) Start() {
 			// 数据平均分配给各个线程
 			for i := 0; i < parallel; i++ {
 				var end = (int64(i) + 1) * blockSize
-				f.BlockList = append(f.BlockList, Block{
+				der.BlockList = append(der.BlockList, Block{
 					Begin: begin,
 					End:   end,
 				})
 				begin = end + 1
 			}
 			// 将余出数据分配给最后一个线程
-			f.BlockList[parallel-1].End += f.Size - f.BlockList[parallel-1].End
-			f.BlockList[parallel-1].Final = true
+			der.BlockList[parallel-1].End += der.Size - der.BlockList[parallel-1].End
+			der.BlockList[parallel-1].Final = true
 		}
 	}
 
 	go func() {
-		f.touch(f.onStart)
+		touch(der.onStart)
+
 		// 开始下载
-		err := f.download()
+		err := der.download()
 		if err != nil {
-			f.touchOnError(0, err)
+			der.touchOnError(0, err)
 			return
 		}
 	}()
 }
 
-func (f *FileDl) download() error {
-	f.startGetSpeeds() // 启用速度监测
-
-	for i := range f.BlockList {
+func (der *Downloader) download() error {
+	for i := range der.BlockList {
 		go func(id int) {
-			f.downloadBlockFn(id)
+			der.downloadBlockFn(id)
 		}(i)
 	}
-	<-f.blockMonitor()
+	<-der.blockMonitor()
 
-	f.touch(f.onFinish)
+	der.status.done = true
+	touch(der.onFinish)
 
-	f.File.Close()
+	der.File.Close()
 
 	return nil
 }
 
-func (f *FileDl) startGetSpeeds() {
-	go func() {
-		var old = f.status.Downloaded
-		for {
-			time.Sleep(time.Second * 1)
-			f.status.Speeds = f.status.Downloaded - old
-			old = f.status.Downloaded
-
-			if f.status.Speeds > f.status.MaxSpeeds {
-				f.status.MaxSpeeds = f.status.Speeds
-			}
-		}
-	}()
-}
-
-// GetStatus 获取下载统计信息
-func (f FileDl) GetStatus() status {
-	return f.status
-}
-
 // OnStart 任务开始时触发的事件
-func (f *FileDl) OnStart(fn func()) {
-	f.onStart = fn
+func (der *Downloader) OnStart(fn func()) {
+	der.onStart = fn
 }
 
 // OnFinish 任务完成时触发的事件
-func (f *FileDl) OnFinish(fn func()) {
-	f.onFinish = fn
+func (der *Downloader) OnFinish(fn func()) {
+	der.onFinish = fn
 }
 
 // OnError 任务出错时触发的事件
 //
 // errCode为错误码，errStr为错误描述
-func (f *FileDl) OnError(fn func(int, error)) {
-	f.onError = fn
+func (der *Downloader) OnError(fn func(int, error)) {
+	der.onError = fn
 }
 
 // 用于触发事件
-func (f FileDl) touch(fn func()) {
+func touch(fn func()) {
 	if fn != nil {
 		go fn()
 	}
 }
 
 // 触发Error事件
-func (f FileDl) touchOnError(errCode int, err error) {
-	if f.onError != nil {
-		go f.onError(errCode, err)
+func (der *Downloader) touchOnError(errCode int, err error) {
+	if der.onError != nil {
+		go der.onError(errCode, err)
 	}
-}
-
-// status 状态
-type status struct {
-	Downloaded int64 `json:"downloaded"`
-	Speeds     int64
-	MaxSpeeds  int64
 }

@@ -16,20 +16,20 @@ type downloadStatus struct {
 }
 
 // recordBreakPoint 保存下载断点到文件, 用于断点续传
-func (f *FileDl) recordBreakPoint() error {
+func (der *Downloader) recordBreakPoint() error {
 	byt, err := json.Marshal(downloadStatus{
-		Downloaded: f.status.Downloaded,
-		BlockList:  f.BlockList,
+		Downloaded: der.status.Downloaded,
+		BlockList:  der.BlockList,
 	})
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(f.File.Name()+DownloadingFileSuffix, byt, 0644)
+	return ioutil.WriteFile(der.File.Name()+DownloadingFileSuffix, byt, 0644)
 }
 
 // loadBreakPoint 尝试从文件载入下载断点
-func (f *FileDl) loadBreakPoint() error {
-	byt, err := ioutil.ReadFile(f.File.Name() + DownloadingFileSuffix)
+func (der *Downloader) loadBreakPoint() error {
+	byt, err := ioutil.ReadFile(der.File.Name() + DownloadingFileSuffix)
 	if err != nil {
 		return err
 	}
@@ -38,7 +38,7 @@ func (f *FileDl) loadBreakPoint() error {
 	if err != nil {
 		return err
 	}
-	f.status.Downloaded = downloadStatus.Downloaded
-	f.BlockList = downloadStatus.BlockList
+	der.status.Downloaded = downloadStatus.Downloaded
+	der.BlockList = downloadStatus.BlockList
 	return nil
 }

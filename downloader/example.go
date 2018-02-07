@@ -2,7 +2,6 @@ package downloader
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/requester"
 	"os"
 	"strings"
 	"time"
@@ -11,8 +10,7 @@ import (
 // DoDownload 简单网络下载器, 使用默认下载线程,
 // 通过调用 SetMaxThread 来修改默认下载线程
 func DoDownload(url string, fileName string) {
-	h := requester.NewHTTPClient()
-	fileDl, err := NewFileDl(h, url, fileName)
+	downloader, err := NewDownloader(url, fileName, nil)
 	if err != nil {
 		return
 	}
@@ -20,38 +18,35 @@ func DoDownload(url string, fileName string) {
 	done := make(chan struct{})
 
 	var exit = make(chan bool)
-	fileDl.OnStart(func() {
+	downloader.OnStart(func() {
 		fmt.Println("download started")
 		format := "\r%v/%v [%s] %v byte/s %v"
 
-	for_1:
 		for {
-			status := fileDl.GetStatus()
-			var i = float64(status.Downloaded) / float64(fileDl.Size) * 50
-			h := strings.Repeat("=", int(i)) + strings.Repeat(" ", 50-int(i))
+			c := downloader.GetStatusChan()
 
 			select {
 			case <-exit:
-				fmt.Printf(format, status.Downloaded, fileDl.Size, h, 0, "[FINISH]")
-				fmt.Println("\ndownload finished")
-				break for_1
-			default:
+				return
+			case v := <-c:
+				var i = float64(v.Downloaded) / float64(downloader.Size) * 50
+				h := strings.Repeat("=", int(i)) + strings.Repeat(" ", 50-int(i))
 				time.Sleep(time.Second * 1)
-				fmt.Printf(format, status.Downloaded, fileDl.Size, h, status.Speeds, "[DOWNLOADING]")
+				fmt.Printf(format, v.Downloaded, downloader.Size, h, v.Speeds, "[DOWNLOADING]")
 				os.Stdout.Sync()
 			}
 		}
 	})
 
-	fileDl.OnFinish(func() {
+	downloader.OnFinish(func() {
 		exit <- true
 		done <- struct{}{}
 	})
 
-	fileDl.OnError(func(errCode int, e error) {
+	downloader.OnError(func(errCode int, e error) {
 		err = e
 	})
 
-	fileDl.Start()
+	downloader.StartDownload()
 	<-done
 }

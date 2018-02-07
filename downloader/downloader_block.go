@@ -3,6 +3,7 @@ package downloader
 import (
 	"errors"
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"io"
 	"net/http"
 	"os"
@@ -98,12 +99,12 @@ func (bl *blockList) isAllDone() bool {
 }
 
 // downloadBlockFn 线程控制器
-func (f *FileDl) downloadBlockFn(id int) {
-	f.BlockList[id].running++
+func (der *Downloader) downloadBlockFn(id int) {
+	der.BlockList[id].running++
 for_2: // code 为 1 时, 不重试
 	// 其他的 code, 无限重试
 	for {
-		code, err := f.downloadBlock(id)
+		code, err := der.downloadBlock(id)
 
 		// 成功, 退出循环
 		if code == 0 || err == nil {
@@ -112,8 +113,11 @@ for_2: // code 为 1 时, 不重试
 
 		// 未成功(有错误), 继续
 		switch code {
-		case 1: //不重试
+		case -1: // 下载线程问题, 不重试
 			break for_2 // break for循环
+		case 1: // 不重试
+			pcsverbose.Verbosef("线程id: %d, 错误消息: %s\n", id, err)
+			break for_2
 		case 2:
 			// 连接太多, 可能会 connect refuse
 			time.Sleep(3 * time.Second)
@@ -123,36 +127,36 @@ for_2: // code 为 1 时, 不重试
 		}
 
 		// 重新下载
-		f.touchOnError(code, err)
+		der.touchOnError(code, err)
 	}
 
-	f.BlockList[id].running--
+	der.BlockList[id].running--
 }
 
 // downloadBlock 文件块下载
 // 根据 id 对于的 Block, 创建下载任务
-func (f *FileDl) downloadBlock(id int) (code int, err error) {
-	if f.BlockList[id].isDone() {
-		return 1, errors.New("already done")
+func (der *Downloader) downloadBlock(id int) (code int, err error) {
+	if der.BlockList[id].isDone() {
+		return -1, errors.New("thread is done")
 	}
 
-	request, err := http.NewRequest("GET", f.URL, nil)
+	request, err := http.NewRequest("GET", der.URL, nil)
 	if err != nil {
 		return 1, err
 	}
 
-	if f.BlockList[id].End != -1 {
+	if der.BlockList[id].End != -1 {
 		// 设置 Range 请求头, 给各线程分配内容
-		request.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", f.BlockList[id].Begin, f.BlockList[id].End))
+		request.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", der.BlockList[id].Begin, der.BlockList[id].End))
 	}
 
-	resp, err := f.client.Do(request) // 开始 http 请求
+	resp, err := der.client.Do(request) // 开始 http 请求
 	if err != nil {
 		return 2, err
 	}
 
 	// 检测 响应Body 的错误
-	if resp.ContentLength != f.BlockList[id].expectedContentLength() {
+	if resp.ContentLength != der.BlockList[id].expectedContentLength() {
 		return 3, fmt.Errorf("Content-Length is unexpected: %d", resp.ContentLength)
 	}
 
@@ -161,14 +165,14 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 		// do nothing, continue
 	case 416: //Requested Range Not Satisfiable
 		// 可能是线程在等待响应时, 已被其他线程重载
-		return 1, errors.New("thread already reload")
+		return -1, errors.New("thread reload, " + resp.Status)
 	case 403: // Forbidden
 		fallthrough
 	case 406: // Not Acceptable
 		// 暂时不知道出错的原因......
 		return 1, errors.New(resp.Status)
 	case 429, 509: // Too Many Requests
-		for f.status.Speeds >= f.status.MaxSpeeds/5 {
+		for der.status.Speeds >= der.status.MaxSpeeds/5 {
 			// 下载速度若不减慢, 循环就不会退出
 			time.Sleep(1 * time.Second)
 		}
@@ -186,21 +190,21 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 	)
 
 	for {
-		begin := f.BlockList[id].Begin // 用于下文比较
+		begin := der.BlockList[id].Begin // 用于下文比较
 
 		n, err = resp.Body.Read(buf)
 
 		bufSize := int64(n)
 		loopSize += n
-		if f.BlockList[id].End != -1 {
+		if der.BlockList[id].End != -1 {
 			// 检查下载的大小是否超出需要下载的大小
 			// 这里End+1是因为http的Range的end是包括在需要下载的数据内的
 			// 比如 0-1 的长度其实是2，所以这里end需要+1
-			needSize := f.BlockList[id].End + 1 - f.BlockList[id].Begin
+			needSize := der.BlockList[id].End + 1 - der.BlockList[id].Begin
 
 			// 已完成 (未雨绸缪)
 			if needSize <= 0 {
-				return 1, errors.New("already complete")
+				return -1, errors.New("thread already complete")
 			}
 
 			if bufSize > needSize {
@@ -220,17 +224,17 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 		}
 
 		// 将缓冲数据写入硬盘
-		f.File.WriteAt(buf[:n], begin)
+		der.File.WriteAt(buf[:n], begin)
 
 		// 两次 begin 不相等, 可能已有新的空闲线程参与
 		// 旧线程应该被结束
-		if begin != f.BlockList[id].Begin {
-			return 1, errors.New("thread already reload")
+		if begin != der.BlockList[id].Begin {
+			return -1, errors.New("thread already reload")
 		}
 
 		// 更新已下载大小
-		atomic.AddInt64(&f.status.Downloaded, bufSize)
-		atomic.AddInt64(&f.BlockList[id].Begin, int64(n))
+		atomic.AddInt64(&der.status.Downloaded, bufSize)
+		atomic.AddInt64(&der.BlockList[id].Begin, int64(n))
 
 		// reload connection (百度的限制)
 		if loopSize == 256*1024 {
@@ -239,7 +243,7 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 
 		if err != nil {
 			// 下载数据可能出现异常, 重新下载
-			if f.BlockList[id].End != -1 && !f.BlockList[id].isDone() {
+			if der.BlockList[id].End != -1 && !der.BlockList[id].isDone() {
 				return 11, fmt.Errorf("download failed, %s, reset", err)
 			}
 			switch {
@@ -257,44 +261,44 @@ func (f *FileDl) downloadBlock(id int) (code int, err error) {
 // blockMonitor 延迟监控各线程状态,
 // 管理空闲 (已完成下载任务) 的线程,
 // 清除长时间无响应, 和下载速度为 0 的线程
-func (f *FileDl) blockMonitor() <-chan struct{} {
+func (der *Downloader) blockMonitor() <-chan struct{} {
 	c := make(chan struct{})
 	go func() {
 		for {
 			// 下载完毕, 线程全部完成下载任务, 发送结束信号
-			if f.BlockList.isAllDone() {
+			if der.BlockList.isAllDone() {
 				c <- struct{}{}
-				os.Remove(f.File.Name() + DownloadingFileSuffix) // 删除断点信息
+				os.Remove(der.File.Name() + DownloadingFileSuffix) // 删除断点信息
 
 				// 修剪文件
-				// if f.Size <= 0 {
-				// 	fileInfo, err := f.File.Stat()
-				// 	if err == nil && fileInfo.Size() > f.status.Downloaded {
-				// 		f.File.Truncate(f.status.Downloaded)
+				// if der.Size <= 0 {
+				// 	fileInfo, err := der.File.Stat()
+				// 	if err == nil && fileInfo.Size() > der.status.Downloaded {
+				// 		der.File.Truncate(der.status.Downloaded)
 				// 	}
 				// } else {
-				// 	f.File.Truncate(f.Size)
+				// 	der.File.Truncate(der.Size)
 				// }
 
 				return
 			}
 
-			f.recordBreakPoint()
+			der.recordBreakPoint()
 
-			for k := range f.BlockList {
+			for k := range der.BlockList {
 				go func(k int) {
 					// 过滤已完成下载任务的线程
-					if f.BlockList[k].isDone() {
+					if der.BlockList[k].isDone() {
 						return
 					}
 
 					// 清除长时间无响应, 和下载速度为 0 的线程
 					go func(k int) {
 						// 设 old 速度监测点, 2 秒后检查速度有无变化
-						old := f.BlockList[k].Begin
+						old := der.BlockList[k].Begin
 						time.Sleep(2 * time.Second)
 						// 过滤 速度有变化, 或 2 秒内完成了下载任务 的线程
-						if old != f.BlockList[k].Begin || f.BlockList[k].isDone() {
+						if old != der.BlockList[k].Begin || der.BlockList[k].isDone() {
 							return
 						}
 
@@ -303,21 +307,21 @@ func (f *FileDl) blockMonitor() <-chan struct{} {
 						mu.Lock() // 加锁, 防止出现重复添加线程的状况 (实验阶段)
 
 						// 筛选空闲的线程
-						index, ok := f.BlockList.avaliableThread()
+						index, ok := der.BlockList.avaliableThread()
 						if !ok { // 没有空的
-							mu.Unlock() // ��锁
+							mu.Unlock() // 解锁
 							return
 						}
 
-						// 复制 旧线程 的信息到 空闲的��线程
-						f.BlockList[index].End = f.BlockList[k].End
-						f.BlockList[index].Begin = f.BlockList[k].Begin
-						f.BlockList[index].Final = f.BlockList[k].Final
+						// 复制 旧线程 的信息到 空闲的线程
+						der.BlockList[index].End = der.BlockList[k].End
+						der.BlockList[index].Begin = der.BlockList[k].Begin
+						der.BlockList[index].Final = der.BlockList[k].Final
 
-						f.BlockList[k].setDone() // 清除旧线程
+						der.BlockList[k].setDone() // 清除旧线程
 
-						mu.Unlock()              // 解锁
-						f.downloadBlockFn(index) // 添加任务
+						mu.Unlock()                // 解锁
+						der.downloadBlockFn(index) // 添加任务
 					}(k)
 
 					// 动态分配新线程
@@ -325,27 +329,30 @@ func (f *FileDl) blockMonitor() <-chan struct{} {
 						mu.Lock()
 
 						// 筛选空闲的线程
-						index, ok := f.BlockList.avaliableThread()
+						index, ok := der.BlockList.avaliableThread()
 						if !ok { // 没有空的
 							mu.Unlock() // 解锁
 							return
 						}
 
-						middle := (f.BlockList[k].Begin + f.BlockList[k].End) / 2
-						if f.BlockList[k].End-middle <= 102400 { // 如果线程剩余的下载量太少, 不分配空闲线程
+						middle := (der.BlockList[k].Begin + der.BlockList[k].End) / 2
+						if der.BlockList[k].End-middle <= 102400 { // 如果线程剩余的下载量太少, 不分配空闲线程
 							mu.Unlock()
 							return
 						}
 
 						// 折半
-						f.BlockList[index].Begin = middle + 1
-						f.BlockList[index].End = f.BlockList[k].End
-						f.BlockList[index].Final = f.BlockList[k].Final
-						f.BlockList[k].End = middle
+						der.BlockList[index].Begin = middle + 1
+						der.BlockList[index].End = der.BlockList[k].End
+						der.BlockList[index].Final = der.BlockList[k].Final
+						der.BlockList[k].End = middle
+
+						// End 已变, 取消 Final
+						der.BlockList[k].Final = false
 
 						mu.Unlock()
-						// fmt.Println(k, f.BlockList[k], "=>", index, f.BlockList[index])
-						f.downloadBlockFn(index)
+
+						der.downloadBlockFn(index)
 					}(k)
 
 				}(k)
