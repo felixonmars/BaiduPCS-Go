@@ -13,7 +13,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 
- 补充: 此 inplememt 基于 https://github.com/Bluek404/downloader
+ 补充: 此 implememt 基于 https://github.com/Bluek404/downloader
  针对百度网盘下载, 做出一些修改
 
  增加功能: 线程控制等
