@@ -2,6 +2,7 @@ package pcscommand
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 )
 
@@ -12,7 +13,8 @@ func RunGetQuota() {
 		fmt.Println(err)
 		return
 	}
-	fmt.Printf("总空间: %s, 已用空间: %s, 比率: %f%%\n",
+	fmt.Printf("用户名: %s, 总空间: %s, 已用空间: %s, 比率: %f%%\n",
+		pcsconfig.ActiveBaiduUser.Name,
 		pcsutil.ConvertFileSize(quota),
 		pcsutil.ConvertFileSize(used),
 		100*float64(used)/float64(quota),

@@ -98,7 +98,7 @@ func RunDownload(paths ...string) {
 			}
 
 			fN, dN := dirInfo.Count()
-			statText := fmt.Sprintf("统计: 目录总数: %d, 文件总数: %d, 文件总大小: %s\n\n",
+			statText := fmt.Sprintf("统计: 文件总数: %d, 目录总数: %d, 文件总大小: %s\n\n",
 				fN, dN,
 				pcsutil.ConvertFileSize(dirInfo.TotalSize()),
 			)
@@ -121,9 +121,11 @@ func RunDownload(paths ...string) {
 	}
 }
 
+// downloadDirectory 下载目录
 func downloadDirectory(pcspath string, dirInfo baidupcs.FileDirectoryList) {
 	// 遇到空目录, 则创建目录
 	if len(dirInfo) == 0 {
+		fmt.Printf("创建目录: %s\n\n", pcspath)
 		os.MkdirAll(pcsconfig.GetSavePath(pcspath), 0777)
 		return
 	}
@@ -139,11 +141,23 @@ func downloadDirectory(pcspath string, dirInfo baidupcs.FileDirectoryList) {
 
 		// 如果文件存在, 跳过
 		if pcsconfig.CheckFileExist(dirInfo[k].Path) {
-			fmt.Printf("文件已存在 (自动跳过): %s\n\n", pcsconfig.GetSavePath(dirInfo[k].Path))
+			t := "文件"
+			if dirInfo[k].Isdir {
+				t = "目录"
+			}
+
+			fmt.Printf(t+"已存在 (自动跳过): %s\n\n", pcsconfig.GetSavePath(dirInfo[k].Path))
+
 			continue
 		}
 
-		fmt.Println(dirInfo[k])
+		fmt.Println(dirInfo[k]) // 输出文件或目录的详情
+
+		if dirInfo[k].Isdir {
+			downloadDirectory(dirInfo[k].Path, nil)
+			continue
+		}
+
 		fmt.Printf("即将开始下载文件: %s\n\n", dirInfo[k].Filename)
 
 		err := info.FileDownload(dirInfo[k].Path, downloadFunc)
