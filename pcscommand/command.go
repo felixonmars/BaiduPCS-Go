@@ -21,7 +21,7 @@ func ReloadInfo() {
 	info = baidupcs.NewPCS(pcsconfig.ActiveBaiduUser.BDUSS)
 }
 
-// ReloadIfInConsole 程序在 Console 模式下才回重载配置
+// ReloadIfInConsole 程序在 Console 模式下才会重载配置
 func ReloadIfInConsole() {
 	if len(os.Args) == 1 {
 		ReloadInfo()
