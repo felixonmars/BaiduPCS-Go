@@ -494,6 +494,73 @@ func main() {
 			},
 		},
 		{
+			Name:        "rapidupload",
+			Aliases:     []string{"ru"},
+			Usage:       "秒传文件",
+			UsageText:   fmt.Sprintf("%s rapidupload -length=<文件的大小> -md5=<文件的 md5 值> -slicemd5=<文件前 256KB 切片的 md5 值> -crc32=<文件的 crc32 值> <保存的网盘路径, 需包含文件名>", filepath.Base(os.Args[0])),
+			Description: "上传的文件将会保存到 网盘的目标目录.\n   遇到同名文件将会自动覆盖! \n",
+			Category:    "网盘操作",
+			Before:      reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() <= 0 || !c.IsSet("md5") || !c.IsSet("slicemd5") || !c.IsSet("length") {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+
+				pcscommand.RunRapidUpload(c.Args().Get(0), c.String("md5"), c.String("slicemd5"), c.String("crc32"), c.Int64("length"))
+				return nil
+			},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "md5",
+					Usage: "文件的 md5 值",
+				},
+				cli.StringFlag{
+					Name:  "slicemd5",
+					Usage: "文件前 256KB 切片的 md5 值",
+				},
+				cli.StringFlag{
+					Name:  "crc32",
+					Usage: "文件的 crc32 值 (可选)",
+				},
+				cli.Int64Flag{
+					Name:  "length",
+					Usage: "文件的大小",
+				},
+			},
+		},
+		{
+			Name:        "sumfile",
+			Aliases:     []string{"sf"},
+			Usage:       "获取文件的信息",
+			UsageText:   fmt.Sprintf("%s sumfile <本地文件的路径>", filepath.Base(os.Args[0])),
+			Description: "获取文件的大小, md5, 前256KB切片的 md5, crc32, 可用于秒传文件",
+			Category:    "其他",
+			Before:      reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() <= 0 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+
+				lp, err := pcscommand.GetFileSum(c.Args().Get(0), false)
+				if err != nil {
+					fmt.Println(err)
+					return err
+				}
+
+				fmt.Printf(
+					"[%s] 大小: %d, md5: %x, 前256KB切片的 md5: %x, crc32: %d, \n秒传命令: %s rapidupload -length=%d -md5=%x -slicemd5=%x -crc32=%d .\n",
+					c.Args().Get(0),
+					lp.Length, lp.MD5, lp.SliceMD5, lp.CRC32,
+					os.Args[0],
+					lp.Length, lp.MD5, lp.SliceMD5, lp.CRC32,
+				)
+
+				return nil
+			},
+		},
+		{
 			Name:      "set",
 			Usage:     "设置配置",
 			UsageText: fmt.Sprintf("%s set OptionName Value", filepath.Base(os.Args[0])),

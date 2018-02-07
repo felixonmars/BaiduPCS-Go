@@ -8,12 +8,16 @@ import (
 )
 
 // RapidUpload 秒传文件
-func (p *PCSApi) RapidUpload(targetPath, md5, smd5, crc32 string, length int64) (err error) {
+func (p *PCSApi) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) (err error) {
+	if targetPath == "/" {
+		return fmt.Errorf("秒传文件 遇到错误, 保存路径不能是根目录\n")
+	}
+
 	p.setApi("file", "rapidupload", map[string]string{
 		"path":           targetPath,         // 上传文件的全路径名
 		"content-length": fmt.Sprint(length), // 待秒传的文件长度
-		"content-md5":    md5,                // 待秒传的文件的MD5
-		"slice-md5":      smd5,               // 待秒传的文件的MD5
+		"content-md5":    contentMD5,         // 待秒传的文件的MD5
+		"slice-md5":      sliceMD5,           // 待秒传的文件的MD5
 		"content-crc32":  crc32,              // 待秒传文件CRC32
 		"ondup":          "overwrite",        // overwrite: 表示覆盖同名文件; newcopy: 表示生成文件副本并进行重命名，命名规则为“文件名_日期.后缀”
 	})
@@ -45,6 +49,10 @@ func (p *PCSApi) RapidUpload(targetPath, md5, smd5, crc32 string, length int64) 
 
 // Upload 上传单个文件
 func (p *PCSApi) Upload(targetPath string, uploadFunc func(uploadURL string, jar *cookiejar.Jar) error) (err error) {
+	if targetPath == "/" {
+		return fmt.Errorf("秒传文件 遇到错误, 保存路径不能是根目录\n")
+	}
+
 	p.setApi("file", "upload", map[string]string{
 		"path":  targetPath,
 		"ondup": "overwrite",
