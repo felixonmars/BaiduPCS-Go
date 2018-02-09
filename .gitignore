@@ -20,6 +20,7 @@ out/
 # Others
 .Ds_Store
 *.txt
+captcha.png
 test/
 download/
 vendor/

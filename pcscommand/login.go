@@ -1,34 +1,68 @@
 package pcscommand
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/iikira/Baidu-Login"
-	"github.com/peterh/liner"
+	"github.com/iikira/BaiduPCS-Go/pcsliner"
+	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/iikira/passwd"
+	"image/png"
+	"io/ioutil"
+	"path/filepath"
 )
+
+func handleVerifyImg(imgURL string) (savePath string, err error) {
+	imgContents, err := requester.Fetch("GET", imgURL, nil, nil)
+	if err != nil {
+		return "", fmt.Errorf("获取验证码失败, 错误: %s\n", err)
+	}
+
+	_, err = png.Decode(bytes.NewReader(imgContents))
+	if err != nil {
+		return "", fmt.Errorf("验证码解析错误: %s\n", err)
+	}
+
+	savePath, err = filepath.Abs("captcha.png")
+	if err != nil {
+		return "", err
+	}
+
+	return savePath, ioutil.WriteFile(savePath, imgContents, 0777)
+}
 
 // RunLogin 登录百度帐号
 func RunLogin(username, password string) (bduss, ptoken, stoken string, err error) {
-	line := liner.NewLiner()
-	line.SetCtrlCAborts(true)
+	line := pcsliner.NewLiner()
 	defer line.Close()
 
 	bc := baidulogin.NewBaiduClinet()
 
 	if username == "" {
-		username, err = line.Prompt("请输入百度用户名(手机号/邮箱/用户名), 回车键提交 > ")
+		username, err = line.State.Prompt("请输入百度用户名(手机号/邮箱/用户名), 回车键提交 > ")
 		if err != nil {
 			return
 		}
 	}
+
+	line.Pause()
 
 	if password == "" {
-		password, err = line.PasswordPrompt("请输入密码(输入的密码无回显, 确认输入完成, 回车提交即可) > ")
+		var bp []byte
+
+		// liner 的 PasswordPrompt 不安全, 拆行之后密码就会显示出来了
+		bp, err = passwd.Get("请输入密码(输入的密码无回显, 确认输入完成, 回车提交即可) > ")
 		if err != nil {
 			return
 		}
+
+		password = string(bp)
 	}
 
+	line.Resume()
+
 	var vcode, vcodestr string
+
 for_1:
 	for i := 0; i < 10; i++ {
 		lj := bc.BaiduLogin(username, password, vcode, vcodestr)
@@ -44,7 +78,7 @@ for_1:
 
 			var verifyType string
 			for et := 0; et < 3; et++ {
-				verifyType, err = line.Prompt("请输入验证方式 (1 或 2) > ")
+				verifyType, err = line.State.Prompt("请输入验证方式 (1 或 2) > ")
 				if err != nil {
 					return
 				}
@@ -69,9 +103,9 @@ for_1:
 			fmt.Printf("消息: %s\n\n", msg)
 
 			for et := 0; et < 5; et++ {
-				vcode, err := line.Prompt("请输入接收到的验证码 > ")
+				vcode, err = line.State.Prompt("请输入接收到的验证码 > ")
 				if err != nil {
-					return "", "", "", err
+					return
 				}
 
 				nlj := bc.VerifyCode(verifyType, lj.Data.Token, vcode, lj.Data.U)
@@ -90,11 +124,24 @@ for_1:
 				err = fmt.Errorf("未找到codeString")
 				return
 			}
-			verifyImgURL := "https://wappass.baidu.com/cgi-bin/genimage?" + vcodestr
-			fmt.Printf("打开以下的网址, 以查看验证码\n")
+
+			// 图片验证码
+			var (
+				verifyImgURL = "https://wappass.baidu.com/cgi-bin/genimage?" + vcodestr
+				savePath     string
+			)
+
+			savePath, err = handleVerifyImg(verifyImgURL)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				fmt.Printf("打开以下路径, 以查看验证码\n%s\n\n", savePath)
+			}
+
+			fmt.Printf("或者打开以下的网址, 以查看验证码\n")
 			fmt.Printf("%s\n\n", verifyImgURL)
 
-			vcode, err = line.Prompt("请输入验证码 > ")
+			vcode, err = line.State.Prompt("请输入验证码 > ")
 			if err != nil {
 				return
 			}
