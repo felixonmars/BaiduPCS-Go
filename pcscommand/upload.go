@@ -196,7 +196,9 @@ func RunUpload(localPaths []string, targetPath string) {
 					// do nothing.
 				}
 
-				fmt.Printf("检测秒传中, 请稍候...\n")
+				if localPathInfo.Length >= 128*pcsutil.MB {
+					fmt.Printf("检测秒传中, 请稍候...\n")
+				}
 
 				localPathInfo.sliceMD5Sum()
 
@@ -294,15 +296,18 @@ func GetFileSum(localPath string, sliceMD5Only bool) (lp *LocalPathInfo, err err
 		return nil, err
 	}
 
-	info, err := file.Stat()
+	fileStat, err := file.Stat()
 	if err != nil {
 		return nil, err
+	}
+	if fileStat.IsDir() {
+		return nil, fmt.Errorf("sum %s: is a directory", localPath)
 	}
 
 	lp = &LocalPathInfo{
 		path:   localPath,
 		file:   file,
-		Length: info.Size(),
+		Length: fileStat.Size(),
 	}
 
 	lp.sliceMD5Sum()

@@ -27,13 +27,13 @@ func (dc dirCache) Get(path string) *baidupcs.FileDirectoryList {
 }
 
 // FindFileDirectory 网盘目录缓存内查找文件
-func (dc dirCache) FindFileDirectory(path, name string) *baidupcs.FileDirectory {
+func (dc dirCache) FindFileDirectory(path, filename string) *baidupcs.FileDirectory {
 	fdl := dc.Get(path)
 	if fdl == nil {
 		return nil
 	}
 	for _, fd := range *fdl {
-		if fd.Filename == name {
+		if fd.Filename == filename {
 			return fd
 		}
 	}
