@@ -64,7 +64,6 @@ func (p *PCSApi) Upload(targetPath string, uploadFunc func(uploadURL string, jar
 // UploadTmpFile 分片上传—文件分片及上传
 func (p *PCSApi) UploadTmpFile(targetPath string, uploadFunc func(uploadURL string, jar *cookiejar.Jar) error) (err error) {
 	p.setApi("file", "upload", map[string]string{
-		"path": targetPath,
 		"type": "tmpfile",
 	})
 
@@ -73,6 +72,10 @@ func (p *PCSApi) UploadTmpFile(targetPath string, uploadFunc func(uploadURL stri
 
 // UploadCreateSuperFile 分片上传—合并分片文件
 func (p *PCSApi) UploadCreateSuperFile(targetPath string, blockList ...string) (err error) {
+	if targetPath == "/" {
+		return fmt.Errorf("分片上传—合并分片文件 遇到错误, 保存路径不能是根目录\n")
+	}
+
 	bl := struct {
 		BlockList []string `json:"block_list"`
 	}{

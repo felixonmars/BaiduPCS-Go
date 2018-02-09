@@ -9,8 +9,9 @@ import (
 
 // GetBaiduUserByUID 通过 百度uid 获取 Baidu 指针对象
 func (c *PCSConfig) GetBaiduUserByUID(uid uint64) (*Baidu, error) {
+	// 未设置任何百度帐号
 	if c.BaiduActiveUID == 0 {
-		return nil, fmt.Errorf("初始化状态, 请设置百度帐号")
+		return new(Baidu), nil
 	}
 
 	for k := range c.BaiduUserList {
@@ -18,6 +19,7 @@ func (c *PCSConfig) GetBaiduUserByUID(uid uint64) (*Baidu, error) {
 			return c.BaiduUserList[k], nil
 		}
 	}
+
 	return nil, fmt.Errorf("未找到uid 为 %d 的百度帐号", c.BaiduActiveUID)
 }
 

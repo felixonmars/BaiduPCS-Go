@@ -6,12 +6,13 @@ import (
 	"github.com/iikira/Baidu-Login"
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/passwd"
+	"github.com/mars9/passwd"
 	"image/png"
 	"io/ioutil"
 	"path/filepath"
 )
 
+// handleVerifyImg 处理验证码, 下载到本地
 func handleVerifyImg(imgURL string) (savePath string, err error) {
 	imgContents, err := requester.Fetch("GET", imgURL, nil, nil)
 	if err != nil {
