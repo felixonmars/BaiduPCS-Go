@@ -34,7 +34,7 @@ func RunRemove(paths ...string) {
 
 // RunMkdir 执行 创建目录
 func RunMkdir(path string) {
-	pcsPath := pcspath.NewPCSPath(&pcsconfig.ActiveBaiduUser.Workdir, path)
+	pcsPath := pcspath.NewPCSPath(&pcsconfig.Config.MustGetActive().Workdir, path)
 
 	err := info.Mkdir(pcsPath.AbsPathNoMatch())
 	if err != nil {

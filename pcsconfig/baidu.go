@@ -1,7 +1,10 @@
 package pcsconfig
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/iikira/baidu-tools/tieba"
+	"strings"
 )
 
 // Baidu 百度帐号对象
@@ -18,9 +21,12 @@ type Baidu struct {
 	Workdir string `json:"workdir"` // 工作目录
 }
 
-// NewWithBDUSS 检测BDUSS有效性, 同时获取百度详细信息 (无法获取 ptoken 和 stoken)
-func NewWithBDUSS(bduss string) (b *Baidu, err error) {
-	t, err := tieba.NewWithBDUSS(bduss)
+// BaiduUserList 百度帐号列表
+type BaiduUserList []*Baidu
+
+// NewUserInfoByBDUSS 检测BDUSS有效性, 同时获取百度详细信息 (无法获取 ptoken 和 stoken)
+func NewUserInfoByBDUSS(bduss string) (b *Baidu, err error) {
+	t, err := tieba.NewUserInfoByBDUSS(bduss)
 	if err != nil {
 		return nil, err
 	}
@@ -34,4 +40,17 @@ func NewWithBDUSS(bduss string) (b *Baidu, err error) {
 		Workdir: "/",
 	}
 	return b, nil
+}
+
+// String 格式输出百度帐号列表
+func (bl *BaiduUserList) String() string {
+	var s bytes.Buffer
+	s.WriteString("\nindex\t\tuid\t用户名\n")
+	s.WriteString(strings.Repeat("-", 50) + "\n")
+
+	for k, baiduInfo := range *bl {
+		s.WriteString(fmt.Sprintf("%4d|", k) + "\t" + fmt.Sprintf("%11d|", baiduInfo.UID) + "\t" + baiduInfo.Name + "\n")
+	}
+	s.WriteRune('\n')
+	return s.String()
 }

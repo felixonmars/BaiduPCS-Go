@@ -24,7 +24,7 @@ func RunChangeDirectory(path string, isList bool) {
 		return
 	}
 
-	pcsconfig.ActiveBaiduUser.Workdir = path
+	pcsconfig.Config.MustGetActive().Workdir = path
 	pcsconfig.Config.Save()
 
 	fmt.Printf("改变工作目录: %s\n", path)

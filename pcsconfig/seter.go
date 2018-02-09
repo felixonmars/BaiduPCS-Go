@@ -8,7 +8,7 @@ import (
 
 // SetBDUSS 设置百度 bduss, ptoken, stoken 并保存
 func (c *PCSConfig) SetBDUSS(bduss, ptoken, stoken string) (username string, err error) {
-	b, err := NewWithBDUSS(bduss)
+	b, err := NewUserInfoByBDUSS(bduss)
 	if err != nil {
 		return "", err
 	}
@@ -29,7 +29,7 @@ func setUserAgent(ua string) {
 	requester.UserAgent = ua
 }
 
-func (c *PCSConfig) Set(key, value string) (err error) {
+func (c *PCSConfig) SetConfig(key, value string) (err error) {
 	switch key {
 	case "appid", "cache_size", "max_parallel":
 		intVal, err := strconv.Atoi(value)
@@ -45,7 +45,7 @@ func (c *PCSConfig) Set(key, value string) (err error) {
 
 		switch key {
 		case "appid":
-			c.AppID = intVal
+			c.AppID = uint(intVal)
 		case "cache_size":
 			c.CacheSize = intVal
 		case "max_parallel":

@@ -33,7 +33,7 @@ func runCpMvOp(op string, paths ...string) {
 		return
 	}
 
-	pcsPath := pcspath.NewPCSPath(&pcsconfig.ActiveBaiduUser.Workdir, to)
+	pcsPath := pcspath.NewPCSPath(&pcsconfig.Config.MustGetActive().Workdir, to)
 	to = pcsPath.AbsPathNoMatch()
 
 	// 尝试匹配

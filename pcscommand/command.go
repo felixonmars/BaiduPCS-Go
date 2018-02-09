@@ -18,7 +18,7 @@ func GetPCSInfo() *baidupcs.PCSApi {
 // ReloadInfo 重载配置
 func ReloadInfo() {
 	pcsconfig.Reload()
-	info = baidupcs.NewPCS(pcsconfig.ActiveBaiduUser.BDUSS)
+	info = baidupcs.NewPCS(pcsconfig.Config.MustGetActive().BDUSS)
 }
 
 // ReloadIfInConsole 程序在 Console 模式下才会重载配置

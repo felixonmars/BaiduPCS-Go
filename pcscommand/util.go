@@ -42,7 +42,7 @@ func getAbsPath(path string) (string, error) {
 
 // parsePath 解析通配符
 func parsePath(path string) (paths []string, err error) {
-	pcsPath := pcspath.NewPCSPath(&pcsconfig.ActiveBaiduUser.Workdir, path)
+	pcsPath := pcspath.NewPCSPath(&pcsconfig.Config.MustGetActive().Workdir, path)
 	path = pcsPath.AbsPathNoMatch()
 
 	if patternRE.MatchString(path) {
