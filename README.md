@@ -1,4 +1,4 @@
-# BaiduPCS-Go 百度网盘工具箱 v3.2.1
+# BaiduPCS-Go 百度网盘工具箱 v3.2.2
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
 
 # 特色
@@ -32,13 +32,13 @@ Go语言程序, 可直接下载使用, [点此查看发布页面 / 下载汇总]
 
 如果未带任何参数运行程序, 程序将会进入独有的 console 模式, 可直接运行相关命令.
 
-console 模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`
+console 模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`, 如果登录了百度帐号则为 `BaiduPCS-Go:<工作目录> <百度ID>$ `
 
 程序会提供相关命令的使用说明.
 
 ## Windows
 
-程序应在 命令提示符 (Command Prompt) 或 PowerShell 中运行.
+程序应在 命令提示符 (Command Prompt) 或 PowerShell 中运行, 在 mintty (例如: GitBash) 可能会有显示问题.
 
 也可直接双击程序运行, 具体使用方法请参见 [命令列表及说明](#命令列表及说明) 和 [例子](#举一些例子).
 
@@ -50,11 +50,13 @@ console 模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`
 
 ## Android / iOS
 
+> Android / iOS 移动设备操作比较麻烦, 本人不建议在移动设备上使用本程序.
+
 安卓, 建议使用软件 [Termux](https://termux.com) 或 [NeoTerm](https://github.com/NeoTerm/NeoTerm/releases) 或 终端模拟器, 以提供终端环境.
 
 示例: [Android 运行本 BaiduPCS-Go 程序参考示例](https://github.com/iikira/BaiduPCS-Go/wiki/Android-运行本-BaiduPCS-Go-程序参考示例), 有兴趣的可以参考一下.
 
-苹果iOS, 需要越狱, 在 Cydia 搜索下载并安装 MobileTerminal, 以提供终端环境. MobileTerminal 功能有限, 本人建议 设备安装 openssh 后使用 ssh 控制苹果设备, sftp 传输文件.
+苹果iOS, 需要越狱, 在 Cydia 搜索下载并安装 MobileTerminal, 或者其他提供终端环境的软件.
 
 具体使用方法请参见 [命令列表及说明](#命令列表及说明) 和 [例子](#举一些例子).
 
@@ -64,7 +66,9 @@ console 模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`
 
 命令的前缀 `BaiduPCS-Go` 为指向程序运行的全路径名 (ARGv 的第一个参数)
 
-未带任何其他参数运行程序, 则程序进入 console 模式, 前缀为 `BaiduPCS-Go >`, 则运行以下命令时, 要把命令的前缀 `BaiduPCS-Go` 去掉!
+直接运行程序时, 未带任何其他参数, 则程序进入 console 模式, 运行以下命令时, 要把命令的前缀 `BaiduPCS-Go` 去掉!
+
+console 模式已支持按tab键自动补全命令, 后续会添加更多的自动补全规则.
 
 ## 登录百度帐号
 
@@ -107,15 +111,12 @@ BaiduPCS-Go su
 请输入要切换帐号的 index 值 > 
 ```
 
-## 退出已登录的百度帐号
-```
-BaiduPCS-Go logout -uid=12345678
-```
+## 退出当前登录的百度帐号
 ```
 BaiduPCS-Go logout
-
-请输入要退出帐号的 index 值 > 
 ```
+
+程序会进一步确认退出帐号, 防止误操作.
 
 ## 获取配额, 即获取网盘总空间, 和已使用空间
 ```
@@ -127,11 +128,18 @@ BaiduPCS-Go quota
 BaiduPCS-Go cd <目录>
 ```
 
+### 切换工作目录后自动列出工作目录下的文件和目录
+```
+BaiduPCS-Go cd -l <目录>
+```
+
 #### 例子
 ```
 # 切换 /我的资源 工作目录
 BaiduPCS-Go cd /我的资源
-BaiduPCS-Go cd 我的资源
+
+# 切换 /我的资源 工作目录, 并自动列出 /我的资源 下的文件和目录
+BaiduPCS-Go cd -l 我的资源
 
 # 使用通配符
 BaiduPCS-Go cd /我的*
@@ -185,8 +193,9 @@ BaiduPCS-Go d <网盘文件或目录的路径1> <文件或目录2> <文件或目
 
 #### 例子
 ```
-# 设置保存目录, 保存到 D:\Downloads (注意两个反斜杠 "\" !!)
-BaiduPCS-Go set savedir D:\\Downloads
+# 设置保存目录, 保存到 D:\Downloads
+# 注意区别反斜杠 "\" 和 斜杠 "/" !!!
+BaiduPCS-Go set savedir D:/Downloads
 
 # 下载 /我的资源/1.mp4
 BaiduPCS-Go d /我的资源/1.mp4
@@ -209,13 +218,41 @@ BaiduPCS-Go u <本地文件或目录的路径1> <文件或目录2> <文件或目
 ```
 # 将本地的 C:\Users\Administrator\Desktop\1.mp4 上传到网盘 /视频 目录
 # 注意区别反斜杠 "\" 和 斜杠 "/" !!!
-BaiduPCS-Go upload C:\\Users\\Administrator\\Desktop\\1.mp4 /视频
+BaiduPCS-Go upload C:/Users/Administrator/Desktop/1.mp4 /视频
 
 # 将本地的 C:\Users\Administrator\Desktop\1.mp4 和 C:\Users\Administrator\Desktop\2.mp4 上传到网盘 /视频 目录
-BaiduPCS-Go upload C:\\Users\\Administrator\\Desktop\\1.mp4 C:\\Users\\Administrator\\Desktop\\2.mp4 /视频
+BaiduPCS-Go upload C:/Users/Administrator/Desktop/1.mp4 C:/Users/Administrator/Desktop/2.mp4 /视频
 
 # 将本地的 C:\Users\Administrator\Desktop 整个目录上传到网盘 /视频 目录
-BaiduPCS-Go upload C:\\Users\\Administrator\\Desktop /视频
+BaiduPCS-Go upload C:/Users/Administrator/Desktop /视频
+```
+
+## 手动秒传文件
+```
+BaiduPCS-Go rapidupload -length=<文件的大小> -md5=<文件的 md5 值> -slicemd5=<文件前 256KB 切片的 md5 值> -crc32=<文件的 crc32 值 (可选)> <保存的网盘路径, 需包含文件名>
+BaiduPCS-Go ru -length=<文件的大小> -md5=<文件的 md5 值> -slicemd5=<文件前 256KB 切片的 md5 值> -crc32=<文件的 crc32 值 (可选)> <保存的网盘路径, 需包含文件名>
+```
+
+注意: 使用此功能秒传文件, 前提是知道文件的大小, md5, 前256KB切片的 md5, crc32 (可选), 且百度网盘中存在一模一样的文件.
+
+#### 例子:
+```
+# 如果秒传成功, 则保存到网盘路径 /test
+BaiduPCS-Go rapidupload -length=56276137 -md5=fbe082d80e90f90f0fb1f94adbbcfa7f -slicemd5=38c6a75b0ec4499271d4ea38a667ab61 -crc32=314332359 /test
+```
+
+## 获取文件的秒传信息
+```
+BaiduPCS-Go sumfile <本地文件的路径>
+BaiduPCS-Go sf <本地文件的路径>
+```
+
+获取文件的大小, md5, 前256KB切片的 md5, crc32, 可用于秒传文件.
+
+#### 例子:
+```
+# 获取 C:\Users\Administrator\Desktop\1.mp4 的秒传信息
+BaiduPCS-Go sumfile C:/Users/Administrator/Desktop/1.mp4
 ```
 
 ## 创建目录
@@ -297,7 +334,7 @@ BaiduPCS-Go set OptionName Value
 BaiduPCS-Go set -h
 
 # 设置下载文件的储存目录
-BaiduPCS-Go set savedir D:\\Downloads
+BaiduPCS-Go set savedir D:/Downloads
 
 # 设置下载最大并发量为 150
 BaiduPCS-Go set max_parallel 150

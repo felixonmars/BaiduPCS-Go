@@ -76,15 +76,15 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/iikira/passwd"
-  packages = ["."]
-  revision = "a69f575c2450d8e5d2f6b308de8b2a381cbfe510"
-
-[[projects]]
-  branch = "master"
   name = "github.com/kardianos/osext"
   packages = ["."]
   revision = "ae77be60afb1dcacde03767a8c37337fad28ac14"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/mars9/passwd"
+  packages = ["."]
+  revision = "0f6332435c864c4f415d566d2e5c747e51c7c24f"
 
 [[projects]]
   branch = "master"
@@ -101,6 +101,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c9c3383103fa03be7ee0ac56678285248d70c46cc207c591390c7831557d52c4"
+  inputs-digest = "397819a14fff4f1a24dba6e37feea8690668b5c17427fc536b756f7fd92bd56b"
   solver-name = "gps-cdcl"
   solver-version = 1

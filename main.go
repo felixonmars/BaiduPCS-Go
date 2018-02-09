@@ -24,7 +24,7 @@ import (
 
 var (
 	// Version 版本号
-	Version = "v3.2.1"
+	Version = "v3.2.2"
 
 	historyFile = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
 	reloadFn    = func(c *cli.Context) error {
@@ -86,6 +86,7 @@ func main() {
 		line.SetHistory(historyFile)
 		defer line.Close()
 
+		// tab 自动补全命令
 		line.SetMainCompleter(func(line string) (s []string) {
 			cmds := cli.CommandsByName(app.Commands)
 
@@ -105,8 +106,10 @@ func main() {
 			)
 
 			if activeBaiduUser.Name != "" {
+				// 格式: BaiduPCS-Go:<工作目录> <百度ID>$
 				prompt = app.Name + ":" + filepath.Base(activeBaiduUser.Workdir) + " " + activeBaiduUser.Name + "$ "
 			} else {
+				// BaiduPCS-Go >
 				prompt = app.Name + " > "
 			}
 
@@ -237,12 +240,15 @@ func main() {
 				} else if c.NArg() == 0 {
 					cli.HandleAction(app.Command("loglist").Action, c)
 
-					line := liner.NewLiner()
-					line.SetCtrlCAborts(true)
-					defer line.Close()
-					nLine, _ := line.Prompt("请输入要切换帐号的 index 值 > ")
+					// 提示输入 index
+					var index string
+					fmt.Printf("输入要切换帐号的 index 值 > ")
+					_, err := fmt.Scanln(&index)
+					if err != nil {
+						return nil
+					}
 
-					if n, err := strconv.Atoi(nLine); err == nil && n >= 0 && n < len(pcsconfig.Config.BaiduUserList) {
+					if n, err := strconv.Atoi(index); err == nil && n >= 0 && n < len(pcsconfig.Config.BaiduUserList) {
 						uid = pcsconfig.Config.BaiduUserList[n].UID
 					} else {
 						fmt.Println("切换用户失败, 请检查 index 值是否正确")
@@ -273,13 +279,8 @@ func main() {
 			},
 		},
 		{
-			Name:  "logout",
-			Usage: "退出已登录的百度帐号",
-			Description: fmt.Sprintf("%s\n   示例:\n\n      %s\n      %s\n",
-				"如果运行该条命令没有提供参数, 程序将会列出所有的百度帐号, 供选择退出",
-				filepath.Base(os.Args[0])+" logout --uid=123456789",
-				filepath.Base(os.Args[0])+" logout",
-			),
+			Name:     "logout",
+			Usage:    "退出当前登录的百度帐号",
 			Category: "百度帐号操作",
 			Before:   reloadFn,
 			After:    reloadFn,
@@ -289,53 +290,24 @@ func main() {
 					return nil
 				}
 
-				var uid uint64
-				if c.IsSet("uid") {
-					if pcsconfig.Config.CheckUIDExist(c.Uint64("uid")) {
-						uid = c.Uint64("uid")
-					} else {
-						fmt.Println("退出用户失败, uid 不存在")
-					}
-				} else if c.NArg() == 0 {
-					cli.HandleAction(app.Command("loglist").Action, c)
+				var (
+					au      = pcsconfig.Config.MustGetActive()
+					confirm string
+				)
 
-					line := liner.NewLiner()
-					line.SetCtrlCAborts(true)
-					defer line.Close()
-					nLine, _ := line.Prompt("请输入要退出帐号的 index 值 > ")
-
-					if n, err := strconv.Atoi(nLine); err == nil && n >= 0 && n < len(pcsconfig.Config.BaiduUserList) {
-						uid = pcsconfig.Config.BaiduUserList[n].UID
-					} else {
-						fmt.Println("退出用户失败, 请检查 index 值是否正确")
-					}
-				} else {
-					cli.ShowCommandHelp(c, c.Command.Name)
+				fmt.Printf("确认退出百度帐号: %s ? (y/n) > ", au.Name)
+				_, err := fmt.Scanln(&confirm)
+				if err != nil || (confirm != "y" && confirm != "Y") {
+					return err
 				}
 
-				if uid == 0 {
-					return nil
-				}
-
-				// 删除之前先获取被删除的数量, 用于下文输出日志
-				baidu, err := pcsconfig.Config.GetBaiduUserByUID(uid)
+				err = pcsconfig.Config.DeleteBaiduUserByUID(au.UID)
 				if err != nil {
-					fmt.Println(err)
-					return nil
+					fmt.Printf("退出用户 %s, 失败, 错误: %s\n", au.Name, err)
 				}
 
-				if !pcsconfig.Config.DeleteBaiduUserByUID(uid) {
-					fmt.Printf("退出用户失败, %s\n", baidu.Name)
-				}
-
-				fmt.Printf("退出用户成功, %v\n", baidu.Name)
+				fmt.Printf("退出用户成功, %s\n", au.Name)
 				return nil
-			},
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "uid",
-					Usage: "百度帐号 uid 值",
-				},
 			},
 		},
 		{
@@ -603,7 +575,7 @@ func main() {
 		},
 		{
 			Name:      "set",
-			Usage:     "设置配置",
+			Usage:     "修改程序配置项",
 			UsageText: fmt.Sprintf("%s set OptionName Value", filepath.Base(os.Args[0])),
 			Description: `
 可设置的值:
@@ -658,3 +630,5 @@ func main() {
 
 	app.Run(os.Args)
 }
+
+// �
