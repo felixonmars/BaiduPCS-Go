@@ -15,6 +15,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -107,7 +108,7 @@ func main() {
 
 			if activeBaiduUser.Name != "" {
 				// 格式: BaiduPCS-Go:<工作目录> <百度ID>$
-				prompt = app.Name + ":" + filepath.Base(activeBaiduUser.Workdir) + " " + activeBaiduUser.Name + "$ "
+				prompt = app.Name + ":" + path.Base(activeBaiduUser.Workdir) + " " + activeBaiduUser.Name + "$ "
 			} else {
 				// BaiduPCS-Go >
 				prompt = app.Name + " > "

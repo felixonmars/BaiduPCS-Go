@@ -57,7 +57,8 @@ func RunLogin(username, password string) (bduss, ptoken, stoken string, err erro
 			return
 		}
 
-		password = string(bp)
+		// 去掉回车键
+		password = string(bytes.TrimRight(bp, "\r"))
 	}
 
 	line.Resume()
