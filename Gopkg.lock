@@ -60,7 +60,13 @@
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "8aa9a788170f9d11df821844b8221d6a1134b9c4"
+  revision = "a1922f490d6d2f53c275b8c38ed92405c3057f75"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/iikira/liner"
+  packages = ["."]
+  revision = "75e2f4424900f9f169f3ac371b297f4bc24f38d5"
 
 [[projects]]
   branch = "master"
@@ -70,15 +76,15 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/kardianos/osext"
+  name = "github.com/iikira/passwd"
   packages = ["."]
-  revision = "ae77be60afb1dcacde03767a8c37337fad28ac14"
+  revision = "a69f575c2450d8e5d2f6b308de8b2a381cbfe510"
 
 [[projects]]
   branch = "master"
-  name = "github.com/peterh/liner"
+  name = "github.com/kardianos/osext"
   packages = ["."]
-  revision = "3681c2a912330352991ecdd642f257efe5b85518"
+  revision = "ae77be60afb1dcacde03767a8c37337fad28ac14"
 
 [[projects]]
   branch = "master"
@@ -95,6 +101,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "71034c50e7357e04a3ad9e3466d3223237095a73eb3e2598ed0fc8aee7061522"
+  inputs-digest = "c9c3383103fa03be7ee0ac56678285248d70c46cc207c591390c7831557d52c4"
   solver-name = "gps-cdcl"
   solver-version = 1

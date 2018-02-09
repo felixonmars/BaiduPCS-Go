@@ -190,20 +190,25 @@ func RunUpload(localPaths []string, targetPath string) {
 					}
 				}
 
-				// 文件大于256kb, 检测秒传
+				// 文件大于256kb, 应该要检测秒传, 反之则不检测秒传
+				// 经检验, 秒传文件并非一定要大于256KB
 				if localPathInfo.Length >= requiredSliceLen {
-					fmt.Printf("检测秒传中, 请稍候...\n")
-
-					localPathInfo.sliceMD5Sum()
-					localPathInfo.crc32Sum()
-
-					err := info.RapidUpload(_targetPath, hex.EncodeToString(localPathInfo.MD5), hex.EncodeToString(localPathInfo.SliceMD5), fmt.Sprint(localPathInfo.CRC32), localPathInfo.Length)
-					if err == nil {
-						fmt.Printf("秒传成功, 保存到网盘路径: %s\n", _targetPath)
-						return
-					}
-					fmt.Printf("秒传失败, 开始上传文件...\n")
+					// do nothing.
 				}
+
+				fmt.Printf("检测秒传中, 请稍候...\n")
+
+				localPathInfo.sliceMD5Sum()
+
+				// 经检验, 文件的 crc32 值并非秒传文件所必需
+				// localPathInfo.crc32Sum()
+
+				err := info.RapidUpload(_targetPath, hex.EncodeToString(localPathInfo.MD5), hex.EncodeToString(localPathInfo.SliceMD5), fmt.Sprint(localPathInfo.CRC32), localPathInfo.Length)
+				if err == nil {
+					fmt.Printf("秒传成功, 保存到网盘路径: %s\n", _targetPath)
+					return
+				}
+				fmt.Printf("秒传失败, 开始上传文件...\n")
 
 				// 秒传失败, 开始上传文件
 				err = info.Upload(_targetPath, func(uploadURL string, jar *cookiejar.Jar) (uperr error) {

@@ -12,12 +12,22 @@ import (
 
 // HTTPGet 简单实现 http 访问 GET 请求
 func HTTPGet(urlStr string) (body []byte, err error) {
-	resp, err := http.Get(urlStr)
+	resp, err := DefaultClient.Get(urlStr)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
+}
+
+// Req 参见 *HTTPClient.Req, 使用默认 http 客户端
+func Req(method string, urlStr string, post interface{}, header map[string]string) (resp *http.Response, err error) {
+	return DefaultClient.Req(method, urlStr, post, header)
+}
+
+// Fetch 参见 *HTTPClient.Fetch, 使用默认 http 客户端
+func Fetch(method string, urlStr string, post interface{}, header map[string]string) (body []byte, err error) {
+	return DefaultClient.Fetch(method, urlStr, post, header)
 }
 
 // Req 实现 http／https 访问，
