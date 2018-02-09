@@ -16,7 +16,10 @@ func resetPCSLiner(oldLiner *PCSLiner) (newLiner *PCSLiner) {
 	newLiner.Config = oldLiner.Config
 
 	// 重新设置历史
-	newLiner.SetHistory(oldLiner.Config.historyFile.Name())
+	if newLiner.Config.historyFile != nil {
+		newLiner.SetHistory(newLiner.Config.historyFile.Name())
+	}
+
 	newLiner.State.SetCtrlCAborts(newLiner.Config.CtrlCAborts)
 	newLiner.State.SetCompleter(newLiner.Config.mainCompleter)
 
