@@ -6,10 +6,11 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcscommand"
 	"github.com/iikira/BaiduPCS-Go/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/pcsliner"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/pcsweb"
-	"github.com/peterh/liner"
+	"github.com/iikira/liner"
 	"github.com/urfave/cli"
 	"io"
 	"log"
@@ -18,6 +19,7 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -38,6 +40,14 @@ func init() {
 	pcscache.DirCache.GC() // 启动缓存垃圾回收
 }
 
+// getSubArgs 获取子命令参数
+func getSubArgs(c *cli.Context) (sargs []string) {
+	for i := 0; c.Args().Get(i) != ""; i++ {
+		sargs = append(sargs, c.Args().Get(i))
+	}
+	return
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "BaiduPCS-Go"
@@ -50,12 +60,12 @@ func main() {
 	特色:
 		网盘内列出文件和目录, 支持通配符匹配路径;
 		下载网盘内文件, 支持网盘内目录 (文件夹) 下载, 支持多个文件或目录下载, 支持断点续传和高并发高速下载.
-
-	程序目前处于测试版, 后续会添加更多的实用功能.
 	
 	---------------------------------------------------
+	前往 https://github.com/iikira/BaiduPCS-Go 以获取更多帮助信息!
 	前往 https://github.com/iikira/BaiduPCS-Go/releases 以获取程序更新信息!
 	---------------------------------------------------`
+
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
 			Name:        "verbose",
@@ -72,12 +82,36 @@ func main() {
 		cli.ShowAppHelp(c)
 		pcsverbose.Verbosef("这是一条调试信息\n\n")
 
-		line := newLiner()
-		defer closeLiner(line)
+		line := pcsliner.NewLiner()
+		line.SetHistory(historyFile)
+		defer line.Close()
+
+		line.SetMainCompleter(func(line string) (s []string) {
+			cmds := cli.CommandsByName(app.Commands)
+
+			for k := range cmds {
+				if !strings.HasPrefix(cmds[k].FullName(), line) {
+					continue
+				}
+				s = append(s, cmds[k].FullName()+" ")
+			}
+			return s
+		})
 
 		for {
-			if commandLine, err := line.Prompt("BaiduPCS-Go > "); err == nil {
-				line.AppendHistory(commandLine)
+			var (
+				prompt          string
+				activeBaiduUser = pcsconfig.Config.MustGetActive()
+			)
+
+			if activeBaiduUser.Name != "" {
+				prompt = app.Name + ":" + filepath.Base(activeBaiduUser.Workdir) + " " + activeBaiduUser.Name + "$ "
+			} else {
+				prompt = app.Name + " > "
+			}
+
+			if commandLine, err := line.State.Prompt(prompt); err == nil {
+				line.State.AppendHistory(commandLine)
 
 				cmdArgs := args.GetArgs(commandLine)
 				if len(cmdArgs) == 0 {
@@ -87,11 +121,11 @@ func main() {
 				s := []string{os.Args[0]}
 				s = append(s, cmdArgs...)
 
-				closeLiner(line)
+				line.Pause()
 
 				c.App.Run(s)
 
-				line = newLiner()
+				line.Resume()
 
 			} else if err == liner.ErrPromptAborted || err == io.EOF {
 				break
@@ -227,7 +261,7 @@ func main() {
 					return nil
 				}
 
-				fmt.Printf("切换用户成功, %v\n", pcsconfig.ActiveBaiduUser.Name)
+				fmt.Printf("切换用户成功, %v\n", pcsconfig.Config.MustGetActive().Name)
 				return nil
 
 			},
@@ -283,7 +317,7 @@ func main() {
 					return nil
 				}
 
-				// 删除之前先获取被删除的数据, 用于下文输出日志
+				// 删除之前先获取被删除的数量, 用于下文输出日志
 				baidu, err := pcsconfig.Config.GetBaiduUserByUID(uid)
 				if err != nil {
 					fmt.Println(err)
@@ -310,8 +344,12 @@ func main() {
 			Category: "百度帐号操作",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
-				fmt.Printf("\n当前帐号 uid: %d, 用户名: %s\n", pcsconfig.ActiveBaiduUser.UID, pcsconfig.ActiveBaiduUser.Name)
-				fmt.Println(pcsconfig.Config.GetAllBaiduUser())
+				au := pcsconfig.Config.MustGetActive()
+
+				fmt.Printf("\n当前帐号 uid: %d, 用户名: %s\n", au.UID, au.Name)
+
+				fmt.Println(pcsconfig.Config.BaiduUserList.String())
+
 				return nil
 			},
 		},
@@ -368,7 +406,7 @@ func main() {
 			Category:  "网盘操作",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
-				fmt.Println(pcsconfig.ActiveBaiduUser.Workdir)
+				fmt.Println(pcsconfig.Config.MustGetActive().Workdir)
 				return nil
 			},
 		},
@@ -500,7 +538,7 @@ func main() {
 			Name:        "rapidupload",
 			Aliases:     []string{"ru"},
 			Usage:       "手动秒传文件",
-			UsageText:   fmt.Sprintf("%s rapidupload -length=<文件的大小> -md5=<文件的 md5 值> -slicemd5=<文件前 256KB 切片的 md5 值> -crc32=<文件的 crc32 值 (可选)> <保存的网盘路径, 需包含文件名>", filepath.Base(os.Args[0])),
+			UsageText:   fmt.Sprintf("%s rapidupload -length=<文件的大小> -md5=<文件的md5值> -slicemd5=<文件前256KB切片的md5值> -crc32=<文件的crc32值(可选)> <保存的网盘路径, 需包含文件名>", filepath.Base(os.Args[0])),
 			Description: "上传的文件将会保存到 网盘的目标目录.\n   遇到同名文件将会自动覆盖! \n",
 			Category:    "网盘操作",
 			Before:      reloadFn,
@@ -553,7 +591,7 @@ func main() {
 				}
 
 				fmt.Printf(
-					"[%s] 大小: %d, md5: %x, 前256KB切片的 md5: %x, crc32: %d, \n秒传命令: %s rapidupload -length=%d -md5=%x -slicemd5=%x -crc32=%d .\n",
+					"[%s] 大小: %d, md5: %x, 前256KB切片的 md5: %x, crc32: %d, \n秒传命令: %s rapidupload -length=%d -md5=%x -slicemd5=%x -crc32=%d filename\n",
 					c.Args().Get(0),
 					lp.Length, lp.MD5, lp.SliceMD5, lp.CRC32,
 					os.Args[0],
@@ -595,7 +633,7 @@ func main() {
 					return nil
 				}
 
-				err := pcsconfig.Config.Set(c.Args().Get(0), c.Args().Get(1)) // 设置
+				err := pcsconfig.Config.SetConfig(c.Args().Get(0), c.Args().Get(1)) // 设置
 				if err != nil {
 					fmt.Println(err)
 					cli.ShowCommandHelp(c, "set")
@@ -619,35 +657,4 @@ func main() {
 	sort.Sort(cli.CommandsByName(app.Commands))
 
 	app.Run(os.Args)
-}
-
-// getSubArgs 获取子命令参数
-func getSubArgs(c *cli.Context) (sargs []string) {
-	for i := 0; c.Args().Get(i) != ""; i++ {
-		sargs = append(sargs, c.Args().Get(i))
-	}
-	return
-}
-
-func newLiner() *liner.State {
-	line := liner.NewLiner()
-
-	line.SetCtrlCAborts(true)
-
-	if f, err := os.Open(historyFile); err == nil {
-		line.ReadHistory(f)
-		f.Close()
-	}
-
-	return line
-}
-
-func closeLiner(line *liner.State) {
-	if f, err := os.Create(historyFile); err != nil {
-		log.Print("Error writing history file: ", err)
-	} else {
-		line.WriteHistory(f)
-		f.Close()
-	}
-	line.Close()
 }
