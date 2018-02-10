@@ -6,9 +6,10 @@ import (
 
 // DownloadStatus 状态
 type DownloadStatus struct {
-	Downloaded int64 `json:"downloaded"`
-	Speeds     int64
-	MaxSpeeds  int64
+	Downloaded  int64         `json:"downloaded"` // 已下载的数据量
+	Speeds      int64         // 下载速度, 每秒
+	MaxSpeeds   int64         // 最大下载速度
+	TimeElapsed time.Duration // 下载的时间
 
 	done bool // 是否已经结束
 }
@@ -17,14 +18,17 @@ type DownloadStatus struct {
 func (der *Downloader) GetStatusChan() <-chan DownloadStatus {
 	c := make(chan DownloadStatus)
 
+	t := time.Now()
 	go func() {
 		var old = der.status.Downloaded
 		for {
 			if der.status.done {
+				close(c)
 				return
 			}
 
-			time.Sleep(time.Second * 1)
+			time.Sleep(1 * time.Second) // 每秒统计
+
 			der.status.Speeds = der.status.Downloaded - old
 			old = der.status.Downloaded
 
@@ -32,6 +36,7 @@ func (der *Downloader) GetStatusChan() <-chan DownloadStatus {
 				der.status.MaxSpeeds = der.status.Speeds
 			}
 
+			der.status.TimeElapsed = time.Since(t)
 			c <- der.status
 		}
 	}()

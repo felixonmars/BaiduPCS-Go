@@ -28,19 +28,22 @@ func downloadFunc(downloadURL string, jar *cookiejar.Jar, savePath string) error
 	exitOnStartFunc := make(chan struct{})
 
 	downloader.OnStart(func() {
-		t1 := time.Now()
 		for {
-			c := downloader.GetStatusChan()
+			ds := downloader.GetStatusChan()
 
 			select {
 			case <-exitOnStartFunc:
 				return
-			case v := <-c:
-				fmt.Printf("\r%s/%s %s/s time: %s [DOWNLOADING]",
+			case v, ok := <-ds:
+				if !ok { // channel 已经关闭
+					return
+				}
+
+				fmt.Printf("\r↓ %s/%s %s/s time: %s ......",
 					pcsutil.ConvertFileSize(v.Downloaded, 2),
 					pcsutil.ConvertFileSize(downloader.Size, 2),
 					pcsutil.ConvertFileSize(v.Speeds, 2),
-					time.Since(t1)/1000000*1000000,
+					v.TimeElapsed,
 				)
 			}
 		}
@@ -135,14 +138,12 @@ func downloadDirectory(pcspath string, dirInfo baidupcs.FileDirectoryList) {
 			downloadDirectory(dirInfo[k].Path, dirInfo[k].Children)
 		}
 
-		// 如果文件存在, 跳过
+		// 如果文件或目录存在, 跳过
 		if pcsconfig.CheckFileExist(dirInfo[k].Path) {
-			t := "文件"
-			if dirInfo[k].Isdir {
-				t = "目录"
+			// 如果是目录, 不输出消息
+			if !dirInfo[k].Isdir {
+				fmt.Printf("文件已存在 (自动跳过): %s\n\n", pcsconfig.GetSavePath(dirInfo[k].Path))
 			}
-
-			fmt.Printf(t+"已存在 (自动跳过): %s\n\n", pcsconfig.GetSavePath(dirInfo[k].Path))
 
 			continue
 		}
