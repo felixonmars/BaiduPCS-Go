@@ -2,6 +2,7 @@ package pcscommand
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -17,7 +18,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 const requiredSliceLen = 256 * pcsutil.KB // 256 KB
@@ -84,6 +84,20 @@ func (lp *LocalPathInfo) crc32Sum() {
 	bf.Reset(nil)
 }
 
+// Len 实现 uploader.ReaderLen 接口
+func (lp *LocalPathInfo) Len() int64 {
+	return lp.Length
+}
+
+// Read 实现 uploader.ReaderLen 接口
+func (lp *LocalPathInfo) Read(b []byte) (n int, err error) {
+	if lp.file == nil {
+		return 0, os.ErrNotExist
+	}
+
+	return lp.file.Read(b[:])
+}
+
 // RunRapidUpload 执行秒传文件, 前提是知道文件的大小, md5, 前256KB切片的 md5, crc32
 func RunRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) {
 	targetPath, err := getAbsPath(targetPath)
@@ -110,10 +124,10 @@ func RunRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64
 }
 
 // RunUpload 执行文件上传
-func RunUpload(localPaths []string, targetPath string) {
-	targetPath, err := getAbsPath(targetPath)
+func RunUpload(localPaths []string, savePath string) {
+	absSavePath, err := getAbsPath(savePath)
 	if err != nil {
-		fmt.Printf("警告: 上传文件, 获取网盘路径 %s 错误, %s\n", targetPath, err)
+		fmt.Printf("警告: 上传文件, 获取网盘路径 %s 错误, %s\n", savePath, err)
 	}
 
 	switch len(localPaths) {
@@ -145,6 +159,10 @@ func RunUpload(localPaths []string, targetPath string) {
 	}
 
 	filesTotalNum := len(uploads)
+	if filesTotalNum == 0 {
+		fmt.Printf("未检测到上传的文件, 请检查文件路径或通配符是否正确.\n")
+		return
+	}
 
 	for ftN, uploadInfo := range uploads {
 
@@ -156,7 +174,7 @@ func RunUpload(localPaths []string, targetPath string) {
 
 				fmt.Printf("[%d/%d - %d/%d] - [%s]: 任务开始\n", ftN+1, filesTotalNum, fN+1, filesNum, file)
 
-				localPathInfo := LocalPathInfo{
+				localPathInfo := &LocalPathInfo{
 					path: file,
 				}
 
@@ -167,9 +185,16 @@ func RunUpload(localPaths []string, targetPath string) {
 
 				defer localPathInfo.file.Close() // 关闭文件
 
-				_targetPath := path.Clean(targetPath + "/" + strings.TrimPrefix(localPathInfo.path, uploadInfo.dir))
+				subSavePath := strings.TrimPrefix(localPathInfo.path, uploadInfo.dir)
 
-				panDir, panFile := path.Split(_targetPath)
+				// 针对 windows 的目录处理
+				if os.PathSeparator == '\\' {
+					subSavePath = strings.Replace(subSavePath, "\\", "/", -1)
+				}
+
+				targetPath := path.Clean(absSavePath + "/" + subSavePath)
+
+				panDir, panFile := path.Split(targetPath)
 
 				// 设置缓存
 				if !pcscache.DirCache.Existed(panDir) {
@@ -181,11 +206,12 @@ func RunUpload(localPaths []string, targetPath string) {
 
 				localPathInfo.md5Sum()
 
-				// 检测缓存
+				// 检测缓存, 通过文件的md5值判断本地文件和网盘文件是否一样
 				fd := pcscache.DirCache.FindFileDirectory(panDir, panFile)
 				if fd != nil {
-					if strings.Compare(fd.MD5, hex.EncodeToString(localPathInfo.MD5)) == 0 {
-						fmt.Printf("目标文件, %s, 已存在, 跳过...\n", _targetPath)
+					decodedMD5, _ := hex.DecodeString(fd.MD5)
+					if bytes.Compare(decodedMD5, localPathInfo.MD5) == 0 {
+						fmt.Printf("目标文件, %s, 已存在, 跳过...\n", targetPath)
 						return
 					}
 				}
@@ -205,42 +231,46 @@ func RunUpload(localPaths []string, targetPath string) {
 				// 经检验, 文件的 crc32 值并非秒传文件所必需
 				// localPathInfo.crc32Sum()
 
-				err := info.RapidUpload(_targetPath, hex.EncodeToString(localPathInfo.MD5), hex.EncodeToString(localPathInfo.SliceMD5), fmt.Sprint(localPathInfo.CRC32), localPathInfo.Length)
+				err := info.RapidUpload(targetPath, hex.EncodeToString(localPathInfo.MD5), hex.EncodeToString(localPathInfo.SliceMD5), fmt.Sprint(localPathInfo.CRC32), localPathInfo.Length)
 				if err == nil {
-					fmt.Printf("秒传成功, 保存到网盘路径: %s\n", _targetPath)
+					fmt.Printf("秒传成功, 保存到网盘路径: %s\n", targetPath)
 					return
 				}
 				fmt.Printf("秒传失败, 开始上传文件...\n")
 
 				// 秒传失败, 开始上传文件
-				err = info.Upload(_targetPath, func(uploadURL string, jar *cookiejar.Jar) (uperr error) {
+				err = info.Upload(targetPath, func(uploadURL string, jar *cookiejar.Jar) (uperr error) {
 					h := requester.NewHTTPClient()
 					h.SetCookiejar(jar)
 
-					u := uploader.NewUploader(uploadURL, true, uploader.NewFileReaderLen(localPathInfo.file), h)
+					u := uploader.NewUploader(uploadURL, localPathInfo, &uploader.Options{
+						IsMultiPart: true,
+						Client:      h,
+					})
 
 					exit := make(chan struct{})
 					exit2 := make(chan struct{})
 
 					u.OnExecute(func() {
-						t := time.Now()
-						c := u.GetStatusChan()
 						for {
 							select {
 							case <-exit:
 								return
-							case v := <-c:
+							case v, ok := <-u.UploadStatus:
+								if !ok {
+									return
+								}
+
 								if v.Length == 0 {
 									fmt.Printf("\rPrepareing upload...")
-									t = time.Now()
 									continue
 								}
-								fmt.Printf("\r%v/%v %v/s time: %s %v",
+
+								fmt.Printf("\r↑ %s/%s %s/s time: %s ......",
 									pcsutil.ConvertFileSize(v.Uploaded, 2),
 									pcsutil.ConvertFileSize(v.Length, 2),
 									pcsutil.ConvertFileSize(v.Speed, 2),
-									time.Since(t)/1000000*1000000,
-									"[UPLOADING]"+strings.Repeat(" ", 10),
+									v.TimeElapsed,
 								)
 							}
 						}
@@ -251,7 +281,7 @@ func RunUpload(localPaths []string, targetPath string) {
 						exit2 <- struct{}{}
 					})
 
-					u.Execute(func(resp *http.Response, err error) {
+					<-u.Execute(func(resp *http.Response, err error) {
 						if err != nil {
 							uperr = err
 							return
@@ -269,7 +299,7 @@ func RunUpload(localPaths []string, targetPath string) {
 							return
 						}
 
-						_targetPath = pj.MustString()
+						targetPath = pj.MustString()
 					})
 
 					<-exit2
@@ -282,7 +312,7 @@ func RunUpload(localPaths []string, targetPath string) {
 					fmt.Printf("上传文件失败, %s\n", err)
 					return
 				}
-				fmt.Printf("上传文件成功, 保存到网盘路径: %s\n", _targetPath)
+				fmt.Printf("上传文件成功, 保存到网盘路径: %s\n", targetPath)
 			}()
 		}
 	}

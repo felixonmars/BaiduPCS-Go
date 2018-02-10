@@ -13,6 +13,10 @@ type ReaderLen interface {
 
 // NewFileReaderLen 将 *os.File 文件对象实现 ReaderLen 接口
 func NewFileReaderLen(f *os.File) ReaderLen {
+	if f == nil {
+		return nil
+	}
+
 	return &fileReaderlen{f}
 }
 
