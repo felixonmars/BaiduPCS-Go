@@ -22,6 +22,7 @@ type PCSApi struct {
 // NewPCS 提供 百度BDUSS, 返回 PCSApi 指针对象
 func NewPCS(bduss string) *PCSApi {
 	client := requester.NewHTTPClient()
+	client.UserAgent = pcsconfig.Config.UserAgent
 
 	pcsURL := &url.URL{
 		Scheme: "http",

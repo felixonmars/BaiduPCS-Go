@@ -64,7 +64,7 @@ func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header 
 	}
 
 	// 设置浏览器标识
-	req.Header.Set("User-Agent", UserAgent)
+	req.Header.Set("User-Agent", h.UserAgent)
 
 	if header != nil {
 		for key := range header {

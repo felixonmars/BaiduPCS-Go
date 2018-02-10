@@ -10,6 +10,8 @@ import (
 // HTTPClient http client
 type HTTPClient struct {
 	http.Client
+
+	UserAgent string
 }
 
 // NewHTTPClient 返回 HTTPClient 的指针,
@@ -31,6 +33,7 @@ func NewHTTPClient() *HTTPClient {
 			Jar:     jar,
 			Timeout: 30 * time.Second,
 		},
+		UserAgent: UserAgent,
 	}
 }
 
