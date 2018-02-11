@@ -39,7 +39,7 @@ func downloadFunc(downloadURL string, jar *cookiejar.Jar, savePath string) error
 					return
 				}
 
-				fmt.Printf("\r↓ %s/%s %s/s time: %s ......",
+				fmt.Printf("\r↓ %s/%s %s/s time: %s ............",
 					pcsutil.ConvertFileSize(v.Downloaded, 2),
 					pcsutil.ConvertFileSize(downloader.Size, 2),
 					pcsutil.ConvertFileSize(v.Speeds, 2),

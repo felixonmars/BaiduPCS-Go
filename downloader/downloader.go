@@ -26,6 +26,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 var parallel int
@@ -44,7 +45,8 @@ type Downloader struct {
 	onFinish func()
 	onError  func(int, error)
 
-	status DownloadStatus // 下载状态
+	sinceTime time.Time
+	status    DownloadStatus // 下载状态
 }
 
 // NewDownloader 创建新的文件下载
@@ -165,6 +167,7 @@ func (der *Downloader) StartDownload() {
 		touch(der.onStart)
 
 		// 开始下载
+		der.sinceTime = time.Now()
 		err := der.download()
 		if err != nil {
 			der.touchOnError(0, err)

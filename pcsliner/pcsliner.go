@@ -24,6 +24,7 @@ type linerConfig struct {
 // NewLiner 返回 *PCSLiner, 默认设置允许 Ctrl+C 结束
 func NewLiner() *PCSLiner {
 	pcsliner := liner.NewLiner()
+	pcsliner.SetMultiLineMode(true)
 
 	pl := &PCSLiner{
 		State: pcsliner,

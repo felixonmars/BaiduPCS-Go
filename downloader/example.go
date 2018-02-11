@@ -2,7 +2,6 @@ package downloader
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 )
@@ -28,12 +27,15 @@ func DoDownload(url string, fileName string) {
 			select {
 			case <-exit:
 				return
-			case v := <-c:
+			case v, ok := <-c:
+				if !ok {
+					return
+				}
+
 				var i = float64(v.Downloaded) / float64(downloader.Size) * 50
 				h := strings.Repeat("=", int(i)) + strings.Repeat(" ", 50-int(i))
 				time.Sleep(time.Second * 1)
 				fmt.Printf(format, v.Downloaded, downloader.Size, h, v.Speeds, "[DOWNLOADING]")
-				os.Stdout.Sync()
 			}
 		}
 	})

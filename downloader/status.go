@@ -18,15 +18,9 @@ type DownloadStatus struct {
 func (der *Downloader) GetStatusChan() <-chan DownloadStatus {
 	c := make(chan DownloadStatus)
 
-	t := time.Now()
 	go func() {
 		var old = der.status.Downloaded
 		for {
-			if der.status.done {
-				close(c)
-				return
-			}
-
 			time.Sleep(1 * time.Second) // 每秒统计
 
 			der.status.Speeds = der.status.Downloaded - old
@@ -36,7 +30,12 @@ func (der *Downloader) GetStatusChan() <-chan DownloadStatus {
 				der.status.MaxSpeeds = der.status.Speeds
 			}
 
-			der.status.TimeElapsed = time.Since(t)
+			der.status.TimeElapsed = time.Since(der.sinceTime) / 1e6 * 1e6
+			if der.status.done {
+				close(c)
+				return
+			}
+
 			c <- der.status
 		}
 	}()

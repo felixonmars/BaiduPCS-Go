@@ -38,8 +38,8 @@ func (pl *PCSLiner) SetHistory(filePath string) (err error) {
 		return err
 	}
 
-	pl.State.ReadHistory(pl.Config.historyFile)
-	return nil
+	_, err = pl.State.ReadHistory(pl.Config.historyFile)
+	return err
 }
 
 func (pl *PCSLiner) SetMainCompleter(mc func(line string) []string) {
