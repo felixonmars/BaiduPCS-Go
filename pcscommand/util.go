@@ -16,19 +16,19 @@ var (
 )
 
 // getAllAbsPaths 获取所有绝对路径
-func getAllAbsPaths(paths ...string) (_paths []string, err error) {
+func getAllAbsPaths(paths ...string) (absPaths []string, err error) {
 	for k := range paths {
 		p, err := parsePath(paths[k])
 		if err != nil {
 			return nil, err
 		}
-		_paths = append(_paths, p...)
+		absPaths = append(absPaths, p...)
 	}
 	return
 }
 
 // getAbsPath 使用通配符获取绝对路径, 返回值为第一个匹配结果, 获取错误将会返回 原路径 和 错误信息
-func getAbsPath(path string) (string, error) {
+func getAbsPath(path string) (first string, err error) {
 	p, err := parsePath(path)
 	if err != nil {
 		return path, err

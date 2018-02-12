@@ -1,9 +1,8 @@
 package baidupcs
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/bitly/go-simplejson"
+	"github.com/json-iterator/go"
 	"strings"
 )
 
@@ -37,6 +36,18 @@ func (p *PCSApi) Move(cpmvJSON ...CpMvJSON) (err error) {
 }
 
 func (p *PCSApi) cpmvOp(op string, cpmvJSON ...CpMvJSON) (err error) {
+	var operation string
+	switch op {
+	case "copy":
+		operation = "拷贝文件/目录"
+	case "move":
+		operation = "移动文件/目录"
+	case "rename":
+		operation = "重命名文件/目录"
+	default:
+		panic("Unknown op: " + op)
+	}
+
 	ejs, err := cpmvJSONEncode(cpmvJSON...)
 	if err != nil {
 		return err
@@ -58,23 +69,16 @@ func (p *PCSApi) cpmvOp(op string, cpmvJSON ...CpMvJSON) (err error) {
 
 	defer resp.Body.Close()
 
-	json, err := simplejson.NewFromReader(resp.Body)
+	errInfo := NewErrorInfo(operation)
+
+	d := jsoniter.NewDecoder(resp.Body)
+	err = d.Decode(errInfo)
 	if err != nil {
-		return
+		return fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
 	}
 
-	code, msg := CheckErr(json)
-	if msg != "" {
-		switch op {
-		case "copy":
-			return fmt.Errorf("拷贝文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, msg)
-		case "move":
-			return fmt.Errorf("移动文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, msg)
-		case "rename":
-			return fmt.Errorf("重命名文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, msg)
-		default:
-			panic("Unknown op: " + op)
-		}
+	if errInfo.ErrCode != 0 {
+		return errInfo
 	}
 
 	return nil
@@ -86,7 +90,7 @@ func cpmvJSONEncode(cpmvJSON ...CpMvJSON) (string, error) {
 		List: cpmvJSON,
 	}
 
-	ej, err := json.Marshal(&pathsData)
+	ej, err := jsoniter.Marshal(&pathsData)
 	if err != nil {
 		return "", err
 	}

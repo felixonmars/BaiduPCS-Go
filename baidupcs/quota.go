@@ -2,11 +2,20 @@ package baidupcs
 
 import (
 	"fmt"
-	"github.com/bitly/go-simplejson"
+	"github.com/json-iterator/go"
 )
+
+type quotaInfo struct {
+	*ErrInfo
+
+	Quota int64 `json:"quota"`
+	Used  int64 `json:"used"`
+}
 
 // QuotaInfo 获取当前用户空间配额信息
 func (p *PCSApi) QuotaInfo() (quota, used int64, err error) {
+	operation := "获取当前用户空间配额信息"
+
 	p.setApi("quota", "info")
 
 	resp, err := p.client.Req("GET", p.url.String(), nil, nil)
@@ -16,17 +25,21 @@ func (p *PCSApi) QuotaInfo() (quota, used int64, err error) {
 
 	defer resp.Body.Close()
 
-	json, err := simplejson.NewFromReader(resp.Body)
+	quotaInfo := &quotaInfo{
+		ErrInfo: NewErrorInfo(operation),
+	}
+
+	d := jsoniter.NewDecoder(resp.Body)
+	err = d.Decode(quotaInfo)
 	if err != nil {
-		return
+		return 0, 0, fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
 	}
 
-	code, msg := CheckErr(json)
-	if msg != "" {
-		return 0, 0, fmt.Errorf("获取当前用户空间配额信息, 错误代码: %d, 消息: %s", code, msg)
+	if quotaInfo.ErrCode != 0 {
+		return 0, 0, quotaInfo.ErrInfo
 	}
 
-	quota = json.Get("quota").MustInt64()
-	used = json.Get("used").MustInt64()
+	quota = quotaInfo.Quota
+	used = quotaInfo.Used
 	return
 }

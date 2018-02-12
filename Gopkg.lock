@@ -50,7 +50,7 @@
     ".",
     "bdcrypto"
   ]
-  revision = "d91ca689314eeeba5ea2fd572889585061b44471"
+  revision = "e7051d5bb9d6a35418c67957036b7a756aa2828c"
 
 [[projects]]
   branch = "master"
@@ -60,7 +60,7 @@
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "a1922f490d6d2f53c275b8c38ed92405c3057f75"
+  revision = "0ae95371bbe1c5b377a997aa41aa2127a5a36ca4"
 
 [[projects]]
   branch = "master"
@@ -73,6 +73,12 @@
   name = "github.com/iikira/osext"
   packages = ["."]
   revision = "f808bcd957c382e32d377c68935d94bbafd0d5d0"
+
+[[projects]]
+  name = "github.com/json-iterator/go"
+  packages = ["."]
+  revision = "28452fcdec4e44348d2af0d91d1e9e38da3a9e0a"
+  version = "1.0.5"
 
 [[projects]]
   branch = "master"
@@ -101,6 +107,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "397819a14fff4f1a24dba6e37feea8690668b5c17427fc536b756f7fd92bd56b"
+  inputs-digest = "8550a912336cb6c6775aa95847be2f0dea0cb086c5ad54282d2e3d6fad17b305"
   solver-name = "gps-cdcl"
   solver-version = 1

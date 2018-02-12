@@ -1,16 +1,17 @@
 package baidupcs
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/bitly/go-simplejson"
+	"github.com/json-iterator/go"
 	"net/http/cookiejar"
 )
 
 // RapidUpload 秒传文件
 func (p *PCSApi) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) (err error) {
+	operation := "秒传文件"
+
 	if targetPath == "/" {
-		return fmt.Errorf("秒传文件 遇到错误, 保存路径不能是根目录\n")
+		return fmt.Errorf("%s 遇到错误, 保存路径不能是根目录\n", operation)
 	}
 
 	p.setApi("file", "rapidupload", map[string]string{
@@ -29,19 +30,21 @@ func (p *PCSApi) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, len
 
 	defer resp.Body.Close()
 
-	json, err := simplejson.NewFromReader(resp.Body)
+	errInfo := NewErrorInfo(operation)
+
+	d := jsoniter.NewDecoder(resp.Body)
+	err = d.Decode(errInfo)
 	if err != nil {
-		return
+		return fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
 	}
 
-	code, msg := CheckErr(json)
-	switch code {
+	switch errInfo.ErrCode {
 	case 31079:
 		// file md5 not found, you should use upload api to upload the whole file.
 	}
 
-	if msg != "" {
-		return fmt.Errorf("秒传文件 遇到错误, 错误代码: %d, 消息: %s", code, msg)
+	if errInfo.ErrCode != 0 {
+		return errInfo
 	}
 
 	return nil
@@ -72,8 +75,10 @@ func (p *PCSApi) UploadTmpFile(targetPath string, uploadFunc func(uploadURL stri
 
 // UploadCreateSuperFile 分片上传—合并分片文件
 func (p *PCSApi) UploadCreateSuperFile(targetPath string, blockList ...string) (err error) {
+	operation := "分片上传—合并分片文件"
+
 	if targetPath == "/" {
-		return fmt.Errorf("分片上传—合并分片文件 遇到错误, 保存路径不能是根目录\n")
+		return fmt.Errorf("%s 遇到错误, 保存路径不能是根目录\n", operation)
 	}
 
 	bl := struct {
@@ -82,7 +87,10 @@ func (p *PCSApi) UploadCreateSuperFile(targetPath string, blockList ...string) (
 		BlockList: blockList,
 	}
 
-	data, _ := json.Marshal(&bl)
+	data, err := jsoniter.Marshal(&bl)
+	if err != nil {
+		panic(operation + " 发生错误, " + err.Error())
+	}
 
 	p.setApi("file", "createsuperfile", map[string]string{
 		"path":  targetPath,
@@ -97,14 +105,16 @@ func (p *PCSApi) UploadCreateSuperFile(targetPath string, blockList ...string) (
 
 	defer resp.Body.Close()
 
-	json, err := simplejson.NewFromReader(resp.Body)
+	errInfo := NewErrorInfo(operation)
+
+	d := jsoniter.NewDecoder(resp.Body)
+	err = d.Decode(errInfo)
 	if err != nil {
-		return
+		return fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
 	}
 
-	code, msg := CheckErr(json)
-	if msg != "" {
-		return fmt.Errorf("合并分片文件 遇到错误, 错误代码: %d, 消息: %s", code, msg)
+	if errInfo.ErrCode != 0 {
+		return errInfo
 	}
 
 	return nil

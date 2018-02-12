@@ -1,13 +1,14 @@
 package baidupcs
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/bitly/go-simplejson"
+	"github.com/json-iterator/go"
 )
 
 // Remove 批量删除文件/目录
 func (p *PCSApi) Remove(paths ...string) (err error) {
+	operation := "删除文件/目录"
+
 	pathsData := struct {
 		List []struct {
 			Path string `json:"path"`
@@ -22,7 +23,7 @@ func (p *PCSApi) Remove(paths ...string) (err error) {
 		})
 	}
 
-	ej, err := json.Marshal(&pathsData)
+	ej, err := jsoniter.Marshal(&pathsData)
 	if err != nil {
 		return
 	}
@@ -38,14 +39,16 @@ func (p *PCSApi) Remove(paths ...string) (err error) {
 
 	defer resp.Body.Close()
 
-	json, err := simplejson.NewFromReader(resp.Body)
+	errInfo := NewErrorInfo(operation)
+
+	d := jsoniter.NewDecoder(resp.Body)
+	err = d.Decode(errInfo)
 	if err != nil {
-		return
+		return fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
 	}
 
-	code, msg := CheckErr(json)
-	if msg != "" {
-		return fmt.Errorf("删除文件/目录 遇到错误, 错误代码: %d, 消息: %s", code, msg)
+	if errInfo.ErrCode != 0 {
+		return errInfo
 	}
 
 	return nil
@@ -53,6 +56,8 @@ func (p *PCSApi) Remove(paths ...string) (err error) {
 
 // Mkdir 创建目录
 func (p *PCSApi) Mkdir(path string) (err error) {
+	operation := "创建目录"
+
 	p.setApi("file", "mkdir", map[string]string{
 		"path": path,
 	})
@@ -64,14 +69,16 @@ func (p *PCSApi) Mkdir(path string) (err error) {
 
 	defer resp.Body.Close()
 
-	json, err := simplejson.NewFromReader(resp.Body)
+	errInfo := NewErrorInfo(operation)
+
+	d := jsoniter.NewDecoder(resp.Body)
+	err = d.Decode(errInfo)
 	if err != nil {
-		return
+		return fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
 	}
 
-	code, msg := CheckErr(json)
-	if msg != "" {
-		return fmt.Errorf("创建目录 遇到错误, 错误代码: %d, 消息: %s", code, msg)
+	if errInfo.ErrCode != 0 {
+		return errInfo
 	}
 	return
 }

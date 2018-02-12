@@ -2,9 +2,9 @@ package baidupcs
 
 import (
 	"fmt"
-	"github.com/bitly/go-simplejson"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
+	"github.com/json-iterator/go"
 )
 
 // FileDirectory 文件或目录的详细信息
@@ -26,46 +26,117 @@ type FileDirectory struct {
 // FileDirectoryList FileDirectory 的 指针数组
 type FileDirectoryList []*FileDirectory
 
+// fdJSON 用于解析远程JSON数据
+type fdJSON struct {
+	FsID           int64  `json:"fs_id"`           // fs_id
+	Path           string `json:"path"`            // 路径
+	Filename       string `json:"server_filename"` // 文件名 或 目录名
+	Ctime          int64  `json:"ctime"`           // 创建日期
+	Mtime          int64  `json:"mtime"`           // 修改日期
+	MD5            string `json:"md5"`             // md5 值
+	Size           int64  `json:"size"`            // 文件大小 (目录为0)
+	IsdirInt       int    `json:"isdir"`
+	IfhassubdirInt int    `json:"ifhassubdir"`
+}
+
+// convert 将解析的远程JSON数据, 转换为 *FileDirectory
+func (fj *fdJSON) convert() *FileDirectory {
+	return &FileDirectory{
+		FsID:        fj.FsID,
+		Path:        fj.Path,
+		Filename:    fj.Filename,
+		Ctime:       fj.Ctime,
+		Mtime:       fj.Mtime,
+		MD5:         fj.MD5,
+		Size:        fj.Size,
+		Isdir:       pcsutil.IntToBool(fj.IsdirInt),
+		Ifhassubdir: pcsutil.IntToBool(fj.IfhassubdirInt),
+	}
+}
+
+type fdData struct {
+	*ErrInfo
+	List []*fdJSON `json:"list"`
+}
+
 // FilesDirectoriesMeta 获取单个文件/目录的元信息
 func (p *PCSApi) FilesDirectoriesMeta(path string) (data *FileDirectory, err error) {
+	operation := "获取单个文件/目录的元信息"
+
 	if path == "" {
 		path = "/"
 	}
 
+	fds, err := p.FilesDirectoriesBatchMeta(path)
+	if err != nil {
+		return nil, fmt.Errorf("%s, 路径: %s", err, path)
+	}
+
+	if len(fds) != 1 {
+		return nil, fmt.Errorf("%s发生错误, 未知返回数据, 路径: %s", operation, path)
+	}
+
+	return fds[0], nil
+}
+
+// FilesDirectoriesMeta 获取多个文件/目录的元信息
+func (p *PCSApi) FilesDirectoriesBatchMeta(paths ...string) (data FileDirectoryList, err error) {
+	operation := "获取文件/目录的元信息"
+
+	type listStr struct {
+		Path string `json:"path"`
+	}
+
+	type postStr struct {
+		List []listStr `json:"list"`
+	}
+
+	// 数据处理
+	post := &postStr{
+		List: make([]listStr, len(paths)),
+	}
+
+	for k := range paths {
+		post.List[k].Path = paths[k]
+	}
+
+	sendData, err := jsoniter.Marshal(post)
+	if err != nil {
+		panic(operation + ", json 数据构造失败, " + err.Error())
+	}
+
 	p.setApi("file", "meta", map[string]string{
-		"path": path,
+		"param": string(sendData),
 	})
 
 	resp, err := p.client.Req("GET", p.url.String(), nil, nil)
 	if err != nil {
-		return
+		return nil, fmt.Errorf("%s, 网络错误, %s", operation, err)
 	}
 
 	defer resp.Body.Close()
 
-	json, err := simplejson.NewFromReader(resp.Body)
+	// 服务器返回数据进行处理
+	jsonData := &fdData{
+		ErrInfo: NewErrorInfo(operation),
+	}
+
+	d := jsoniter.NewDecoder(resp.Body)
+	err = d.Decode(jsonData)
 	if err != nil {
-		return
+		return nil, fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
 	}
 
-	code, msg := CheckErr(json)
-	if msg != "" {
-		err = fmt.Errorf("获取单个文件/目录的元信息遇到错误, 路径: %s, 错误代码: %d, 消息: %s", path, code, msg)
-		return
+	// 错误处理
+	errCode, _ := jsonData.ErrInfo.FindErr()
+	if errCode != 0 {
+		return nil, jsonData.ErrInfo
 	}
 
-	json = json.Get("list").GetIndex(0)
-
-	data = &FileDirectory{
-		FsID:        json.Get("fs_id").MustInt64(),
-		Path:        json.Get("path").MustString(),
-		Filename:    json.Get("server_filename").MustString(),
-		Ctime:       json.Get("ctime").MustInt64(),
-		Mtime:       json.Get("mtime").MustInt64(),
-		MD5:         json.Get("md5").MustString(),
-		Size:        json.Get("size").MustInt64(),
-		Isdir:       pcsutil.IntToBool(json.Get("isdir").MustInt()),
-		Ifhassubdir: pcsutil.IntToBool(json.Get("ifhassubdir").MustInt()),
+	// 结果处理
+	data = make(FileDirectoryList, len(jsonData.List))
+	for k := range jsonData.List {
+		data[k] = jsonData.List[k].convert()
 	}
 
 	return
@@ -73,6 +144,8 @@ func (p *PCSApi) FilesDirectoriesMeta(path string) (data *FileDirectory, err err
 
 // FilesDirectoriesList 获取目录下的文件和目录列表, 可选是否递归
 func (p *PCSApi) FilesDirectoriesList(path string, recurse bool) (data FileDirectoryList, err error) {
+	operation := "获取目录下的文件列表"
+
 	if path == "" {
 		path = "/"
 	}
@@ -91,46 +164,35 @@ func (p *PCSApi) FilesDirectoriesList(path string, recurse bool) (data FileDirec
 
 	defer resp.Body.Close()
 
-	json, err := simplejson.NewFromReader(resp.Body)
+	jsonData := &fdData{
+		ErrInfo: NewErrorInfo(operation),
+	}
+
+	d := jsoniter.NewDecoder(resp.Body)
+	err = d.Decode(jsonData)
 	if err != nil {
-		return
+		return nil, fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
 	}
 
-	code, msg := CheckErr(json)
-	if msg != "" {
-		return nil, fmt.Errorf("获取目录下的文件列表遇到错误, 路径: %s, 错误代码: %d, 消息: %s", path, code, msg)
+	// 错误处理
+	errCode, _ := jsonData.ErrInfo.FindErr()
+	if errCode != 0 {
+		return nil, fmt.Errorf("%s, 路径: %s", jsonData.ErrInfo, path)
 	}
 
-	json = json.Get("list")
-
-	for i := 0; ; i++ {
-		index := json.GetIndex(i)
-		fsID := index.Get("fs_id").MustInt64()
-		if fsID == 0 {
-			break
-		}
-
-		sub := &FileDirectory{
-			FsID:     fsID,
-			Path:     index.Get("path").MustString(),
-			Filename: index.Get("server_filename").MustString(),
-			Ctime:    index.Get("ctime").MustInt64(),
-			Mtime:    index.Get("mtime").MustInt64(),
-			MD5:      index.Get("md5").MustString(),
-			Size:     index.Get("size").MustInt64(),
-			Isdir:    pcsutil.IntToBool(index.Get("isdir").MustInt()),
-		}
+	data = make(FileDirectoryList, len(jsonData.List))
+	for k := range jsonData.List {
+		data[k] = jsonData.List[k].convert()
 
 		// 递归获取子目录信息
-		if recurse && sub.Isdir {
-			sub.Children, err = p.FilesDirectoriesList(sub.Path, true)
+		if recurse && data[k].Isdir {
+			data[k].Children, err = p.FilesDirectoriesList(data[k].Path, recurse)
 			if err != nil {
 				pcsverbose.Verboseln(err)
 			}
 		}
-
-		data = append(data, sub)
 	}
+
 	return
 }
 
