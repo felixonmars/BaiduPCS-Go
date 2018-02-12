@@ -38,9 +38,10 @@ PCS REST API的所有参数在传入时应当使用：UTF-8编码。
 
 #### 参数说明
 
-| 参数名称	描述 |
-| object_name	PCS REST API操作实体名称，如：quota、file、thumbnail。 |
-| query_string	放在HTTP头部传入的参数，必须经过UrlEncode编码。 |
+| 参数名称 | 描述 |
+| :- | :- |
+| object_name | PCS REST API操作实体名称，如：quota、file、thumbnail。 |
+| query_string | 放在HTTP头部传入的参数，必须经过UrlEncode编码。 |
 
 #### HTTP GET和POST方式使用说明
 
