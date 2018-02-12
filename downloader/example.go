@@ -21,9 +21,8 @@ func DoDownload(url string, fileName string) {
 		fmt.Println("download started")
 		format := "\r%v/%v [%s] %v byte/s %v"
 
+		c := downloader.GetStatusChan()
 		for {
-			c := downloader.GetStatusChan()
-
 			select {
 			case <-exit:
 				return

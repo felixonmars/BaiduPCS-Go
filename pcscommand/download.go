@@ -28,9 +28,8 @@ func downloadFunc(downloadURL string, jar *cookiejar.Jar, savePath string) error
 	exitOnStartFunc := make(chan struct{})
 
 	downloader.OnStart(func() {
+		ds := downloader.GetStatusChan()
 		for {
-			ds := downloader.GetStatusChan()
-
 			select {
 			case <-exitOnStartFunc:
 				return
