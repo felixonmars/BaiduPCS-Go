@@ -6,7 +6,10 @@ import (
 
 // DownloadStatus 状态
 type DownloadStatus struct {
-	Downloaded  int64         `json:"downloaded"` // 已下载的数据量
+	_ bool // alignment, for 32-bit device
+
+	Total       int64         // 总大小
+	Downloaded  int64         // 已下载的数据量
 	Speeds      int64         // 下载速度, 每秒
 	MaxSpeeds   int64         // 最大下载速度
 	TimeElapsed time.Duration // 下载的时间

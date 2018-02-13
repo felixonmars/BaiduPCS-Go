@@ -13,56 +13,82 @@ import (
 	"time"
 )
 
-func downloadFunc(downloadURL string, jar *cookiejar.Jar, savePath string) error {
-	h := requester.NewHTTPClient()
-	h.SetCookiejar(jar)
-	h.SetKeepAlive(false)
-	h.SetTimeout(2 * time.Minute)
-
-	downloader, err := downloader.NewDownloader(downloadURL, savePath, h)
-	if err != nil {
-		return err
-	}
-
-	exitDownloadFunc := make(chan struct{})
-	exitOnStartFunc := make(chan struct{})
-
-	downloader.OnStart(func() {
-		ds := downloader.GetStatusChan()
-		for {
-			select {
-			case <-exitOnStartFunc:
-				return
-			case v, ok := <-ds:
-				if !ok { // channel 已经关闭
-					return
-				}
-
-				fmt.Printf("\r↓ %s/%s %s/s time: %s ............",
-					pcsutil.ConvertFileSize(v.Downloaded, 2),
-					pcsutil.ConvertFileSize(downloader.Size, 2),
-					pcsutil.ConvertFileSize(v.Speeds, 2),
-					v.TimeElapsed,
-				)
-			}
+func getDownloadFunc(o *downloader.Options) func(downloadURL string, jar *cookiejar.Jar, savePath string) error {
+	return func(downloadURL string, jar *cookiejar.Jar, savePath string) error {
+		if o == nil {
+			o = downloader.NewOptions()
 		}
-	})
 
-	downloader.OnFinish(func() {
-		exitOnStartFunc <- struct{}{}
-		exitDownloadFunc <- struct{}{}
-	})
+		h := requester.NewHTTPClient()
+		h.SetCookiejar(jar)
+		h.SetKeepAlive(true)
+		h.SetTimeout(2 * time.Minute)
 
-	downloader.StartDownload()
-	<-exitDownloadFunc
-	fmt.Printf("\n\n下载完成, 保存位置: %s\n\n", savePath)
-	return nil
+		o.Client = h
+
+		downloader, err := downloader.NewDownloader(downloadURL, savePath, o)
+		if err != nil {
+			return err
+		}
+
+		exitDownloadFunc := make(chan struct{})
+		exitOnStartFunc := make(chan struct{})
+
+		downloader.OnStart(func() {
+			if o.Testing {
+				fmt.Printf("测试下载开始\n\n")
+			}
+
+			ds := downloader.GetStatusChan()
+			for {
+				select {
+				case <-exitOnStartFunc:
+					return
+				case v, ok := <-ds:
+					if !ok { // channel 已经关闭
+						return
+					}
+
+					fmt.Printf("\r↓ %s/%s %s/s time: %s ............",
+						pcsutil.ConvertFileSize(v.Downloaded, 2),
+						pcsutil.ConvertFileSize(v.Total, 2),
+						pcsutil.ConvertFileSize(v.Speeds, 2),
+						v.TimeElapsed,
+					)
+				}
+			}
+		})
+
+		downloader.OnFinish(func() {
+			exitOnStartFunc <- struct{}{}
+			exitDownloadFunc <- struct{}{}
+		})
+
+		downloader.StartDownload()
+		<-exitDownloadFunc
+
+		if !o.Testing {
+			fmt.Printf("\n\n下载完成, 保存位置: %s\n\n", savePath)
+		} else {
+			fmt.Printf("\n\n测试下载结束\n\n")
+		}
+		return nil
+	}
 }
 
 // RunDownload 执行下载网盘内文件
-func RunDownload(paths ...string) {
-	downloader.SetCacheSize(pcsconfig.Config.CacheSize)
-	downloader.SetMaxParallel(pcsconfig.Config.MaxParallel)
+func RunDownload(testing bool, parallel int, paths []string) {
+	// 设置下载选项
+	o := &downloader.Options{
+		Testing:   testing,
+		CacheSize: pcsconfig.Config.CacheSize,
+	}
+
+	// 设置下载最大并发量
+	if parallel == 0 {
+		parallel = pcsconfig.Config.MaxParallel
+	}
+	o.SetMaxParallel(parallel)
 
 	paths, err := getAllAbsPaths(paths...)
 	if err != nil {
@@ -103,7 +129,7 @@ func RunDownload(paths ...string) {
 
 			fmt.Printf(statText) // 输出统计信息
 
-			downloadDirectory(path, dirInfo) // 开始下载目录
+			downloadDirectory(path, dirInfo, o) // 开始下载目录
 
 			fmt.Printf("目录 %s 下载完成, %s", path, statText) // 再次输出统计信息
 
@@ -112,7 +138,7 @@ func RunDownload(paths ...string) {
 
 		fmt.Printf("即将开始下载文件\n\n")
 
-		err = info.FileDownload(path, downloadFunc)
+		err = info.FileDownload(path, getDownloadFunc(o))
 		if err != nil {
 			fmt.Printf("下载文件时发生错误: %s (跳过...)\n\n", err)
 		}
@@ -120,7 +146,7 @@ func RunDownload(paths ...string) {
 }
 
 // downloadDirectory 下载目录
-func downloadDirectory(pcspath string, dirInfo baidupcs.FileDirectoryList) {
+func downloadDirectory(pcspath string, dirInfo baidupcs.FileDirectoryList, o *downloader.Options) {
 	// 遇到空目录, 则创建目录
 	if len(dirInfo) == 0 {
 		fmt.Printf("创建目录: %s\n\n", pcspath)
@@ -134,7 +160,7 @@ func downloadDirectory(pcspath string, dirInfo baidupcs.FileDirectoryList) {
 		}
 
 		if dirInfo[k].Children != nil {
-			downloadDirectory(dirInfo[k].Path, dirInfo[k].Children)
+			downloadDirectory(dirInfo[k].Path, dirInfo[k].Children, o)
 		}
 
 		// 如果文件或目录存在, 跳过
@@ -150,13 +176,13 @@ func downloadDirectory(pcspath string, dirInfo baidupcs.FileDirectoryList) {
 		fmt.Println(dirInfo[k]) // 输出文件或目录的详情
 
 		if dirInfo[k].Isdir {
-			downloadDirectory(dirInfo[k].Path, nil)
+			downloadDirectory(dirInfo[k].Path, nil, o)
 			continue
 		}
 
 		fmt.Printf("即将开始下载文件: %s\n\n", dirInfo[k].Filename)
 
-		err := info.FileDownload(dirInfo[k].Path, downloadFunc)
+		err := info.FileDownload(dirInfo[k].Path, getDownloadFunc(o))
 		if err != nil {
 			fmt.Println(err)
 		}

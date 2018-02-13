@@ -31,10 +31,10 @@ func DoDownload(url string, fileName string) {
 					return
 				}
 
-				var i = float64(v.Downloaded) / float64(downloader.Size) * 50
+				var i = float64(v.Downloaded) / float64(downloader.size) * 50
 				h := strings.Repeat("=", int(i)) + strings.Repeat(" ", 50-int(i))
 				time.Sleep(time.Second * 1)
-				fmt.Printf(format, v.Downloaded, downloader.Size, h, v.Speeds, "[DOWNLOADING]")
+				fmt.Printf(format, v.Downloaded, downloader.size, h, v.Speeds, "[DOWNLOADING]")
 			}
 		}
 	})

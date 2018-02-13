@@ -26,20 +26,23 @@ import (
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 )
 
-var parallel int
+var (
+	// FileNameRE 正则表达式: 匹配文件名
+	FileNameRE = regexp.MustCompile("filename=\"(.*?)\"")
+)
 
 // Downloader 下载详情
 type Downloader struct {
-	URL  string   // 下载地址
-	Size int64    // 文件大小
-	File *os.File // 要写入的文件
-
+	URL       string    // 下载地址
 	BlockList blockList // 用于记录未下载的文件块起始位置
+	Options   *Options
 
-	client *requester.HTTPClient // http client
+	file *os.File // 要写入的文件
+	size int64    // 文件大小
 
 	onStart  func()
 	onFinish func()
@@ -50,26 +53,39 @@ type Downloader struct {
 }
 
 // NewDownloader 创建新的文件下载
-func NewDownloader(url, savePath string, h *requester.HTTPClient) (der *Downloader, err error) {
-	// 如果文件存在, 取消下载
-	if savePath != "" {
-		err = checkFileExist(savePath)
-		if err != nil {
-			return nil, err
+func NewDownloader(url, savePath string, o *Options) (der *Downloader, err error) {
+	if o == nil {
+		o = NewOptions()
+	}
+
+	if !o.Testing {
+		// 如果文件存在, 取消下载
+		// 测试下载时, 则不检查
+		if savePath != "" {
+			err = checkFileExist(savePath)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
-	if h == nil {
-		h = requester.NewHTTPClient()
+	if o.Client == nil {
+		o.Client = requester.NewHTTPClient()
 	}
 
 	// 获取文件信息
-	resp, err := h.Req("HEAD", url, nil, nil)
+	resp, err := o.Client.Req("HEAD", url, nil, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	if savePath == "" {
+	der = &Downloader{
+		URL:     url,
+		Options: o,
+		size:    resp.ContentLength,
+	}
+
+	if !o.Testing && savePath == "" {
 		finds := FileNameRE.FindStringSubmatch(
 			resp.Header.Get("Content-Disposition"),
 		)
@@ -87,79 +103,78 @@ func NewDownloader(url, savePath string, h *requester.HTTPClient) (der *Download
 		}
 	}
 
-	// 检测要保存下载内容的目录是否存在
-	// 不存在则创建该目录
-	if _, err = os.Stat(filepath.Dir(savePath)); err != nil {
-		err = os.MkdirAll(filepath.Dir(savePath), 0777)
+	if !o.Testing {
+		// 检测要保存下载内容的目录是否存在
+		// 不存在则创建该目录
+		if _, err = os.Stat(filepath.Dir(savePath)); err != nil {
+			err = os.MkdirAll(filepath.Dir(savePath), 0777)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// 移除旧的断点续传文件
+		if _, err = os.Stat(savePath); err != nil {
+			if _, err = os.Stat(savePath + DownloadingFileSuffix); err == nil {
+				os.Remove(savePath + DownloadingFileSuffix)
+			}
+		}
+
+		// 检测要下载的文件是否存在
+		// 如果存在, 则打开文件
+		// 不存在则创建文件
+		file, err := os.OpenFile(savePath, os.O_RDWR|os.O_CREATE, 0666)
 		if err != nil {
 			return nil, err
 		}
-	}
 
-	// 移除旧的断点续传文件
-	if _, err = os.Stat(savePath); err != nil {
-		if _, err = os.Stat(savePath + DownloadingFileSuffix); err == nil {
-			os.Remove(savePath + DownloadingFileSuffix)
-		}
-	}
-
-	// 检测要下载的文件是否存在
-	// 如果存在, 则打开文件
-	// 不存在则创建文件
-	file, err := os.OpenFile(savePath, os.O_RDWR|os.O_CREATE, 0666)
-	if err != nil {
-		return nil, err
+		der.file = file
 	}
 
 	resp.Body.Close()
-
-	der = &Downloader{
-		URL:    url,
-		Size:   resp.ContentLength,
-		File:   file,
-		client: h,
-	}
 
 	return der, nil
 }
 
 // StartDownload 开始下载
 func (der *Downloader) StartDownload() {
-	// 控制线程
-	parallel = maxParallel
-
-	// 如果文件不大, 或者线程数设置过高, 则调低线程数
-	if int64(maxParallel) > der.Size/int64(102400) {
-		parallel = int(der.Size/int64(102400)) + 1
+	if der.Options == nil {
+		der.Options = NewOptions()
 	}
 
-	blockSize := der.Size / int64(parallel)
+	// 控制线程
+	// 如果文件不大, 或者线程数设置过高, 则调低线程数
+	if int64(der.Options.Parallel) > der.size/int64(102400) {
+		der.Options.Parallel = int(der.size/int64(102400)) + 1
+	}
+
+	blockSize := der.size / int64(der.Options.Parallel)
 
 	// 如果 cache size 过高, 则调低
-	if int64(cacheSize) > blockSize {
-		cacheSize = int(blockSize)
+	if int64(der.Options.CacheSize) > blockSize {
+		der.Options.CacheSize = int(blockSize)
 	}
 
 	if err := der.loadBreakPoint(); err != nil {
-		if der.Size <= 0 { // 获取不到文件的大小, 关闭多线程下载 (暂时)
-			der.BlockList = append(der.BlockList, Block{
+		if der.size <= 0 { // 获取不到文件的大小, 关闭多线程下载 (暂时)
+			der.BlockList = append(der.BlockList, &Block{
 				Begin: 0,
 				End:   -1,
 			})
 		} else {
 			var begin int64
 			// 数据平均分配给各个线程
-			for i := 0; i < parallel; i++ {
+			for i := 0; i < der.Options.Parallel; i++ {
 				var end = (int64(i) + 1) * blockSize
-				der.BlockList = append(der.BlockList, Block{
+				der.BlockList = append(der.BlockList, &Block{
 					Begin: begin,
 					End:   end,
 				})
 				begin = end + 1
 			}
 			// 将余出数据分配给最后一个线程
-			der.BlockList[parallel-1].End += der.Size - der.BlockList[parallel-1].End
-			der.BlockList[parallel-1].Final = true
+			der.BlockList[der.Options.Parallel-1].End += der.size - der.BlockList[der.Options.Parallel-1].End
+			der.BlockList[der.Options.Parallel-1].Final = true
 		}
 	}
 
@@ -168,6 +183,8 @@ func (der *Downloader) StartDownload() {
 
 		// 开始下载
 		der.sinceTime = time.Now()
+		der.status.Total = der.size
+
 		err := der.download()
 		if err != nil {
 			der.touchOnError(0, err)
@@ -179,15 +196,21 @@ func (der *Downloader) StartDownload() {
 func (der *Downloader) download() error {
 	for i := range der.BlockList {
 		go func(id int) {
+			// 分配缓存空间
+			der.BlockList[id].buf = make([]byte, der.Options.CacheSize)
 			der.downloadBlockFn(id)
 		}(i)
 	}
+
+	// 开启监控
 	<-der.blockMonitor()
 
 	der.status.done = true
 	touch(der.onFinish)
 
-	der.File.Close()
+	if !der.Options.Testing {
+		der.file.Close()
+	}
 
 	return nil
 }

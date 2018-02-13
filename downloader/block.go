@@ -6,25 +6,28 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"io"
 	"net/http"
-	"os"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
 var (
-	mu sync.Mutex
+	mu      sync.Mutex
+	writeMu sync.Mutex
 )
 
 // Block 下载区块
 type Block struct {
-	Begin   int64 `json:"begin"`
-	End     int64 `json:"end"`
-	running int   // 线程的载入量
-	Final   bool  `json:"isfinal"` // 最后线程, 因为最后的下载线程, 需要另外做处理
+	Begin int64 `json:"begin"`
+	End   int64 `json:"end"`
+	Final bool  `json:"isfinal"` // 最后线程, 因为最后的下载线程, 需要另外做处理
+
+	buf            []byte // 缓冲
+	running        int    // 线程的载入量
+	waitingToWrite bool   // 是否正在等待写入磁盘
 }
 
-type blockList []Block
+type blockList []*Block
 
 // isDone 判断线程是否完成下载任务
 func (b *Block) isDone() bool {
@@ -74,7 +77,7 @@ func (b *Block) expectedContentLength() int64 {
 }
 
 // avaliableThread 筛选空闲的线程,
-// 返回值, 没有空闲的线程, bool 返回 false
+// 返回值, 没有空闲的线程, bool 返回 false,
 // 找到空闲的线程, int 返回该线程的索引 index
 func (bl *blockList) avaliableThread() (int, bool) {
 	index := -1
@@ -136,7 +139,9 @@ for_2: // code 为 1 时, 不重试
 // downloadBlock 文件块下载
 // 根据 id 对于的 Block, 创建下载任务
 func (der *Downloader) downloadBlock(id int) (code int, err error) {
-	if der.BlockList[id].isDone() {
+	block := der.BlockList[id]
+
+	if block.isDone() {
 		return -1, errors.New("thread is done")
 	}
 
@@ -145,18 +150,18 @@ func (der *Downloader) downloadBlock(id int) (code int, err error) {
 		return 1, err
 	}
 
-	if der.BlockList[id].End != -1 {
+	if block.End != -1 {
 		// 设置 Range 请求头, 给各线程分配内容
-		request.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", der.BlockList[id].Begin, der.BlockList[id].End))
+		request.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", block.Begin, block.End))
 	}
 
-	resp, err := der.client.Do(request) // 开始 http 请求
+	resp, err := der.Options.Client.Do(request) // 开始 http 请求
 	if err != nil {
 		return 2, err
 	}
 
 	// 检测 响应Body 的错误
-	if resp.ContentLength != der.BlockList[id].expectedContentLength() {
+	if resp.ContentLength != block.expectedContentLength() {
 		return 3, fmt.Errorf("Content-Length is unexpected: %d", resp.ContentLength)
 	}
 
@@ -185,22 +190,21 @@ func (der *Downloader) downloadBlock(id int) (code int, err error) {
 	defer resp.Body.Close()
 
 	var (
-		buf         = make([]byte, cacheSize)
 		n, loopSize int
 	)
 
 	for {
-		begin := der.BlockList[id].Begin // 用于下文比较
+		begin := block.Begin // 用于下文比较
 
-		n, err = resp.Body.Read(buf)
+		n, err = resp.Body.Read(block.buf)
 
 		bufSize := int64(n)
 		loopSize += n
-		if der.BlockList[id].End != -1 {
+		if block.End != -1 {
 			// 检查下载的大小是否超出需要下载的大小
 			// 这里End+1是因为http的Range的end是包括在需要下载的数据内的
 			// 比如 0-1 的长度其实是2，所以这里end需要+1
-			needSize := der.BlockList[id].End + 1 - der.BlockList[id].Begin
+			needSize := block.End + 1 - block.Begin
 
 			// 已完成 (未雨绸缪)
 			if needSize <= 0 {
@@ -224,17 +228,25 @@ func (der *Downloader) downloadBlock(id int) (code int, err error) {
 		}
 
 		// 将缓冲数据写入硬盘
-		der.File.WriteAt(buf[:n], begin)
+		if !der.Options.Testing {
+			block.waitingToWrite = true
+			writeMu.Lock()
+
+			der.file.WriteAt(block.buf[:n], begin)
+
+			writeMu.Unlock()
+			block.waitingToWrite = false
+		}
 
 		// 两次 begin 不相等, 可能已有新的空闲线程参与
 		// 旧线程应该被结束
-		if begin != der.BlockList[id].Begin {
+		if begin != block.Begin {
 			return -1, errors.New("thread already reload")
 		}
 
 		// 更新已下载大小
 		atomic.AddInt64(&der.status.Downloaded, bufSize)
-		atomic.AddInt64(&der.BlockList[id].Begin, int64(n))
+		atomic.AddInt64(&block.Begin, int64(n))
 
 		// reload connection (百度的限制)
 		if loopSize == 256*1024 {
@@ -243,7 +255,7 @@ func (der *Downloader) downloadBlock(id int) (code int, err error) {
 
 		if err != nil {
 			// 下载数据可能出现异常, 重新下载
-			if der.BlockList[id].End != -1 && !der.BlockList[id].isDone() {
+			if block.End != -1 && !block.isDone() {
 				return 11, fmt.Errorf("download failed, %s, reset", err)
 			}
 			switch {
@@ -256,109 +268,4 @@ func (der *Downloader) downloadBlock(id int) (code int, err error) {
 			}
 		}
 	}
-}
-
-// blockMonitor 延迟监控各线程状态,
-// 管理空闲 (已完成下载任务) 的线程,
-// 清除长时间无响应, 和下载速度为 0 的线程
-func (der *Downloader) blockMonitor() <-chan struct{} {
-	c := make(chan struct{})
-	go func() {
-		for {
-			// 下载完毕, 线程全部完成下载任务, 发送结束信号
-			if der.BlockList.isAllDone() {
-				c <- struct{}{}
-				os.Remove(der.File.Name() + DownloadingFileSuffix) // 删除断点信息
-
-				// 修剪文件
-				// if der.Size <= 0 {
-				// 	fileInfo, err := der.File.Stat()
-				// 	if err == nil && fileInfo.Size() > der.status.Downloaded {
-				// 		der.File.Truncate(der.status.Downloaded)
-				// 	}
-				// } else {
-				// 	der.File.Truncate(der.Size)
-				// }
-
-				return
-			}
-
-			der.recordBreakPoint()
-
-			for k := range der.BlockList {
-				go func(k int) {
-					// 过滤已完成下载任务的线程
-					if der.BlockList[k].isDone() {
-						return
-					}
-
-					// 清除长时间无响应, 和下载速度为 0 的线程
-					go func(k int) {
-						// 设 old 速度监测点, 2 秒后检查速度有无变化
-						old := der.BlockList[k].Begin
-						time.Sleep(2 * time.Second)
-						// 过滤 速度有变化, 或 2 秒内完成了下载任务 的线程
-						if old != der.BlockList[k].Begin || der.BlockList[k].isDone() {
-							return
-						}
-
-						// 筛选出 长时间无响应, 和下载速度为 0 的线程
-						// 然后尝试清除该线程, 选出其他 空闲的线程, 重新添加下载任务
-						mu.Lock() // 加锁, 防止出现重复添加线程的状况 (实验阶段)
-
-						// 筛选空闲的线程
-						index, ok := der.BlockList.avaliableThread()
-						if !ok { // 没有空的
-							mu.Unlock() // 解锁
-							return
-						}
-
-						// 复制 旧线程 的信息到 空闲的线程
-						der.BlockList[index].End = der.BlockList[k].End
-						der.BlockList[index].Begin = der.BlockList[k].Begin
-						der.BlockList[index].Final = der.BlockList[k].Final
-
-						der.BlockList[k].setDone() // 清除旧线程
-
-						mu.Unlock()                // 解锁
-						der.downloadBlockFn(index) // 添加任务
-					}(k)
-
-					// 动态分配新线程
-					go func(k int) {
-						mu.Lock()
-
-						// 筛选空闲的线程
-						index, ok := der.BlockList.avaliableThread()
-						if !ok { // 没有空的
-							mu.Unlock() // 解锁
-							return
-						}
-
-						middle := (der.BlockList[k].Begin + der.BlockList[k].End) / 2
-						if der.BlockList[k].End-middle <= 102400 { // 如果线程剩余的下载量太少, 不分配空闲线程
-							mu.Unlock()
-							return
-						}
-
-						// 折半
-						der.BlockList[index].Begin = middle + 1
-						der.BlockList[index].End = der.BlockList[k].End
-						der.BlockList[index].Final = der.BlockList[k].Final
-						der.BlockList[k].End = middle
-
-						// End 已变, 取消 Final
-						der.BlockList[k].Final = false
-
-						mu.Unlock()
-
-						der.downloadBlockFn(index)
-					}(k)
-
-				}(k)
-			}
-			time.Sleep(1 * time.Second) // 监测频率 1 秒
-		}
-	}()
-	return c
 }

@@ -1,7 +1,8 @@
 package downloader
 
 import (
-	"encoding/json"
+	"errors"
+	"github.com/json-iterator/go"
 	"io/ioutil"
 )
 
@@ -17,24 +18,28 @@ type downloadStatus struct {
 
 // recordBreakPoint 保存下载断点到文件, 用于断点续传
 func (der *Downloader) recordBreakPoint() error {
-	byt, err := json.Marshal(downloadStatus{
+	byt, err := jsoniter.Marshal(downloadStatus{
 		Downloaded: der.status.Downloaded,
 		BlockList:  der.BlockList,
 	})
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(der.File.Name()+DownloadingFileSuffix, byt, 0644)
+	return ioutil.WriteFile(der.file.Name()+DownloadingFileSuffix, byt, 0644)
 }
 
 // loadBreakPoint 尝试从文件载入下载断点
 func (der *Downloader) loadBreakPoint() error {
-	byt, err := ioutil.ReadFile(der.File.Name() + DownloadingFileSuffix)
+	if der.Options.Testing {
+		return errors.New("Testing not support load break points")
+	}
+
+	byt, err := ioutil.ReadFile(der.file.Name() + DownloadingFileSuffix)
 	if err != nil {
 		return err
 	}
 	downloadStatus := new(downloadStatus)
-	err = json.Unmarshal(byt, downloadStatus)
+	err = jsoniter.Unmarshal(byt, downloadStatus)
 	if err != nil {
 		return err
 	}
