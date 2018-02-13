@@ -33,7 +33,7 @@ func (pl *PCSLiner) SetHistory(filePath string) (err error) {
 		return fmt.Errorf("history file not set")
 	}
 
-	pl.Config.historyFile, err = os.Open(filePath)
+	pl.Config.historyFile, err = os.OpenFile(filePath, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
