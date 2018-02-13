@@ -1,56 +1,34 @@
 package pcsliner
 
 import (
-	"fmt"
 	"github.com/iikira/liner"
-	"os"
 )
 
 // PCSLiner 封装 *liner.State, 提供更简便的操作
 type PCSLiner struct {
-	State  *liner.State
-	Config *linerConfig
+	State   *liner.State
+	History *lineHistory
+
+	tmode liner.ModeApplier
+	lmode liner.ModeApplier
 
 	paused bool
 }
 
-type linerConfig struct {
-	CtrlCAborts bool
-
-	mainCompleter func(line string) []string // 主命令自动补全
-	historyFile   *os.File
-}
-
 // NewLiner 返回 *PCSLiner, 默认设置允许 Ctrl+C 结束
 func NewLiner() *PCSLiner {
-	pcsliner := liner.NewLiner()
-	pcsliner.SetMultiLineMode(true)
+	pl := &PCSLiner{}
+	pl.tmode, _ = liner.TerminalMode()
 
-	pl := &PCSLiner{
-		State: pcsliner,
-		Config: &linerConfig{
-			CtrlCAborts: true,
-		},
-	}
+	line := liner.NewLiner()
+	pl.lmode, _ = liner.TerminalMode()
 
-	pcsliner.SetCtrlCAborts(pl.Config.CtrlCAborts)
+	line.SetMultiLineMode(true)
+	line.SetCtrlCAborts(true)
+
+	pl.State = line
 
 	return pl
-}
-
-// DoWriteHistory 执行写入历史
-func (pl *PCSLiner) DoWriteHistory() error {
-	if pl.Config.historyFile == nil {
-		return fmt.Errorf("history file not set")
-	}
-
-	pl.Config.historyFile, _ = os.Create(pl.Config.historyFile.Name())
-	_, err := pl.State.WriteHistory(pl.Config.historyFile)
-	if err != nil {
-		return fmt.Errorf("Error writing history file: %s", err)
-	}
-
-	return nil
 }
 
 // Pause 暂停服务
@@ -61,23 +39,31 @@ func (pl *PCSLiner) Pause() error {
 
 	pl.paused = true
 	pl.DoWriteHistory()
-	return pl.State.Close()
+
+	return pl.tmode.ApplyMode()
 }
 
 // Resume 恢复服务
-func (pl *PCSLiner) Resume() {
+func (pl *PCSLiner) Resume() error {
 	if !pl.paused {
 		panic("PCSLiner is not paused")
 	}
 
 	pl.paused = false
 
-	*pl = *resetPCSLiner(pl) // 拷贝
+	return pl.lmode.ApplyMode()
 }
 
 // Close 关闭服务
-func (pl *PCSLiner) Close() error {
-	pl.DoWriteHistory()
-	pl.Config.historyFile.Close()
-	return pl.State.Close()
+func (pl *PCSLiner) Close() (err error) {
+	err = pl.State.Close()
+	if err != nil {
+		return err
+	}
+
+	if pl.History != nil && pl.History.historyFile != nil {
+		return pl.History.historyFile.Close()
+	}
+
+	return nil
 }
