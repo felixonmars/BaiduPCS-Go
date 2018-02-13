@@ -10,10 +10,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/pcsweb"
-	"github.com/iikira/liner"
 	"github.com/urfave/cli"
-	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -28,8 +25,8 @@ var (
 	// Version 版本号
 	Version = "v3.2.2"
 
-	historyFile = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
-	reloadFn    = func(c *cli.Context) error {
+	historyFilePath = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
+	reloadFn        = func(c *cli.Context) error {
 		pcscommand.ReloadIfInConsole()
 		return nil
 	}
@@ -85,11 +82,21 @@ func main() {
 		pcsverbose.Verbosef("这是一条调试信息\n\n")
 
 		line := pcsliner.NewLiner()
-		line.SetHistory(historyFile)
-		defer line.Close()
+
+		var err error
+		line.History, err = pcsliner.NewLineHistory(historyFilePath)
+		if err != nil {
+			fmt.Printf("警告: 读取历史命令文件错误, %s\n", err)
+		}
+
+		line.ReadHistory()
+		defer func() {
+			line.DoWriteHistory()
+			line.Close()
+		}()
 
 		// tab 自动补全命令
-		line.SetMainCompleter(func(line string) (s []string) {
+		line.State.SetCompleter(func(line string) (s []string) {
 			cmds := cli.CommandsByName(app.Commands)
 
 			for k := range cmds {
@@ -109,35 +116,36 @@ func main() {
 
 			if activeBaiduUser.Name != "" {
 				// 格式: BaiduPCS-Go:<工作目录> <百度ID>$
-				prompt = app.Name + ":" + path.Base(activeBaiduUser.Workdir) + " " + activeBaiduUser.Name + "$ "
+				// 工作目录太长的话会自动缩略
+				prompt = app.Name + ":" + pcsutil.ShortDisplay(path.Base(activeBaiduUser.Workdir), 20) + " " + activeBaiduUser.Name + "$ "
 			} else {
 				// BaiduPCS-Go >
 				prompt = app.Name + " > "
 			}
 
-			if commandLine, err := line.State.Prompt(prompt); err == nil {
-				line.State.AppendHistory(commandLine)
+			commandLine, err := line.State.Prompt(prompt)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 
-				cmdArgs := args.GetArgs(commandLine)
-				if len(cmdArgs) == 0 {
-					continue
-				}
+			line.State.AppendHistory(commandLine)
 
-				s := []string{os.Args[0]}
-				s = append(s, cmdArgs...)
-
-				line.Pause()
-
-				c.App.Run(s)
-
-				line.Resume()
-
-			} else if err == liner.ErrPromptAborted || err == io.EOF {
-				break
-			} else {
-				log.Print("Error reading line: ", err)
+			cmdArgs := args.GetArgs(commandLine)
+			if len(cmdArgs) == 0 {
 				continue
 			}
+
+			s := []string{os.Args[0]}
+			s = append(s, cmdArgs...)
+
+			// 恢复原始终端状态
+			// 防止运行命令时程序被结束, 终端出现异常
+			line.Pause()
+
+			c.App.Run(s)
+
+			line.Resume()
 		}
 	}
 
@@ -507,8 +515,18 @@ func main() {
 					return nil
 				}
 
-				pcscommand.RunDownload(getSubArgs(c)...)
+				pcscommand.RunDownload(c.Bool("test"), c.Int("p"), getSubArgs(c))
 				return nil
+			},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "test",
+					Usage: "测试下载, 此操作不会保存文件到本地",
+				},
+				cli.IntFlag{
+					Name:  "p",
+					Usage: "指定下载线程数",
+				},
 			},
 		},
 		{

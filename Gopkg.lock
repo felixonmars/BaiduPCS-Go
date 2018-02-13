@@ -44,13 +44,13 @@
   revision = "85dec0568397e293c778d50dd19b0e1bef42a2cb"
 
 [[projects]]
-  branch = "master"
   name = "github.com/iikira/Baidu-Login"
   packages = [
     ".",
     "bdcrypto"
   ]
-  revision = "e7051d5bb9d6a35418c67957036b7a756aa2828c"
+  revision = "a440f9c4b7fad4f68dd2ca1e3f1aae85e3bb2fc3"
+  version = "v1.2"
 
 [[projects]]
   branch = "master"
@@ -60,7 +60,7 @@
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "0ae95371bbe1c5b377a997aa41aa2127a5a36ca4"
+  revision = "e0f3529b85be69573b5b329c9d8f6addf1e2b8e4"
 
 [[projects]]
   branch = "master"
@@ -93,6 +93,18 @@
   revision = "0f6332435c864c4f415d566d2e5c747e51c7c24f"
 
 [[projects]]
+  name = "github.com/mattn/go-runewidth"
+  packages = ["."]
+  revision = "9e777a8366cce605130a531d2cd6363d07ad7317"
+  version = "v0.0.2"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/olekukonko/tablewriter"
+  packages = ["."]
+  revision = "b8a9be070da40449e501c3c4730a889e42d87a9e"
+
+[[projects]]
   branch = "master"
   name = "github.com/shiena/ansicolor"
   packages = ["."]
@@ -107,6 +119,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8550a912336cb6c6775aa95847be2f0dea0cb086c5ad54282d2e3d6fad17b305"
+  inputs-digest = "7779634381d5ce4dc40046cee9fa1ff35fc18c58ac0418b786e1d830e69dd17c"
   solver-name = "gps-cdcl"
   solver-version = 1

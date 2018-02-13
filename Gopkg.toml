@@ -42,16 +42,32 @@
   name = "github.com/gobs/args"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/iikira/Baidu-Login"
+  version = "1.2.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/iikira/baidu-tools"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/iikira/liner"
 
 [[constraint]]
   branch = "master"
   name = "github.com/iikira/osext"
 
 [[constraint]]
+  name = "github.com/json-iterator/go"
+  version = "1.0.5"
+
+[[constraint]]
   branch = "master"
-  name = "github.com/iikira/liner"
+  name = "github.com/mars9/passwd"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/olekukonko/tablewriter"
 
 [[constraint]]
   name = "github.com/urfave/cli"

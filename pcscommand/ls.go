@@ -2,10 +2,9 @@ package pcscommand
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/olekukonko/tablewriter"
 	"os"
-	"text/template"
 )
 
 // RunLs 执行列目录
@@ -28,52 +27,38 @@ func RunLs(path string) {
 		}
 	}
 
-	tmpl, err := template.New("ls").Funcs(
-		template.FuncMap{
-			"convertFileSize": func(size int64) string {
-				res := pcsutil.ConvertFileSize(size)
-				if res == "0" {
-					return "-       "
-				}
-				return res
-			},
-			"timeFmt": pcsutil.FormatTime,
-			"totalSize": func() string {
-				return pcsutil.ConvertFileSize(files.TotalSize())
-			},
-			"fdCount": func() string {
-				fN, dN := files.Count()
-				s := fmt.Sprintf("文件总数: %d,\t目录总数: %d", fN, dN)
-				if fN+dN >= 50 {
-					s += fmt.Sprintf(",\t当前目录: %s", path)
-				}
-				return s
-			},
-		},
-	).Parse(`
-------------------------------------------------------------------------------
-当前目录: {{.ThisPath}}
-----
-文件大小	创建日期		文件(目录)
-------------------------------------------------------------------------------
-{{range .FilesInfo}}
-{{convertFileSize .Size}}	{{timeFmt .Ctime}}	{{.Filename}}{{end}}
-------------------------------------------------------------------------------
-总大小: {{totalSize}}	{{fdCount}}
-------------------------------------------------------------------------------
-`)
-	if err != nil {
-		panic(err)
+	fmt.Printf("\n当前工作目录: %s\n----\n", path)
+
+	tb := tablewriter.NewWriter(os.Stdout)
+	tb.SetHeader([]string{"文件大小", "创建日期", "文件(目录)"})
+	tb.SetBorder(false)
+	tb.SetHeaderLine(false)
+	tb.SetColumnSeparator("")
+
+	tb.Append([]string{"", "", ""})
+
+	var sizeStr string
+	for _, file := range files {
+		if file.Isdir {
+			sizeStr = "-"
+		} else {
+			sizeStr = pcsutil.ConvertFileSize(file.Size)
+		}
+
+		tb.Append([]string{sizeStr, pcsutil.FormatTime(file.Ctime), file.Filename})
 	}
 
-	err = tmpl.Execute(os.Stdout, struct {
-		ThisPath  string
-		FilesInfo baidupcs.FileDirectoryList
-	}{
-		ThisPath:  path,
-		FilesInfo: files,
-	})
-	if err != nil {
-		panic(err)
+	tb.Append([]string{"", "", ""})
+
+	fN, dN := files.Count()
+	tb.Append([]string{"总: " + pcsutil.ConvertFileSize(files.TotalSize()), "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
+
+	tb.Render()
+
+	if fN+dN >= 50 {
+		fmt.Printf("\n当前工作目录: %s\n", path)
 	}
+
+	fmt.Printf("----\n")
+	return
 }

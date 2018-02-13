@@ -27,11 +27,11 @@ func ConvertFileSize(size int64, precision ...int) string {
 	if len(precision) == 1 {
 		pint = fmt.Sprint(precision[0])
 	}
-	if size <= 0 {
-		return "0"
+	if size < 0 {
+		return "0B"
 	}
 	if size < KB {
-		return fmt.Sprintf("%."+pint+"fB", float64(size))
+		return fmt.Sprintf("%dB", size)
 	}
 	if size < MB {
 		return fmt.Sprintf("%."+pint+"fKB", float64(size)/float64(KB))
@@ -66,4 +66,17 @@ func IntToBool(i int) bool {
 // FormatTime 将 Unix 时间戳, 转换为字符串
 func FormatTime(t int64) string {
 	return time.Unix(t, 0).Format("2006-01-02 03:04:05")
+}
+
+func ShortDisplay(s string, num int) string {
+	for k := range s {
+		if k >= num {
+			return string(s[:k]) + "..."
+		}
+	}
+	return s
+}
+
+func PaddingDisplay(s string, num int) string {
+	return s
 }
