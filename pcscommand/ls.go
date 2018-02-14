@@ -26,6 +26,7 @@ func RunLs(path string) {
 
 	tb := tablewriter.NewWriter(os.Stdout)
 	tb.SetHeader([]string{"#", "文件大小", "创建日期", "文件(目录)"})
+	tb.SetAutoWrapText(false)
 	tb.SetBorder(false)
 	tb.SetHeaderLine(false)
 	tb.SetColumnSeparator("")
