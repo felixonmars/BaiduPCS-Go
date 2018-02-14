@@ -7,17 +7,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 网盘内列出文件和目录, **支持通配符匹配路径**, [通配符_百度百科](https://baike.baidu.com/item/通配符);
 
-下载网盘内文件, 支持网盘内目录 (文件夹) 下载, 支持多个文件或目录下载, 支持断点续传和高并发**高速**下载;
-
-> 下载测试:
-
-> 服务器: 阿里云
-
-> 下载 4G 文件, 只需 7分29秒
-
-> ![test_4g](./assets/test/test_4g.png)
-
-> 自己感受一下吧
+下载网盘内文件, 支持网盘内目录 (文件夹) 下载, 支持多个文件或目录下载, 支持断点续传和高并发下载;
 
 # 程序 编译/交叉编译 说明
 参见 [编译/交叉编译帮助](https://github.com/iikira/BaiduPCS-Go/wiki/编译-交叉编译帮助) 
