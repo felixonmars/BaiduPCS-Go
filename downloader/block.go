@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"io"
-	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -145,17 +144,15 @@ func (der *Downloader) downloadBlock(id int) (code int, err error) {
 		return -1, errors.New("thread is done")
 	}
 
-	request, err := http.NewRequest("GET", der.URL, nil)
-	if err != nil {
-		return 1, err
-	}
+	header := map[string]string{}
 
 	if block.End != -1 {
 		// 设置 Range 请求头, 给各线程分配内容
-		request.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", block.Begin, block.End))
+		header["Range"] = fmt.Sprintf("bytes=%d-%d", block.Begin, block.End)
 	}
 
-	resp, err := der.Options.Client.Do(request) // 开始 http 请求
+	// 开始 http 请求
+	resp, err := der.Options.Client.Req("GET", der.URL, nil, header)
 	if err != nil {
 		return 2, err
 	}

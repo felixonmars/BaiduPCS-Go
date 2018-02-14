@@ -6,15 +6,13 @@ import (
 
 // DownloadStatus 状态
 type DownloadStatus struct {
-	_ bool // alignment, for 32-bit device
+	done bool // 是否已经结束, alignment, for 32-bit device
 
 	Total       int64         // 总大小
 	Downloaded  int64         // 已下载的数据量
 	Speeds      int64         // 下载速度, 每秒
 	MaxSpeeds   int64         // 最大下载速度
 	TimeElapsed time.Duration // 下载的时间
-
-	done bool // 是否已经结束
 }
 
 // GetStatusChan 返回 DownloadStatus 对象的 channel

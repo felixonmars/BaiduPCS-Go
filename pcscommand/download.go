@@ -13,13 +13,18 @@ import (
 	"time"
 )
 
-func getDownloadFunc(o *downloader.Options) func(downloadURL string, jar *cookiejar.Jar, savePath string) error {
+// downloadFunc 用于下载文件的函数
+type downloadFunc func(downloadURL string, jar *cookiejar.Jar, savePath string) error
+
+func getDownloadFunc(o *downloader.Options) downloadFunc {
 	return func(downloadURL string, jar *cookiejar.Jar, savePath string) error {
 		if o == nil {
 			o = downloader.NewOptions()
 		}
 
 		h := requester.NewHTTPClient()
+		h.UserAgent = pcsconfig.Config.UserAgent
+
 		h.SetCookiejar(jar)
 		h.SetKeepAlive(true)
 		h.SetTimeout(2 * time.Minute)
@@ -43,13 +48,14 @@ func getDownloadFunc(o *downloader.Options) func(downloadURL string, jar *cookie
 			for {
 				select {
 				case <-exitOnStartFunc:
+					close(exitOnStartFunc)
 					return
 				case v, ok := <-ds:
 					if !ok { // channel 已经关闭
 						return
 					}
 
-					fmt.Printf("\r↓ %s/%s %s/s time: %s ............",
+					fmt.Printf("\r↓ %s/%s %s/s %s ............",
 						pcsutil.ConvertFileSize(v.Downloaded, 2),
 						pcsutil.ConvertFileSize(v.Total, 2),
 						pcsutil.ConvertFileSize(v.Speeds, 2),
@@ -72,6 +78,8 @@ func getDownloadFunc(o *downloader.Options) func(downloadURL string, jar *cookie
 		} else {
 			fmt.Printf("\n\n测试下载结束\n\n")
 		}
+
+		close(exitDownloadFunc)
 		return nil
 	}
 }
