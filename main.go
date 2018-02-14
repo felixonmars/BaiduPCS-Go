@@ -194,15 +194,20 @@ func main() {
 		{
 			Name:  "login",
 			Usage: "登录百度账号",
-			Description: fmt.Sprintf("\n   示例: \n      %s\n      %s\n      %s\n\n   正常登录: \n      %s\n\n   百度BDUSS获取方法: \n      %s\n      %s",
-				filepath.Base(os.Args[0])+" login",
-				filepath.Base(os.Args[0])+" login --username=liuhua",
-				filepath.Base(os.Args[0])+" login --bduss=123456789",
-				"按提示一步一步来即可.",
-				"参考这篇 Wiki: https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS",
-				"或者百度搜索: 获取百度BDUSS",
-			),
-			Category: "百度帐号操作",
+			Description: `
+	示例:
+		BaiduPCS-Go login
+		BaiduPCS-Go login --username=liuhua
+		BaiduPCS-Go login --bduss=123456789
+
+	常规登录:
+		按提示一步一步来即可.
+
+	百度BDUSS获取方法:
+		参考这篇 Wiki: https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS
+		或者百度搜索: 获取百度BDUSS
+`,
+			Category: "百度帐号",
 			Before:   reloadFn,
 			After:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -254,7 +259,7 @@ func main() {
 				filepath.Base(os.Args[0])+" su --uid=123456789",
 				filepath.Base(os.Args[0])+" su",
 			),
-			Category: "百度帐号操作",
+			Category: "百度帐号",
 			Before:   reloadFn,
 			After:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -314,7 +319,7 @@ func main() {
 		{
 			Name:     "logout",
 			Usage:    "退出当前登录的百度帐号",
-			Category: "百度帐号操作",
+			Category: "百度帐号",
 			Before:   reloadFn,
 			After:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -346,7 +351,7 @@ func main() {
 		{
 			Name:     "loglist",
 			Usage:    "获取当前帐号, 和所有已登录的百度帐号",
-			Category: "百度帐号操作",
+			Category: "百度帐号",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				au := pcsconfig.Config.MustGetActive()
@@ -361,7 +366,7 @@ func main() {
 		{
 			Name:     "quota",
 			Usage:    "获取配额, 即获取网盘总空间, 和已使用空间",
-			Category: "网盘操作",
+			Category: "百度网盘",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				pcscommand.RunGetQuota()
@@ -370,7 +375,7 @@ func main() {
 		},
 		{
 			Name:      "cd",
-			Category:  "网盘操作",
+			Category:  "百度网盘",
 			Usage:     "切换工作目录",
 			UsageText: fmt.Sprintf("%s cd <目录 绝对路径或相对路径>", filepath.Base(os.Args[0])),
 			Before:    reloadFn,
@@ -397,7 +402,7 @@ func main() {
 			Aliases:   []string{"l", "ll"},
 			Usage:     "列出当前工作目录内的文件和目录 或 指定目录内的文件和目录",
 			UsageText: fmt.Sprintf("%s ls <目录 绝对路径或相对路径>", filepath.Base(os.Args[0])),
-			Category:  "网盘操作",
+			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
 				pcscommand.RunLs(c.Args().Get(0))
@@ -408,7 +413,7 @@ func main() {
 			Name:      "pwd",
 			Usage:     "输出当前所在目录 (工作目录)",
 			UsageText: fmt.Sprintf("%s pwd", filepath.Base(os.Args[0])),
-			Category:  "网盘操作",
+			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
 				fmt.Println(pcsconfig.Config.MustGetActive().Workdir)
@@ -419,7 +424,7 @@ func main() {
 			Name:      "meta",
 			Usage:     "获取单个文件/目录的元信息 (详细信息)",
 			UsageText: fmt.Sprintf("%s meta <文件/目录 绝对路径或相对路径>", filepath.Base(os.Args[0])),
-			Category:  "网盘操作",
+			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
 				pcscommand.RunGetMeta(c.Args().Get(0))
@@ -434,7 +439,7 @@ func main() {
 				"注意: 删除多个文件和目录时, 请确保每一个文件和目录都存在, 否则删除操作会失败.",
 				"被删除的文件或目录可在文件回收站找回.",
 			),
-			Category: "网盘操作",
+			Category: "百度网盘",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() == 0 {
@@ -450,7 +455,7 @@ func main() {
 			Name:      "mkdir",
 			Usage:     "创建目录",
 			UsageText: fmt.Sprintf("%s mkdir <目录 绝对路径或相对路径> ...", filepath.Base(os.Args[0])),
-			Category:  "网盘操作",
+			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() == 0 {
@@ -470,7 +475,7 @@ func main() {
 				filepath.Base(os.Args[0]),
 				filepath.Base(os.Args[0]),
 			),
-			Category: "网盘操作",
+			Category: "百度网盘",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() <= 1 {
@@ -490,7 +495,7 @@ func main() {
 				filepath.Base(os.Args[0]),
 				filepath.Base(os.Args[0]),
 			),
-			Category: "网盘操作",
+			Category: "百度网盘",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() <= 1 {
@@ -508,7 +513,7 @@ func main() {
 			Usage:       "下载文件或目录",
 			UsageText:   fmt.Sprintf("%s download <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", filepath.Base(os.Args[0])),
 			Description: "下载的文件将会保存到, 程序所在目录的 download/ 目录 (文件夹).\n   已支持目录下载.\n   已支持多个文件或目录下载.\n   自动跳过下载重名的文件! \n",
-			Category:    "网盘操作",
+			Category:    "百度网盘",
 			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() == 0 {
@@ -536,7 +541,7 @@ func main() {
 			Usage:       "上传文件或目录",
 			UsageText:   fmt.Sprintf("%s upload <本地文件或目录的路径1> <文件或目录2> <文件或目录3> ... <网盘的目标目录>", filepath.Base(os.Args[0])),
 			Description: "上传的文件将会保存到 网盘的目标目录.\n   遇到同名文件将会自动覆盖! \n",
-			Category:    "网盘操作",
+			Category:    "百度网盘",
 			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() <= 1 {
@@ -556,7 +561,7 @@ func main() {
 			Usage:       "手动秒传文件",
 			UsageText:   fmt.Sprintf("%s rapidupload -length=<文件的大小> -md5=<文件的md5值> -slicemd5=<文件前256KB切片的md5值> -crc32=<文件的crc32值(可选)> <保存的网盘路径, 需包含文件名>", filepath.Base(os.Args[0])),
 			Description: "上传的文件将会保存到 网盘的目标目录.\n   遇到同名文件将会自动覆盖! \n",
-			Category:    "网盘操作",
+			Category:    "百度网盘",
 			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() <= 0 || !c.IsSet("md5") || !c.IsSet("slicemd5") || !c.IsSet("length") {
@@ -624,22 +629,20 @@ func main() {
 			UsageText: fmt.Sprintf("%s set OptionName Value", filepath.Base(os.Args[0])),
 			Description: `
 可设置的值:
-
 	OptionName		Value
 	------------------------------------------------------
-	appid	baidupcs的应用ID, 没问题不要修改!
+	appid	百度 PCS 应用ID
 
 	user_agent	浏览器标识
-	cache_size	下载缓存, 如果硬盘占用高, 请尝试调大此值, 建议值 ( 1024 ~ 16384 )
-	max_parallel	下载最大线程 (并发量) - 建议值 ( 50 ~ 500 )
+	cache_size	下载缓存, 如果硬盘占用高或下载速度慢, 请尝试调大此值, 建议值 ( 1024 ~ 16384 )
+	max_parallel	下载最大并发量 - 建议值 ( 50 ~ 500 )
 	savedir	下载文件的储存目录
 
 例子:
-
 	set appid 260149
 	set cache_size 2048
 	set max_parallel 250
-	set savedir D:\\download
+	set savedir D:/download
 `,
 			Category: "配置",
 			Before:   reloadFn,

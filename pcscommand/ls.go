@@ -30,8 +30,6 @@ func RunLs(path string) {
 	tb.SetHeaderLine(false)
 	tb.SetColumnSeparator("")
 
-	tb.Append([]string{"", "", "", ""})
-
 	for k, file := range files {
 		if file.Isdir {
 			tb.Append([]string{strconv.Itoa(k), "-", pcsutil.FormatTime(file.Ctime), file.Filename + "/"})
