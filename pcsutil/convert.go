@@ -48,12 +48,12 @@ func ConvertFileSize(size int64, precision ...int) string {
 	return fmt.Sprintf("%."+pint+"fPB", float64(size)/float64(PB))
 }
 
-// ToString 将 []byte 转换为 string
+// ToString unsafe 转换, 将 []byte 转换为 string
 func ToString(p []byte) string {
 	return *(*string)(unsafe.Pointer(&p))
 }
 
-// ToBytes 将 string 转换为 []byte
+// ToBytes unsafe 转换, 将 string 转换为 []byte
 func ToBytes(str string) []byte {
 	return *(*[]byte)(unsafe.Pointer(&str))
 }
@@ -68,15 +68,12 @@ func FormatTime(t int64) string {
 	return time.Unix(t, 0).Format("2006-01-02 03:04:05")
 }
 
+// ShortDisplay 缩略显示字符串s, 显示长度为num, 缩略的内容用"..."填充
 func ShortDisplay(s string, num int) string {
 	for k := range s {
 		if k >= num {
 			return string(s[:k]) + "..."
 		}
 	}
-	return s
-}
-
-func PaddingDisplay(s string, num int) string {
 	return s
 }

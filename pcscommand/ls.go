@@ -5,6 +5,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/olekukonko/tablewriter"
 	"os"
+	"strconv"
 )
 
 // RunLs 执行列目录
@@ -21,37 +22,27 @@ func RunLs(path string) {
 		return
 	}
 
-	for k := range files {
-		if files[k].Isdir {
-			files[k].Filename += "/"
-		}
-	}
-
 	fmt.Printf("\n当前工作目录: %s\n----\n", path)
 
 	tb := tablewriter.NewWriter(os.Stdout)
-	tb.SetHeader([]string{"文件大小", "创建日期", "文件(目录)"})
+	tb.SetHeader([]string{"#", "文件大小", "创建日期", "文件(目录)"})
 	tb.SetBorder(false)
 	tb.SetHeaderLine(false)
 	tb.SetColumnSeparator("")
 
-	tb.Append([]string{"", "", ""})
+	tb.Append([]string{"", "", "", ""})
 
-	var sizeStr string
-	for _, file := range files {
+	for k, file := range files {
 		if file.Isdir {
-			sizeStr = "-"
-		} else {
-			sizeStr = pcsutil.ConvertFileSize(file.Size)
+			tb.Append([]string{strconv.Itoa(k), "-", pcsutil.FormatTime(file.Ctime), file.Filename + "/"})
+			continue
 		}
 
-		tb.Append([]string{sizeStr, pcsutil.FormatTime(file.Ctime), file.Filename})
+		tb.Append([]string{strconv.Itoa(k), pcsutil.ConvertFileSize(file.Size), pcsutil.FormatTime(file.Ctime), file.Filename})
 	}
 
-	tb.Append([]string{"", "", ""})
-
 	fN, dN := files.Count()
-	tb.Append([]string{"总: " + pcsutil.ConvertFileSize(files.TotalSize()), "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
+	tb.Append([]string{"", "总: " + pcsutil.ConvertFileSize(files.TotalSize()), "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
 
 	tb.Render()
 

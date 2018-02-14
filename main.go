@@ -23,7 +23,7 @@ import (
 
 var (
 	// Version 版本号
-	Version = "v3.2.2"
+	Version = "v3.3.Beta1"
 
 	historyFilePath = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
@@ -430,8 +430,9 @@ func main() {
 			Name:      "rm",
 			Usage:     "删除 单个/多个 文件/目录",
 			UsageText: fmt.Sprintf("%s rm <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", filepath.Base(os.Args[0])),
-			Description: fmt.Sprintf("\n   %s\n",
+			Description: fmt.Sprintf("\n   %s\n   %s\n",
 				"注意: 删除多个文件和目录时, 请确保每一个文件和目录都存在, 否则删除操作会失败.",
+				"被删除的文件或目录可在文件回收站找回.",
 			),
 			Category: "网盘操作",
 			Before:   reloadFn,
@@ -590,7 +591,7 @@ func main() {
 			Aliases:     []string{"sf"},
 			Usage:       "获取文件的秒传信息",
 			UsageText:   fmt.Sprintf("%s sumfile <本地文件的路径>", filepath.Base(os.Args[0])),
-			Description: "获取文件的大小, md5, 前256KB切片的 md5, crc32, 可用于秒传文件.",
+			Description: "获取文件的大小, md5, 前256KB切片的md5, crc32, 可用于秒传文件.",
 			Category:    "其他",
 			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
@@ -606,11 +607,12 @@ func main() {
 				}
 
 				fmt.Printf(
-					"[%s] 大小: %d, md5: %x, 前256KB切片的 md5: %x, crc32: %d, \n秒传命令: %s rapidupload -length=%d -md5=%x -slicemd5=%x -crc32=%d filename\n",
+					"\n[%s]:\n文件大小: %d, md5: %x, 前256KB切片的md5: %x, crc32: %d, \n\n秒传命令: %s rapidupload -length=%d -md5=%x -slicemd5=%x -crc32=%d %s\n\n",
 					c.Args().Get(0),
 					lp.Length, lp.MD5, lp.SliceMD5, lp.CRC32,
 					os.Args[0],
 					lp.Length, lp.MD5, lp.SliceMD5, lp.CRC32,
+					filepath.Base(c.Args().Get(0)),
 				)
 
 				return nil

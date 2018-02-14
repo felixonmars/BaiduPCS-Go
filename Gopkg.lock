@@ -60,7 +60,7 @@
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "e0f3529b85be69573b5b329c9d8f6addf1e2b8e4"
+  revision = "0ea1b960b6f1d6904529ee911408237e2f109cde"
 
 [[projects]]
   branch = "master"

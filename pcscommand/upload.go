@@ -204,6 +204,10 @@ func RunUpload(localPaths []string, savePath string) {
 					}
 				}
 
+				if localPathInfo.Length >= 128*pcsutil.MB {
+					fmt.Printf("检测秒传中, 请稍候...\n")
+				}
+
 				localPathInfo.md5Sum()
 
 				// 检测缓存, 通过文件的md5值判断本地文件和网盘文件是否一样
@@ -220,10 +224,6 @@ func RunUpload(localPaths []string, savePath string) {
 				// 经检验, 秒传文件并非一定要大于256KB
 				if localPathInfo.Length >= requiredSliceLen {
 					// do nothing.
-				}
-
-				if localPathInfo.Length >= 128*pcsutil.MB {
-					fmt.Printf("检测秒传中, 请稍候...\n")
 				}
 
 				localPathInfo.sliceMD5Sum()
@@ -255,6 +255,7 @@ func RunUpload(localPaths []string, savePath string) {
 						for {
 							select {
 							case <-exit:
+								close(exit)
 								return
 							case v, ok := <-u.UploadStatus:
 								if !ok {
@@ -266,7 +267,7 @@ func RunUpload(localPaths []string, savePath string) {
 									continue
 								}
 
-								fmt.Printf("\r↑ %s/%s %s/s time: %s ......",
+								fmt.Printf("\r↑ %s/%s %s/s time: %s ............",
 									pcsutil.ConvertFileSize(v.Uploaded, 2),
 									pcsutil.ConvertFileSize(v.Length, 2),
 									pcsutil.ConvertFileSize(v.Speed, 2),
@@ -303,6 +304,7 @@ func RunUpload(localPaths []string, savePath string) {
 					})
 
 					<-exit2
+					close(exit2)
 					return uperr
 				})
 
