@@ -6,11 +6,12 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/bitly/go-simplejson"
+	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/uploader"
+	"github.com/json-iterator/go"
 	"hash/crc32"
 	"net/http"
 	"net/http/cookiejar"
@@ -288,19 +289,43 @@ func RunUpload(localPaths []string, savePath string) {
 							return
 						}
 
-						json, err := simplejson.NewFromReader(resp.Body)
+						defer resp.Body.Close()
+
+						// http 响应错误处理
+						switch resp.StatusCode {
+						case 413: // Request Entity Too Large
+							// 上传的文件太大了
+							uperr = fmt.Errorf(resp.Status)
+							return
+						}
+
+						// 数据处理
+						jsonData := &struct {
+							Path string `json:"path"`
+							*baidupcs.ErrInfo
+						}{
+							ErrInfo: baidupcs.NewErrorInfo("上传文件"),
+						}
+
+						d := jsoniter.NewDecoder(resp.Body)
+
+						err = d.Decode(jsonData)
 						if err != nil {
 							uperr = fmt.Errorf("json parse error, %s", err)
 							return
 						}
 
-						pj, ok := json.CheckGet("path")
-						if !ok {
+						if jsonData.ErrCode != 0 {
+							uperr = jsonData.ErrInfo
+							return
+						}
+
+						if jsonData.Path == "" {
 							uperr = fmt.Errorf("unknown response data, file saved path not found")
 							return
 						}
 
-						targetPath = pj.MustString()
+						targetPath = jsonData.Path
 					})
 
 					<-exit2

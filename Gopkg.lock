@@ -60,7 +60,7 @@
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "0ea1b960b6f1d6904529ee911408237e2f109cde"
+  revision = "ae0487c7fdce7bfe84caa735b7a57a2e2c64ef3e"
 
 [[projects]]
   branch = "master"
@@ -119,6 +119,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7779634381d5ce4dc40046cee9fa1ff35fc18c58ac0418b786e1d830e69dd17c"
+  inputs-digest = "da3ef52b4c1e168d714d7a0d126c52daeb4b3461a570fd69f0d321721a9395d6"
   solver-name = "gps-cdcl"
   solver-version = 1
