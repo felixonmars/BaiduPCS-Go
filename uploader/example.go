@@ -3,22 +3,20 @@ package uploader
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
 	"net/http"
 	"strings"
 )
 
 // DoUpload 执行上传
-func DoUpload(uploadURL string, uploadReaderLen ReaderLen, o *Options, checkFunc func(resp *http.Response, err error)) {
-	u := NewUploader(uploadURL, uploadReaderLen, o)
+func DoUpload(uploadURL string, readedlen64 multipartreader.ReadedLen64, o *Options, checkFunc func(resp *http.Response, err error)) {
+	u := NewUploader(uploadURL, readedlen64, o)
 
 	exit := make(chan struct{})
-	exit2 := make(chan struct{})
 
 	u.OnExecute(func() {
 		for {
 			select {
-			case <-exit:
-				return
 			case v, ok := <-u.UploadStatus:
 				if !ok {
 					return
@@ -37,11 +35,10 @@ func DoUpload(uploadURL string, uploadReaderLen ReaderLen, o *Options, checkFunc
 
 	u.OnFinish(func() {
 		exit <- struct{}{}
-		exit2 <- struct{}{}
 	})
 
 	u.Execute(checkFunc)
 
-	<-exit2
+	<-exit
 	return
 }

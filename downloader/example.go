@@ -16,7 +16,6 @@ func DoDownload(url string, fileName string) {
 
 	done := make(chan struct{})
 
-	var exit = make(chan bool)
 	downloader.OnStart(func() {
 		fmt.Println("download started")
 		format := "\r%v/%v [%s] %v byte/s %v"
@@ -24,8 +23,6 @@ func DoDownload(url string, fileName string) {
 		c := downloader.GetStatusChan()
 		for {
 			select {
-			case <-exit:
-				return
 			case v, ok := <-c:
 				if !ok {
 					return
@@ -40,7 +37,6 @@ func DoDownload(url string, fileName string) {
 	})
 
 	downloader.OnFinish(func() {
-		exit <- true
 		done <- struct{}{}
 	})
 

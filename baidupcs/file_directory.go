@@ -1,9 +1,11 @@
 package baidupcs
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
+	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
 	"github.com/json-iterator/go"
 )
 
@@ -79,7 +81,7 @@ func (p *PCSApi) FilesDirectoriesMeta(path string) (data *FileDirectory, err err
 	return fds[0], nil
 }
 
-// FilesDirectoriesMeta 获取多个文件/目录的元信息
+// FilesDirectoriesBatchMeta 获取多个文件/目录的元信息
 func (p *PCSApi) FilesDirectoriesBatchMeta(paths ...string) (data FileDirectoryList, err error) {
 	operation := "获取文件/目录的元信息"
 
@@ -105,11 +107,13 @@ func (p *PCSApi) FilesDirectoriesBatchMeta(paths ...string) (data FileDirectoryL
 		panic(operation + ", json 数据构造失败, " + err.Error())
 	}
 
-	p.setApi("file", "meta", map[string]string{
-		"param": string(sendData),
-	})
+	p.setAPI("file", "meta")
 
-	resp, err := p.client.Req("GET", p.url.String(), nil, nil)
+	// 表单上传
+	mr := multipartreader.NewMultipartReader()
+	mr.AddFormFeild("param", bytes.NewReader(sendData))
+
+	resp, err := p.client.Req("POST", p.url.String(), mr, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%s, 网络错误, %s", operation, err)
 	}
@@ -150,7 +154,7 @@ func (p *PCSApi) FilesDirectoriesList(path string, recurse bool) (data FileDirec
 		path = "/"
 	}
 
-	p.setApi("file", "list", map[string]string{
+	p.setAPI("file", "list", map[string]string{
 		"path":  path,
 		"by":    "name",
 		"order": "asc", // 升序

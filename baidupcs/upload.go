@@ -11,10 +11,10 @@ func (p *PCSApi) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, len
 	operation := "秒传文件"
 
 	if targetPath == "/" {
-		return fmt.Errorf("%s 遇到错误, 保存路径不能是根目录\n", operation)
+		return fmt.Errorf("%s 遇到错误, 保存路径不能是根目录", operation)
 	}
 
-	p.setApi("file", "rapidupload", map[string]string{
+	p.setAPI("file", "rapidupload", map[string]string{
 		"path":           targetPath,         // 上传文件的全路径名
 		"content-length": fmt.Sprint(length), // 待秒传的文件长度
 		"content-md5":    contentMD5,         // 待秒传的文件的MD5
@@ -53,10 +53,10 @@ func (p *PCSApi) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, len
 // Upload 上传单个文件
 func (p *PCSApi) Upload(targetPath string, uploadFunc func(uploadURL string, jar *cookiejar.Jar) error) (err error) {
 	if targetPath == "/" {
-		return fmt.Errorf("上传文件 遇到错误, 保存路径不能是根目录\n")
+		return fmt.Errorf("上传文件 遇到错误, 保存路径不能是根目录")
 	}
 
-	p.setApi("file", "upload", map[string]string{
+	p.setAPI("file", "upload", map[string]string{
 		"path":  targetPath,
 		"ondup": "overwrite",
 	})
@@ -66,7 +66,7 @@ func (p *PCSApi) Upload(targetPath string, uploadFunc func(uploadURL string, jar
 
 // UploadTmpFile 分片上传—文件分片及上传
 func (p *PCSApi) UploadTmpFile(targetPath string, uploadFunc func(uploadURL string, jar *cookiejar.Jar) error) (err error) {
-	p.setApi("file", "upload", map[string]string{
+	p.setAPI("file", "upload", map[string]string{
 		"type": "tmpfile",
 	})
 
@@ -78,7 +78,7 @@ func (p *PCSApi) UploadCreateSuperFile(targetPath string, blockList ...string) (
 	operation := "分片上传—合并分片文件"
 
 	if targetPath == "/" {
-		return fmt.Errorf("%s 遇到错误, 保存路径不能是根目录\n", operation)
+		return fmt.Errorf("%s 遇到错误, 保存路径不能是根目录", operation)
 	}
 
 	bl := struct {
@@ -92,7 +92,7 @@ func (p *PCSApi) UploadCreateSuperFile(targetPath string, blockList ...string) (
 		panic(operation + " 发生错误, " + err.Error())
 	}
 
-	p.setApi("file", "createsuperfile", map[string]string{
+	p.setAPI("file", "createsuperfile", map[string]string{
 		"path":  targetPath,
 		"param": string(data),
 		"ondup": "overwrite",

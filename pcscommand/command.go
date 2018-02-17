@@ -10,6 +10,7 @@ var (
 	info = new(baidupcs.PCSApi)
 )
 
+// GetPCSInfo 重载并返回 PCS 配置信息
 func GetPCSInfo() *baidupcs.PCSApi {
 	ReloadInfo()
 	return info

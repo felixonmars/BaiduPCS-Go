@@ -11,6 +11,7 @@ type ErrInfo struct {
 	ErrMsg    string `json:"error_msg"`  // 错误消息
 }
 
+// NewErrorInfo 提供operation操作名称, 返回 *ErrInfo
 func NewErrorInfo(operation string) *ErrInfo {
 	return &ErrInfo{
 		Operation: operation,

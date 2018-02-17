@@ -28,7 +28,7 @@ func (p *PCSApi) Remove(paths ...string) (err error) {
 		return
 	}
 
-	p.setApi("file", "delete", map[string]string{
+	p.setAPI("file", "delete", map[string]string{
 		"param": string(ej[:]),
 	})
 
@@ -58,7 +58,7 @@ func (p *PCSApi) Remove(paths ...string) (err error) {
 func (p *PCSApi) Mkdir(path string) (err error) {
 	operation := "创建目录"
 
-	p.setApi("file", "mkdir", map[string]string{
+	p.setAPI("file", "mkdir", map[string]string{
 		"path": path,
 	})
 

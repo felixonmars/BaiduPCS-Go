@@ -16,7 +16,7 @@ type quotaInfo struct {
 func (p *PCSApi) QuotaInfo() (quota, used int64, err error) {
 	operation := "获取当前用户空间配额信息"
 
-	p.setApi("quota", "info")
+	p.setAPI("quota", "info")
 
 	resp, err := p.client.Req("GET", p.url.String(), nil, nil)
 	if err != nil {

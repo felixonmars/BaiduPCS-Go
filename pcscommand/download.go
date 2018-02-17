@@ -37,7 +37,6 @@ func getDownloadFunc(o *downloader.Options) downloadFunc {
 		}
 
 		exitDownloadFunc := make(chan struct{})
-		exitOnStartFunc := make(chan struct{})
 
 		downloader.OnStart(func() {
 			if o.Testing {
@@ -47,9 +46,6 @@ func getDownloadFunc(o *downloader.Options) downloadFunc {
 			ds := downloader.GetStatusChan()
 			for {
 				select {
-				case <-exitOnStartFunc:
-					close(exitOnStartFunc)
-					return
 				case v, ok := <-ds:
 					if !ok { // channel 已经关闭
 						return
@@ -66,7 +62,6 @@ func getDownloadFunc(o *downloader.Options) downloadFunc {
 		})
 
 		downloader.OnFinish(func() {
-			exitOnStartFunc <- struct{}{}
 			exitDownloadFunc <- struct{}{}
 		})
 

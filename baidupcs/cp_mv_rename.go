@@ -2,6 +2,7 @@ package baidupcs
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
 	"github.com/json-iterator/go"
 	"strings"
 )
@@ -58,11 +59,13 @@ func (p *PCSApi) cpmvOp(op string, cpmvJSON ...CpMvJSON) (err error) {
 		method = "move"
 	}
 
-	p.setApi("file", method, map[string]string{
-		"param": ejs,
-	})
+	p.setAPI("file", method)
 
-	resp, err := p.client.Req("POST", p.url.String(), nil, nil)
+	// 表单上传
+	mr := multipartreader.NewMultipartReader()
+	mr.AddFormFeild("param", strings.NewReader(ejs))
+
+	resp, err := p.client.Req("POST", p.url.String(), mr, nil)
 	if err != nil {
 		return err
 	}

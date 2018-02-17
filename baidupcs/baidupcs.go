@@ -44,7 +44,7 @@ func NewPCS(bduss string) *PCSApi {
 	}
 }
 
-func (p *PCSApi) setApi(subPath, method string, param ...map[string]string) {
+func (p *PCSApi) setAPI(subPath, method string, param ...map[string]string) {
 	p.url = &url.URL{
 		Scheme: "http",
 		Host:   "pcs.baidu.com",
