@@ -8,8 +8,8 @@ import (
 
 // DoDownload 简单网络下载器, 使用默认下载线程,
 // 通过调用 SetMaxThread 来修改默认下载线程
-func DoDownload(url string, fileName string) {
-	downloader, err := NewDownloader(url, fileName, nil)
+func DoDownload(url string, savePath string) {
+	downloader, err := NewDownloader(url, savePath, nil)
 	if err != nil {
 		return
 	}

@@ -41,7 +41,7 @@
   branch = "master"
   name = "github.com/gobs/args"
   packages = ["."]
-  revision = "85dec0568397e293c778d50dd19b0e1bef42a2cb"
+  revision = "92343d88e3e4a33c4e6e2975367a138e66179736"
 
 [[projects]]
   name = "github.com/iikira/Baidu-Login"
@@ -60,7 +60,7 @@
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "ae0487c7fdce7bfe84caa735b7a57a2e2c64ef3e"
+  revision = "192796a6ba82254fa2e752fb49734eb33676eae4"
 
 [[projects]]
   branch = "master"
@@ -77,8 +77,8 @@
 [[projects]]
   name = "github.com/json-iterator/go"
   packages = ["."]
-  revision = "28452fcdec4e44348d2af0d91d1e9e38da3a9e0a"
-  version = "1.0.5"
+  revision = "e7c7f3b33712573affdcc7a107218e7926b9a05b"
+  version = "1.0.6"
 
 [[projects]]
   branch = "master"
