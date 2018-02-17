@@ -10,6 +10,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
 	"github.com/iikira/BaiduPCS-Go/uploader"
 	"github.com/json-iterator/go"
 	"hash/crc32"
@@ -30,35 +31,37 @@ type upload struct {
 
 // LocalPathInfo 本地文件详情
 type LocalPathInfo struct {
-	path string   // 本地路径
-	file *os.File // 文件
+	Path string   // 本地路径
+	File *os.File // 文件
 
 	Length   int64  // 文件大小
 	SliceMD5 []byte // 文件前 requiredSliceLen (256KB) 切片的 md5 值
 	MD5      []byte // 文件的 md5
 	CRC32    uint32 // 文件的 crc32
+
+	readed int64 // 已读取的数据量, 上传文件用到
 }
 
 func (lp *LocalPathInfo) check() bool {
 	var err error
-	lp.file, err = os.Open(lp.path)
+	lp.File, err = os.Open(lp.Path)
 	if err != nil {
 		return false
 	}
-	info, _ := lp.file.Stat()
+	info, _ := lp.File.Stat()
 	lp.Length = info.Size()
 	return true
 }
 
 // md5Sum 获取文件的 md5 值
 func (lp *LocalPathInfo) md5Sum() {
-	bf := bufio.NewReader(lp.file)
+	bf := bufio.NewReader(lp.File)
 	m := md5.New()
 	bf.WriteTo(m)
 	lp.MD5 = m.Sum(nil)
 
 	// reset
-	lp.file, _ = os.Open(lp.path)
+	lp.File, _ = os.Open(lp.Path)
 	bf.Reset(nil)
 }
 
@@ -66,14 +69,14 @@ func (lp *LocalPathInfo) md5Sum() {
 func (lp *LocalPathInfo) sliceMD5Sum() {
 	// 获取前 256KB 文件切片的 md5
 	buf := make([]byte, requiredSliceLen)
-	lp.file.ReadAt(buf[:], requiredSliceLen)
+	lp.File.ReadAt(buf[:], requiredSliceLen)
 	sliceMD5 := md5.Sum(buf[:])
 	lp.SliceMD5 = sliceMD5[:]
 }
 
 // crc32Sum 获取文件的 crc32 值
 func (lp *LocalPathInfo) crc32Sum() {
-	bf := bufio.NewReader(lp.file)
+	bf := bufio.NewReader(lp.File)
 
 	// 获取 文件 crc32
 	c := crc32.NewIEEE()
@@ -81,22 +84,8 @@ func (lp *LocalPathInfo) crc32Sum() {
 	lp.CRC32 = c.Sum32()
 
 	// reset
-	lp.file, _ = os.Open(lp.path)
+	lp.File, _ = os.Open(lp.Path)
 	bf.Reset(nil)
-}
-
-// Len 实现 uploader.ReaderLen 接口
-func (lp *LocalPathInfo) Len() int64 {
-	return lp.Length
-}
-
-// Read 实现 uploader.ReaderLen 接口
-func (lp *LocalPathInfo) Read(b []byte) (n int, err error) {
-	if lp.file == nil {
-		return 0, os.ErrNotExist
-	}
-
-	return lp.file.Read(b[:])
 }
 
 // RunRapidUpload 执行秒传文件, 前提是知道文件的大小, md5, 前256KB切片的 md5, crc32
@@ -176,7 +165,7 @@ func RunUpload(localPaths []string, savePath string) {
 				fmt.Printf("[%d/%d - %d/%d] - [%s]: 任务开始\n", ftN+1, filesTotalNum, fN+1, filesNum, file)
 
 				localPathInfo := &LocalPathInfo{
-					path: file,
+					Path: file,
 				}
 
 				if !localPathInfo.check() {
@@ -184,9 +173,9 @@ func RunUpload(localPaths []string, savePath string) {
 					return
 				}
 
-				defer localPathInfo.file.Close() // 关闭文件
+				defer localPathInfo.File.Close() // 关闭文件
 
-				subSavePath := strings.TrimPrefix(localPathInfo.path, uploadInfo.dir)
+				subSavePath := strings.TrimPrefix(localPathInfo.Path, uploadInfo.dir)
 
 				// 针对 windows 的目录处理
 				if os.PathSeparator == '\\' {
@@ -244,20 +233,16 @@ func RunUpload(localPaths []string, savePath string) {
 					h := requester.NewHTTPClient()
 					h.SetCookiejar(jar)
 
-					u := uploader.NewUploader(uploadURL, localPathInfo, &uploader.Options{
+					u := uploader.NewUploader(uploadURL, multipartreader.NewFileReadedLen64(localPathInfo.File), &uploader.Options{
 						IsMultiPart: true,
 						Client:      h,
 					})
 
 					exit := make(chan struct{})
-					exit2 := make(chan struct{})
 
 					u.OnExecute(func() {
 						for {
 							select {
-							case <-exit:
-								close(exit)
-								return
 							case v, ok := <-u.UploadStatus:
 								if !ok {
 									return
@@ -280,7 +265,6 @@ func RunUpload(localPaths []string, savePath string) {
 
 					u.OnFinish(func() {
 						exit <- struct{}{}
-						exit2 <- struct{}{}
 					})
 
 					<-u.Execute(func(resp *http.Response, err error) {
@@ -328,8 +312,8 @@ func RunUpload(localPaths []string, savePath string) {
 						targetPath = jsonData.Path
 					})
 
-					<-exit2
-					close(exit2)
+					<-exit
+					close(exit)
 					return uperr
 				})
 
@@ -362,8 +346,8 @@ func GetFileSum(localPath string, sliceMD5Only bool) (lp *LocalPathInfo, err err
 	}
 
 	lp = &LocalPathInfo{
-		path:   localPath,
-		file:   file,
+		Path:   localPath,
+		File:   file,
 		Length: fileStat.Size(),
 	}
 

@@ -19,7 +19,7 @@ func (u *Uploader) startStatus() {
 	go func() {
 		t := time.Now()
 		for {
-			old := u.Body.getReaded()
+			old := u.Body.Readed()
 
 			time.Sleep(1 * time.Second) // 每秒统计
 
@@ -30,9 +30,9 @@ func (u *Uploader) startStatus() {
 			}
 
 			c <- UploadStatus{
-				Length:      u.Body.uploadReaderLen.Len(),
-				Uploaded:    u.Body.getReaded(),
-				Speed:       u.Body.getReaded() - old,
+				Length:      u.Body.Len(),
+				Uploaded:    u.Body.Readed(),
+				Speed:       u.Body.Readed() - old,
 				TimeElapsed: time.Since(t) / 1000000 * 1000000,
 			}
 		}

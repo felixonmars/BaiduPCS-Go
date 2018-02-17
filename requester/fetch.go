@@ -3,6 +3,7 @@ package requester
 import (
 	"bytes"
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -61,6 +62,11 @@ func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header 
 	req, err = http.NewRequest(method, urlStr, obody)
 	if err != nil {
 		return nil, err
+	}
+
+	// 设置
+	if v, ok := post.(*multipartreader.MultipartReader); ok {
+		v.SetupHTTPRequest(req)
 	}
 
 	// 设置浏览器标识
