@@ -1,4 +1,4 @@
-# BaiduPCS-Go 百度网盘工具箱 v3.3.Beta1
+# BaiduPCS-Go 百度网盘工具箱 v3.3.Beta2
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
 
 # 特色
