@@ -81,11 +81,12 @@ func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header 
 // 返回值分别为 网站主体, 错误信息
 func (h *HTTPClient) Fetch(method string, urlStr string, post interface{}, header map[string]string) (body []byte, err error) {
 	resp, err := h.Req(method, urlStr, post, header)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	body, err = ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	return
+	return ioutil.ReadAll(resp.Body)
 }
