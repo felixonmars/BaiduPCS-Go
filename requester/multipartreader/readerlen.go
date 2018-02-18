@@ -37,8 +37,8 @@ func NewFileReadedLen64(f *os.File) ReadedLen64 {
 }
 
 type fileReadedlen64 struct {
-	f      *os.File
 	readed int64
+	f      *os.File
 }
 
 // Read 读文件, 并记录已读取数据量

@@ -25,7 +25,9 @@ type MultipartReader struct {
 
 	once        sync.Once
 	multiReader io.Reader
-	readed      int64 // 已读取的数据量
+
+	_      bool  // alignmemt
+	readed int64 // 已读取的数据量
 }
 
 type part struct {
