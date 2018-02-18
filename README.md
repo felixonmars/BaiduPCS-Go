@@ -1,4 +1,4 @@
-# BaiduPCS-Go 百度网盘工具箱 v3.3.Beta2
+# BaiduPCS-Go 百度网盘工具箱 v3.3.Beta3
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
 
 # 特色
@@ -431,6 +431,7 @@ console 模式下, 运行命令 `set max_parallel 250` 将下载最大并发数�
 # 已知问题
 
 1. 下载进度到最后的时候, 下载速度会降低.
+2. 下载速度不是很稳定, 有时会上下波动.
 
 # TODO
 
