@@ -253,7 +253,7 @@ func RunUpload(localPaths []string, savePath string) {
 									continue
 								}
 
-								fmt.Printf("\r↑ %s/%s %s/s time: %s ............",
+								fmt.Printf("\r↑ %s/%s %s/s in %s ............",
 									pcsutil.ConvertFileSize(v.Uploaded, 2),
 									pcsutil.ConvertFileSize(v.Length, 2),
 									pcsutil.ConvertFileSize(v.Speed, 2),

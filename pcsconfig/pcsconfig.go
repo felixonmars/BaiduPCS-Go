@@ -1,3 +1,4 @@
+// Package pcsconfig 配置包
 package pcsconfig
 
 import (

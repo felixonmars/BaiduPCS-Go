@@ -1,10 +1,9 @@
+// Package pcsutil 工具包
 package pcsutil
 
 import (
 	"compress/gzip"
-	"crypto/md5"
 	"flag"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http/cookiejar"
@@ -36,25 +35,6 @@ func GetURLCookieString(urlString string, jar *cookiejar.Jar) string {
 	}
 	cookieString = strings.TrimRight(cookieString, "; ")
 	return cookieString
-}
-
-// Md5Encrypt 对 str 进行md5加密, 返回值为 str 加密后的密文
-func Md5Encrypt(str interface{}) string {
-	md5Ctx := md5.New()
-	switch value := str.(type) {
-	case string:
-		md5Ctx.Write([]byte(str.(string)))
-	case *string:
-		md5Ctx.Write([]byte(*str.(*string)))
-	case []byte:
-		md5Ctx.Write(str.([]byte))
-	case *[]byte:
-		md5Ctx.Write(*str.(*[]byte))
-	default:
-		fmt.Println("MD5Encrypt: undefined type:", value)
-		return ""
-	}
-	return fmt.Sprintf("%X", md5Ctx.Sum(nil))
 }
 
 // DecompressGZIP 对 io.Reader 数据, 进行 gzip 解压

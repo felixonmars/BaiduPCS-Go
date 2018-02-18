@@ -1,3 +1,4 @@
+// Package requester 提供网络请求简便操作
 package requester
 
 var (

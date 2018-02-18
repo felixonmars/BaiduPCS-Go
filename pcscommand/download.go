@@ -51,7 +51,7 @@ func getDownloadFunc(o *downloader.Options) downloadFunc {
 						return
 					}
 
-					fmt.Printf("\r↓ %s/%s %s/s %s ............",
+					fmt.Printf("\r↓ %s/%s %s/s in %s ............",
 						pcsutil.ConvertFileSize(v.Downloaded, 2),
 						pcsutil.ConvertFileSize(v.Total, 2),
 						pcsutil.ConvertFileSize(v.Speeds, 2),

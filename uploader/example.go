@@ -22,7 +22,7 @@ func DoUpload(uploadURL string, readedlen64 multipartreader.ReadedLen64, o *Opti
 					return
 				}
 
-				fmt.Printf("\r%v/%v %v/s time: %s %v",
+				fmt.Printf("\r%s/%s %s/s in %s %v",
 					pcsutil.ConvertFileSize(v.Uploaded, 2),
 					pcsutil.ConvertFileSize(v.Length, 2),
 					pcsutil.ConvertFileSize(v.Speed, 2),

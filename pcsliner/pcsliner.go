@@ -1,3 +1,4 @@
+// Package pcsliner 命令行 readline 工具包
 package pcsliner
 
 import (

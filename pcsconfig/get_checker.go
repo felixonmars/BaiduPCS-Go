@@ -28,7 +28,7 @@ func (c *PCSConfig) GetActive() (*Baidu, error) {
 	return c.GetBaiduUserByUID(c.BaiduActiveUID)
 }
 
-// MustActive 获取当前登录的百度帐号
+// MustGetActive 获取当前登录的百度帐号
 func (c *PCSConfig) MustGetActive() *Baidu {
 	b, err := c.GetBaiduUserByUID(c.BaiduActiveUID)
 	if err != nil {

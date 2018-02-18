@@ -63,7 +63,7 @@ func runCpMvOp(op string, paths ...string) {
 		}
 
 		if op == "copy" { // 拷贝
-			err = info.Copy(baidupcs.CpMvJSON{
+			err = info.Copy(&baidupcs.CpMvJSON{
 				From: froms[0],
 				To:   to,
 			})
@@ -95,10 +95,12 @@ func runCpMvOp(op string, paths ...string) {
 	}
 
 	cj := new(baidupcs.CpMvJSONList)
-	cj.List = make([]baidupcs.CpMvJSON, len(froms))
+	cj.List = make([]*baidupcs.CpMvJSON, len(froms))
 	for k := range froms {
-		cj.List[k].From = froms[k]
-		cj.List[k].To = to + "/" + path.Base(froms[k])
+		cj.List[k] = &baidupcs.CpMvJSON{
+			From: froms[k],
+			To:   to + "/" + path.Base(froms[k]),
+		}
 	}
 
 	switch op {

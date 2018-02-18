@@ -13,30 +13,30 @@ type CpMvJSON struct {
 	To   string `json:"to"`   // 目标文件或目录
 }
 
-// CpMvJSONList []CpMvJSON 对象数组
+// CpMvJSONList []*CpMvJSON 对象数组
 type CpMvJSONList struct {
-	List []CpMvJSON `json:"list"`
+	List []*CpMvJSON `json:"list"`
 }
 
 // Rename 重命名文件/目录
 func (p *PCSApi) Rename(from, to string) (err error) {
-	return p.cpmvOp("rename", CpMvJSON{
+	return p.cpmvOp("rename", &CpMvJSON{
 		From: from,
 		To:   to,
 	})
 }
 
 // Copy 批量拷贝文件/目录
-func (p *PCSApi) Copy(cpmvJSON ...CpMvJSON) (err error) {
+func (p *PCSApi) Copy(cpmvJSON ...*CpMvJSON) (err error) {
 	return p.cpmvOp("copy", cpmvJSON...)
 }
 
 // Move 批量移动文件/目录
-func (p *PCSApi) Move(cpmvJSON ...CpMvJSON) (err error) {
+func (p *PCSApi) Move(cpmvJSON ...*CpMvJSON) (err error) {
 	return p.cpmvOp("move", cpmvJSON...)
 }
 
-func (p *PCSApi) cpmvOp(op string, cpmvJSON ...CpMvJSON) (err error) {
+func (p *PCSApi) cpmvOp(op string, cpmvJSON ...*CpMvJSON) (err error) {
 	var operation string
 	switch op {
 	case "copy":
@@ -88,7 +88,7 @@ func (p *PCSApi) cpmvOp(op string, cpmvJSON ...CpMvJSON) (err error) {
 }
 
 //cpmvJSONEncode 生成 json 串
-func cpmvJSONEncode(cpmvJSON ...CpMvJSON) (string, error) {
+func cpmvJSONEncode(cpmvJSON ...*CpMvJSON) (string, error) {
 	pathsData := CpMvJSONList{
 		List: cpmvJSON,
 	}

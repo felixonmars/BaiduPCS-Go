@@ -1,3 +1,4 @@
+// Package pcsverbose 调试包
 package pcsverbose
 
 import (
@@ -8,7 +9,7 @@ import (
 
 var (
 	// IsVerbose 是否调试
-	IsVerbose bool = false
+	IsVerbose = false
 
 	// Output 输出
 	Output io.Writer = os.Stderr

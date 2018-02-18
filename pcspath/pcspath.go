@@ -1,3 +1,4 @@
+// Package pcspath 网盘路径工具包
 package pcspath
 
 import (

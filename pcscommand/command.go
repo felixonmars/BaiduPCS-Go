@@ -1,3 +1,4 @@
+// Package pcscommand 命令包
 package pcscommand
 
 import (

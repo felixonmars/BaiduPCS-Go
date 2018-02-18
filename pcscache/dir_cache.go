@@ -1,3 +1,4 @@
+// Package pcscache 缓存包
 package pcscache
 
 import (

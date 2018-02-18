@@ -29,6 +29,7 @@ func setUserAgent(ua string) {
 	requester.UserAgent = ua
 }
 
+// SetConfig 设置配置
 func (c *PCSConfig) SetConfig(key, value string) (err error) {
 	switch key {
 	case "appid", "cache_size", "max_parallel":
@@ -71,7 +72,7 @@ func (c *PCSConfig) SetConfig(key, value string) (err error) {
 		fmt.Printf("设置成功, %s -> %v\n", key, value)
 
 	default:
-		return fmt.Errorf("未知设定值: %s\n\n", key)
+		return fmt.Errorf("未知设定值: %s", key)
 	}
 	return nil
 }

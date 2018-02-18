@@ -52,6 +52,7 @@ func EscapeBracketTwo(s string) string {
 	return buf.String()
 }
 
+// SplitAll 分割路径, "/"为分隔符
 func SplitAll(pcspath string) (elem []string) {
 	pcspath = path.Clean(pcspath)
 
