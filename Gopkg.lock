@@ -64,6 +64,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/iikira/downloader"
+  packages = ["."]
+  revision = "724633f4ba039ba3e66e4054f0706bf58627915b"
+
+[[projects]]
+  branch = "master"
   name = "github.com/iikira/liner"
   packages = ["."]
   revision = "75e2f4424900f9f169f3ac371b297f4bc24f38d5"
@@ -119,6 +125,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "da3ef52b4c1e168d714d7a0d126c52daeb4b3461a570fd69f0d321721a9395d6"
+  inputs-digest = "03e44075ce423e85f2e3ae5573ba0620cff8a0a1dabb1c08845c0a5d1855dc19"
   solver-name = "gps-cdcl"
   solver-version = 1

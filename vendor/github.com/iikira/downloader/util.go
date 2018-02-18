@@ -16,3 +16,11 @@ func checkFileExist(path string) (err error) {
 
 	return nil
 }
+
+func trigger(f func()) {
+	if f == nil {
+		return
+	}
+
+	go f()
+}

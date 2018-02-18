@@ -2,7 +2,7 @@ package pcsconfig
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/downloader"
+	"github.com/iikira/downloader"
 	"os"
 	"path/filepath"
 )
