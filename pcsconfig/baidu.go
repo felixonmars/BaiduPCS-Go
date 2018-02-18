@@ -2,9 +2,9 @@ package pcsconfig
 
 import (
 	"bytes"
-	"fmt"
+	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/baidu-tools/tieba"
-	"strings"
+	"strconv"
 )
 
 // Baidu 百度帐号对象
@@ -44,13 +44,16 @@ func NewUserInfoByBDUSS(bduss string) (b *Baidu, err error) {
 
 // String 格式输出百度帐号列表
 func (bl *BaiduUserList) String() string {
-	var s bytes.Buffer
-	s.WriteString("\nindex\t\tuid\t用户名\n")
-	s.WriteString(strings.Repeat("-", 50) + "\n")
+	buf := bytes.NewBuffer(nil)
+
+	tb := pcstable.NewTable(buf)
+	tb.SetHeader([]string{"#", "uid", "用户名"})
 
 	for k, baiduInfo := range *bl {
-		s.WriteString(fmt.Sprintf("%4d|", k) + "\t" + fmt.Sprintf("%11d|", baiduInfo.UID) + "\t" + baiduInfo.Name + "\n")
+		tb.Append([]string{strconv.Itoa(k), strconv.FormatUint(baiduInfo.UID, 10), baiduInfo.Name})
 	}
-	s.WriteRune('\n')
-	return s.String()
+
+	tb.Render()
+
+	return buf.String()
 }

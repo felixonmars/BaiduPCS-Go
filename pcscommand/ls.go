@@ -2,8 +2,8 @@ package pcscommand
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
-	"github.com/olekukonko/tablewriter"
 	"os"
 	"strconv"
 )
@@ -24,12 +24,8 @@ func RunLs(path string) {
 
 	fmt.Printf("\n当前工作目录: %s\n----\n", path)
 
-	tb := tablewriter.NewWriter(os.Stdout)
+	tb := pcstable.NewTable(os.Stdout)
 	tb.SetHeader([]string{"#", "文件大小", "创建日期", "文件(目录)"})
-	tb.SetAutoWrapText(false)
-	tb.SetBorder(false)
-	tb.SetHeaderLine(false)
-	tb.SetColumnSeparator("")
 
 	for k, file := range files {
 		if file.Isdir {

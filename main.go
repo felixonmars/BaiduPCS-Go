@@ -280,7 +280,7 @@ func main() {
 
 					// 提示输入 index
 					var index string
-					fmt.Printf("输入要切换帐号的 index 值 > ")
+					fmt.Printf("输入要切换帐号的 # 值 > ")
 					_, err := fmt.Scanln(&index)
 					if err != nil {
 						return nil
@@ -289,7 +289,7 @@ func main() {
 					if n, err := strconv.Atoi(index); err == nil && n >= 0 && n < len(pcsconfig.Config.BaiduUserList) {
 						uid = pcsconfig.Config.BaiduUserList[n].UID
 					} else {
-						fmt.Println("切换用户失败, 请检查 index 值是否正确")
+						fmt.Println("切换用户失败, 请检查 # 值是否正确")
 					}
 				} else {
 					cli.ShowCommandHelp(c, c.Command.Name)
@@ -333,19 +333,27 @@ func main() {
 					confirm string
 				)
 
-				fmt.Printf("确认退出百度帐号: %s ? (y/n) > ", au.Name)
-				_, err := fmt.Scanln(&confirm)
-				if err != nil || (confirm != "y" && confirm != "Y") {
-					return err
+				if !c.Bool("y") {
+					fmt.Printf("确认退出百度帐号: %s ? (y/n) > ", au.Name)
+					_, err := fmt.Scanln(&confirm)
+					if err != nil || (confirm != "y" && confirm != "Y") {
+						return err
+					}
 				}
 
-				err = pcsconfig.Config.DeleteBaiduUserByUID(au.UID)
+				err := pcsconfig.Config.DeleteBaiduUserByUID(au.UID)
 				if err != nil {
 					fmt.Printf("退出用户 %s, 失败, 错误: %s\n", au.Name, err)
 				}
 
 				fmt.Printf("退出用户成功, %s\n", au.Name)
 				return nil
+			},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "y",
+					Usage: "确认退出帐号",
+				},
 			},
 		},
 		{
@@ -356,7 +364,7 @@ func main() {
 			Action: func(c *cli.Context) error {
 				au := pcsconfig.Config.MustGetActive()
 
-				fmt.Printf("\n当前帐号 uid: %d, 用户名: %s\n", au.UID, au.Name)
+				fmt.Printf("\n当前帐号 uid: %d, 用户名: %s\n\n", au.UID, au.Name)
 
 				fmt.Println(pcsconfig.Config.BaiduUserList.String())
 

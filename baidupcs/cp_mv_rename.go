@@ -1,9 +1,12 @@
 package baidupcs
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
 	"github.com/json-iterator/go"
+	"strconv"
 	"strings"
 )
 
@@ -102,9 +105,15 @@ func cpmvJSONEncode(cpmvJSON ...*CpMvJSON) (string, error) {
 }
 
 func (cl CpMvJSONList) String() string {
-	l := make([]string, len(cl.List))
+	buf := bytes.NewBuffer(nil)
+
+	tb := pcstable.NewTable(buf)
+	tb.SetHeader([]string{"#", "原路径", "目标路径"})
+
 	for k := range cl.List {
-		l[k] = fmt.Sprintf("%d: %s -> %s", k+1, cl.List[k].From, cl.List[k].To)
+		tb.Append([]string{strconv.Itoa(k), cl.List[k].From, cl.List[k].To})
 	}
-	return strings.Join(l, "\n")
+
+	tb.Render()
+	return buf.String()
 }

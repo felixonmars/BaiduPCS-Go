@@ -3,6 +3,7 @@ package pcsconfig
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/requester"
+	"path/filepath"
 	"strconv"
 )
 
@@ -65,6 +66,11 @@ func (c *PCSConfig) SetConfig(key, value string) (err error) {
 		case "user_agent":
 			setUserAgent(value)
 		case "savedir":
+			value, err = filepath.Abs(value)
+			if err != nil {
+				return err
+			}
+
 			c.SaveDir = value
 		}
 
