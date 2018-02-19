@@ -12,23 +12,23 @@ type dirCache struct {
 }
 
 // Set 设置网盘目录缓存
-func (dc dirCache) Set(path string, dirInfo *baidupcs.FileDirectoryList) {
+func (dc *dirCache) Set(path string, dirInfo *baidupcs.FileDirectoryList) {
 	dc.fdl[path] = dirInfo
 }
 
 // Existed 检测缓存是否存在
-func (dc dirCache) Existed(path string) bool {
+func (dc *dirCache) Existed(path string) bool {
 	_, existed := dc.fdl[path]
 	return existed
 }
 
 // Get 取出网盘目录缓存
-func (dc dirCache) Get(path string) *baidupcs.FileDirectoryList {
+func (dc *dirCache) Get(path string) *baidupcs.FileDirectoryList {
 	return dc.fdl[path]
 }
 
 // FindFileDirectory 网盘目录缓存内查找文件
-func (dc dirCache) FindFileDirectory(path, filename string) *baidupcs.FileDirectory {
+func (dc *dirCache) FindFileDirectory(path, filename string) *baidupcs.FileDirectory {
 	fdl := dc.Get(path)
 	if fdl == nil {
 		return nil
@@ -41,12 +41,12 @@ func (dc dirCache) FindFileDirectory(path, filename string) *baidupcs.FileDirect
 	return nil
 }
 
-func (dc dirCache) SetLifeTime(t time.Duration) {
+func (dc *dirCache) SetLifeTime(t time.Duration) {
 	dc.lifeTime = t
 }
 
 // GC 缓存回收
-func (dc dirCache) GC() {
+func (dc *dirCache) GC() {
 	go func() {
 		ticker := time.NewTicker(dc.lifeTime)
 		for {
@@ -59,12 +59,12 @@ func (dc dirCache) GC() {
 }
 
 // Del 删除网盘目录缓存
-func (dc dirCache) Del(path string) {
+func (dc *dirCache) Del(path string) {
 	delete(dc.fdl, path)
 }
 
 // DelAll 清空网盘目录缓存
-func (dc dirCache) DelAll() {
+func (dc *dirCache) DelAll() {
 	for k := range dc.fdl {
 		delete(dc.fdl, k)
 	}

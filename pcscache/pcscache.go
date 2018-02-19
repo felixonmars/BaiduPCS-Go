@@ -7,7 +7,7 @@ import (
 
 var (
 	// DirCache 网盘目录缓存
-	DirCache = dirCache{
+	DirCache = &dirCache{
 		fdl:      map[string]*baidupcs.FileDirectoryList{},
 		lifeTime: 1 * time.Hour,
 	}
