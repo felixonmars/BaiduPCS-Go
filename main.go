@@ -445,7 +445,7 @@ func main() {
 			UsageText: fmt.Sprintf("%s rm <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", filepath.Base(os.Args[0])),
 			Description: fmt.Sprintf("\n   %s\n   %s\n",
 				"注意: 删除多个文件和目录时, 请确保每一个文件和目录都存在, 否则删除操作会失败.",
-				"被删除的文件或目录可在文件回收站找回.",
+				"被删除的文件或目录可在网盘文件回收站找回.",
 			),
 			Category: "百度网盘",
 			Before:   reloadFn,

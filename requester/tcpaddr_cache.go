@@ -17,21 +17,19 @@ var (
 	}
 )
 
+// tcpAddrCache tcp地址缓存, 即dns解析后的ip地址
 type tcpAddrCache struct {
 	ta       sync.Map
 	lifeTime time.Duration // 生命周期
 }
 
 func init() {
+	// 启动自动清理缓存
 	TCPAddrCache.GC()
 }
 
 // Set 设置
 func (tac *tcpAddrCache) Set(address string, ta *net.TCPAddr) {
-	if tac.Existed(address) {
-		return
-	}
-
 	tac.ta.Store(address, ta)
 }
 
@@ -63,12 +61,9 @@ func (tac *tcpAddrCache) SetLifeTime(t time.Duration) {
 // GC 缓存回收
 func (tac *tcpAddrCache) GC() {
 	go func() {
-		ticker := time.NewTicker(tac.lifeTime)
 		for {
-			select {
-			case <-ticker.C:
-				tac.DelAll()
-			}
+			time.Sleep(tac.lifeTime) // 这样可以动态修改 lifetime
+			tac.DelAll()
 		}
 	}()
 }
@@ -80,13 +75,13 @@ func (tac *tcpAddrCache) Del(address string) {
 
 // DelAll 清空缓存
 func (tac *tcpAddrCache) DelAll() {
-	tac.ta.Range(func(address, value interface{}) bool {
-		tac.Del(address.(string))
+	tac.ta.Range(func(address, _ interface{}) bool {
+		tac.ta.Delete(address)
 		return true
 	})
 }
 
-// PrintAll 输出全部
+// PrintAll 输出全部 tcp 缓存地址
 func (tac *tcpAddrCache) PrintAll() {
 	tb := pcstable.NewTable(os.Stdout)
 	tb.SetHeader([]string{"address", "tcpaddr"})

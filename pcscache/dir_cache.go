@@ -48,12 +48,9 @@ func (dc *dirCache) SetLifeTime(t time.Duration) {
 // GC 缓存回收
 func (dc *dirCache) GC() {
 	go func() {
-		ticker := time.NewTicker(dc.lifeTime)
 		for {
-			select {
-			case <-ticker.C:
-				dc.DelAll()
-			}
+			time.Sleep(dc.lifeTime) // 这样可以动态修改 lifetime
+			dc.DelAll()
 		}
 	}()
 }

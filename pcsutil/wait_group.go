@@ -38,6 +38,7 @@ func (w *WaitGroup) AddDelta() {
 
 // Done 在 sync.WaitGroup 的基础上, 新增线程控制功能
 func (w *WaitGroup) Done() {
+	w.Lock()
 	w.wg.Done()
 
 	if w.p == nil {
@@ -45,6 +46,7 @@ func (w *WaitGroup) Done() {
 	}
 
 	<-w.p
+	w.Unlock()
 }
 
 // Wait 参照 sync.WaitGroup 的 Wait 方法

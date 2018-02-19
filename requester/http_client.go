@@ -45,7 +45,12 @@ func NewHTTPClient() *HTTPClient {
 
 // SetCookiejar 设置 cookie
 func (h *HTTPClient) SetCookiejar(c *cookiejar.Jar) {
-	h.Jar = c
+	if c != nil {
+		h.Jar = c
+		return
+	}
+
+	h.ResetCookiejar()
 }
 
 // ResetCookiejar 清空 cookie

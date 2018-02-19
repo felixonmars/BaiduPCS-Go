@@ -433,6 +433,10 @@ console 模式下, 运行命令 `set max_parallel 250` 将下载最大并发数�
 1. 下载进度到最后的时候, 下载速度会降低.
 2. 下载速度不是很稳定, 有时会上下波动.
 
+# 常见问题
+
+参见 [常见问题](https://github.com/iikira/BaiduPCS-Go/wiki/%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)
+
 # TODO
 
 1. 上传大文件
