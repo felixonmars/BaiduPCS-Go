@@ -21,12 +21,18 @@ func NewHTTPClient() *HTTPClient {
 	return &HTTPClient{
 		Client: http.Client{
 			Transport: &http.Transport{
+				Proxy:       http.ProxyFromEnvironment,
+				DialContext: dialContext,
+				Dial:        dial,
+				DialTLS:     dial,
 				TLSClientConfig: &tls.Config{
 					InsecureSkipVerify: true,
 				},
 				TLSHandshakeTimeout:   10 * time.Second,
 				DisableKeepAlives:     false,
 				DisableCompression:    false, // gzip
+				MaxIdleConns:          100,
+				IdleConnTimeout:       90 * time.Second,
 				ResponseHeaderTimeout: 10 * time.Second,
 				ExpectContinueTimeout: 10 * time.Second,
 			},
