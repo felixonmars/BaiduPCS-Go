@@ -2,13 +2,13 @@
 package pcsliner
 
 import (
-	"github.com/iikira/liner"
+	"github.com/peterh/liner"
 )
 
 // PCSLiner 封装 *liner.State, 提供更简便的操作
 type PCSLiner struct {
 	State   *liner.State
-	History *lineHistory
+	History *LineHistory
 
 	tmode liner.ModeApplier
 	lmode liner.ModeApplier

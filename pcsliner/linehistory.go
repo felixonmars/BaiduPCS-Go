@@ -5,13 +5,15 @@ import (
 	"os"
 )
 
-type lineHistory struct {
+// LineHistory 命令行历史
+type LineHistory struct {
 	historyFilePath string
 	historyFile     *os.File
 }
 
-func NewLineHistory(filePath string) (lh *lineHistory, err error) {
-	lh = &lineHistory{
+// NewLineHistory 设置历史
+func NewLineHistory(filePath string) (lh *LineHistory, err error) {
+	lh = &LineHistory{
 		historyFilePath: filePath,
 	}
 
@@ -42,7 +44,7 @@ func (pl *PCSLiner) DoWriteHistory() (err error) {
 	return nil
 }
 
-// SetHistory 读取历史
+// ReadHistory 读取历史
 func (pl *PCSLiner) ReadHistory() (err error) {
 	if pl.History == nil {
 		return fmt.Errorf("history not set")

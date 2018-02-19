@@ -70,12 +70,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/iikira/liner"
-  packages = ["."]
-  revision = "75e2f4424900f9f169f3ac371b297f4bc24f38d5"
-
-[[projects]]
-  branch = "master"
   name = "github.com/iikira/osext"
   packages = ["."]
   revision = "f808bcd957c382e32d377c68935d94bbafd0d5d0"
@@ -112,6 +106,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/peterh/liner"
+  packages = ["."]
+  revision = "161ea9c37d6d4e97afe7f8f9cde7e647d49bd091"
+
+[[projects]]
+  branch = "master"
   name = "github.com/shiena/ansicolor"
   packages = ["."]
   revision = "a422bbe96644373c5753384a59d678f7d261ff10"
@@ -125,6 +125,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "03e44075ce423e85f2e3ae5573ba0620cff8a0a1dabb1c08845c0a5d1855dc19"
+  inputs-digest = "626860a0d1e9adfc12c2f94be18bfc56f6bb425197511d62fbff00e9cd8402c6"
   solver-name = "gps-cdcl"
   solver-version = 1

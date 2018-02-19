@@ -51,7 +51,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/iikira/liner"
+  name = "github.com/peterh/liner"
 
 [[constraint]]
   branch = "master"
