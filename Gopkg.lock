@@ -44,13 +44,13 @@
   revision = "92343d88e3e4a33c4e6e2975367a138e66179736"
 
 [[projects]]
+  branch = "master"
   name = "github.com/iikira/Baidu-Login"
   packages = [
     ".",
     "bdcrypto"
   ]
-  revision = "a440f9c4b7fad4f68dd2ca1e3f1aae85e3bb2fc3"
-  version = "v1.2"
+  revision = "a7c121934a1d5887d0d835e3aebb3e8d1d920a20"
 
 [[projects]]
   branch = "master"
@@ -125,6 +125,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "626860a0d1e9adfc12c2f94be18bfc56f6bb425197511d62fbff00e9cd8402c6"
+  inputs-digest = "2db1c8bda783973b1df46b80f06daf74020d399d175cff6b38a482d194afebf8"
   solver-name = "gps-cdcl"
   solver-version = 1
