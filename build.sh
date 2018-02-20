@@ -11,6 +11,7 @@ Build() {
     echo "Building $1..."
     export GOOS=$2 GOARCH=$3 GO386=sse2 CGO_ENABLED=0
     if [ $2 = "windows" ];then
+        goversioninfo -icon=assets/icon.ico -manifest="$name".exe.manifest -product-name="$name" -file-version="$version" -product-version="$version" -company=iikira -copyright="© 2016-2018 iikira." -o=resource_windows.syso
         go build -ldflags "-s -w" -o "$output/$1/$name.exe"
         RicePack $1 $name.exe
     else
@@ -52,7 +53,10 @@ RicePack() {
     rice -i github.com/iikira/BaiduPCS-Go/pcsweb append --exec "$output/$1/$2"
 }
 
-# android
+Build $name-$version"-windows-x86" windows 386
+exit 0
+
+# Android
 export NDK_INSTALL=$ANDROID_NDK_ROOT/bin
 # CC=$NDK_INSTALL/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-gcc ArmBuild $name-$version"-android-16-armv5" android arm 5
 # CC=$NDK_INSTALL/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-gcc ArmBuild $name-$version"-android-16-armv6" android arm 6
@@ -61,7 +65,7 @@ CC=$NDK_INSTALL/aarch64-linux-android-4.9/bin/aarch64-linux-android-gcc ArmBuild
 CC=$NDK_INSTALL/i686-linux-android-4.9/bin/i686-linux-android-gcc ArmBuild $name-$version"-android-16-386" android 386 7
 CC=$NDK_INSTALL/x86_64-linux-android-4.9/bin/x86_64-linux-android-gcc ArmBuild $name-$version"-android-21-amd64" android amd64 7
 
-# ios 
+# iOS
 CC=/usr/local/go/misc/ios/clangwrap.sh ArmBuild $name-$version"-darwin-ios-5.0-armv7" darwin arm 7
 CC=/usr/local/go/misc/ios/clangwrap.sh ArmBuild $name-$version"-darwin-ios-5.0-arm64" darwin arm64 7
 
@@ -86,8 +90,7 @@ Build $name-$version"-linux-arm64" linux arm64
 # Build $name-$version"-linux-ppc64le" linux ppc64le
 # Build $name-$version"-linux-s390x" linux s390x
 
-# other
-# $name-$version
+# Others
 # Build $name-$version"-solaris-amd64" solaris amd64
 Build $name-$version"-freebsd-386" freebsd 386
 # Build $name-$version"-freebsd-amd64" freebsd amd64
