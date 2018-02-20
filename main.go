@@ -10,6 +10,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/pcsweb"
+	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/urfave/cli"
 	"os"
 	"os/exec"
@@ -36,7 +37,9 @@ func init() {
 	pcsconfig.Init()
 	pcscommand.ReloadInfo()
 
-	pcscache.DirCache.GC() // 启动缓存垃圾回收
+	// 启动缓存回收
+	pcscache.DirCache.GC()
+	requester.TCPAddrCache.GC()
 }
 
 // getSubArgs 获取子命令参数

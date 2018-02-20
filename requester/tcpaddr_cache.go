@@ -19,13 +19,9 @@ var (
 
 // tcpAddrCache tcp地址缓存, 即dns解析后的ip地址
 type tcpAddrCache struct {
-	ta       sync.Map
-	lifeTime time.Duration // 生命周期
-}
-
-func init() {
-	// 启动自动清理缓存
-	TCPAddrCache.GC()
+	ta        sync.Map
+	lifeTime  time.Duration // 生命周期
+	gcStarted bool
 }
 
 // Set 设置
@@ -60,6 +56,11 @@ func (tac *tcpAddrCache) SetLifeTime(t time.Duration) {
 
 // GC 缓存回收
 func (tac *tcpAddrCache) GC() {
+	if tac.gcStarted {
+		return
+	}
+
+	tac.gcStarted = true
 	go func() {
 		for {
 			time.Sleep(tac.lifeTime) // 这样可以动态修改 lifetime

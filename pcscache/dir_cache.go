@@ -7,8 +7,9 @@ import (
 )
 
 type dirCache struct {
-	fdl      map[string]*baidupcs.FileDirectoryList
-	lifeTime time.Duration // 生命周期
+	fdl       map[string]*baidupcs.FileDirectoryList
+	lifeTime  time.Duration // 生命周期
+	gcStarted bool
 }
 
 // Set 设置网盘目录缓存
@@ -47,6 +48,11 @@ func (dc *dirCache) SetLifeTime(t time.Duration) {
 
 // GC 缓存回收
 func (dc *dirCache) GC() {
+	if dc.gcStarted {
+		return
+	}
+
+	dc.gcStarted = true
 	go func() {
 		for {
 			time.Sleep(dc.lifeTime) // 这样可以动态修改 lifetime
