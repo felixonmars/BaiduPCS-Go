@@ -7,6 +7,13 @@ import (
 	"time"
 )
 
+var (
+	// TLSConfig tls连接配置
+	TLSConfig = &tls.Config{
+		InsecureSkipVerify: true,
+	}
+)
+
 // HTTPClient http client
 type HTTPClient struct {
 	http.Client
@@ -21,13 +28,11 @@ func NewHTTPClient() *HTTPClient {
 	return &HTTPClient{
 		Client: http.Client{
 			Transport: &http.Transport{
-				Proxy:       http.ProxyFromEnvironment,
-				DialContext: dialContext,
-				Dial:        dial,
-				DialTLS:     dial,
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
+				Proxy:                 http.ProxyFromEnvironment,
+				DialContext:           dialContext,
+				Dial:                  dial,
+				DialTLS:               dialTLS,
+				TLSClientConfig:       TLSConfig,
 				TLSHandshakeTimeout:   10 * time.Second,
 				DisableKeepAlives:     false,
 				DisableCompression:    false, // gzip
