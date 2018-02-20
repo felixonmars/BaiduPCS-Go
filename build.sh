@@ -48,7 +48,7 @@ Pack() {
     cd ..
 }
 
-# rice 打包
+# rice 打包静态资源
 RicePack() {
     rice -i github.com/iikira/BaiduPCS-Go/pcsweb append --exec "$output/$1/$2"
 }

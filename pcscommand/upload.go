@@ -38,8 +38,6 @@ type LocalPathInfo struct {
 	SliceMD5 []byte // 文件前 requiredSliceLen (256KB) 切片的 md5 值
 	MD5      []byte // 文件的 md5
 	CRC32    uint32 // 文件的 crc32
-
-	readed int64 // 已读取的数据量, 上传文件用到
 }
 
 func (lp *LocalPathInfo) check() bool {
