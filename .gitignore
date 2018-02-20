@@ -11,7 +11,6 @@ BaiduPCS-Go
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 out/
-*.json
 *.dl
 
 # Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
@@ -21,5 +20,6 @@ out/
 .DS_Store
 *.txt
 captcha.png
+pcs_config.json
 test/
 download/
