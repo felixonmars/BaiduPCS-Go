@@ -2,7 +2,6 @@
 package pcsweb
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/GeertJohan/go.rice"
 	"github.com/iikira/BaiduPCS-Go/pcscommand"
@@ -10,6 +9,7 @@ import (
 	"html/template"
 	"net/http"
 	"path/filepath"
+	"strings"
 )
 
 var (
@@ -112,7 +112,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func tplInclude(file string, dot interface{}) template.HTML {
-	var buffer = &bytes.Buffer{}
+	var builder = &strings.Builder{}
 
 	// get file contents as string
 	contents, err := templatesBox.String(file)
@@ -130,12 +130,14 @@ func tplInclude(file string, dot interface{}) template.HTML {
 		fmt.Printf("parse template file(%s) error:%v\n", file, err)
 		return ""
 	}
-	err = tpl.Execute(buffer, dot)
+
+	err = tpl.Execute(builder, dot)
 	if err != nil {
 		fmt.Printf("template file(%s) syntax error:%v", file, err)
 		return ""
 	}
-	return template.HTML(buffer.String())
+
+	return template.HTML(builder.String())
 }
 
 func render() {}

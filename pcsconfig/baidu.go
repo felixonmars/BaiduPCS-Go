@@ -1,10 +1,10 @@
 package pcsconfig
 
 import (
-	"bytes"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/baidu-tools/tieba"
 	"strconv"
+	"strings"
 )
 
 // Baidu 百度帐号对象
@@ -44,9 +44,9 @@ func NewUserInfoByBDUSS(bduss string) (b *Baidu, err error) {
 
 // String 格式输出百度帐号列表
 func (bl *BaiduUserList) String() string {
-	buf := bytes.NewBuffer(nil)
+	builder := &strings.Builder{}
 
-	tb := pcstable.NewTable(buf)
+	tb := pcstable.NewTable(builder)
 	tb.SetHeader([]string{"#", "uid", "用户名"})
 
 	for k, baiduInfo := range *bl {
@@ -55,5 +55,5 @@ func (bl *BaiduUserList) String() string {
 
 	tb.Render()
 
-	return buf.String()
+	return builder.String()
 }

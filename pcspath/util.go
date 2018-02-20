@@ -1,7 +1,6 @@
 package pcspath
 
 import (
-	"bytes"
 	"path"
 	"strings"
 )
@@ -12,21 +11,21 @@ func EscapeBracketOne(s string) string {
 		return s
 	}
 
-	buf := bytes.NewBuffer(nil)
+	builder := &strings.Builder{}
 	for k := range s {
 		if s[k] != '[' && s[k] != ']' {
-			buf.WriteByte(s[k])
+			builder.WriteByte(s[k])
 			continue
 		}
 
 		if k >= 1 && s[k-1] == '\\' {
-			buf.WriteByte(s[k])
+			builder.WriteByte(s[k])
 			continue
 		}
-		buf.WriteString(`\`)
-		buf.WriteByte(s[k])
+		builder.WriteString(`\`)
+		builder.WriteByte(s[k])
 	}
-	return buf.String()
+	return builder.String()
 }
 
 // EscapeBracketTwo 转义中括号, 加两个反斜杠
@@ -35,21 +34,21 @@ func EscapeBracketTwo(s string) string {
 		return s
 	}
 
-	buf := bytes.NewBuffer(nil)
+	builder := &strings.Builder{}
 	for k := range s {
 		if s[k] != '[' && s[k] != ']' {
-			buf.WriteByte(s[k])
+			builder.WriteByte(s[k])
 			continue
 		}
 
 		if k >= 2 && s[k-1] == '\\' && s[k-2] == '\\' {
-			buf.WriteByte(s[k])
+			builder.WriteByte(s[k])
 			continue
 		}
-		buf.WriteString(`\\`)
-		buf.WriteByte(s[k])
+		builder.WriteString(`\\`)
+		builder.WriteByte(s[k])
 	}
-	return buf.String()
+	return builder.String()
 }
 
 // SplitAll 分割路径, "/"为分隔符

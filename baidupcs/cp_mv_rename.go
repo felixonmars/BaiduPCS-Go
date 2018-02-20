@@ -1,7 +1,6 @@
 package baidupcs
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
@@ -105,9 +104,9 @@ func cpmvJSONEncode(cpmvJSON ...*CpMvJSON) (string, error) {
 }
 
 func (cl CpMvJSONList) String() string {
-	buf := bytes.NewBuffer(nil)
+	builder := &strings.Builder{}
 
-	tb := pcstable.NewTable(buf)
+	tb := pcstable.NewTable(builder)
 	tb.SetHeader([]string{"#", "原路径", "目标路径"})
 
 	for k := range cl.List {
@@ -115,5 +114,5 @@ func (cl CpMvJSONList) String() string {
 	}
 
 	tb.Render()
-	return buf.String()
+	return builder.String()
 }
