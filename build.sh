@@ -34,7 +34,7 @@ ArmBuild() {
     Pack $1
 }
 
-# 打包
+# zip 打包
 Pack() {
     mkdir "$output/$1/download"
     cp README.md "$output/$1"
@@ -52,9 +52,6 @@ Pack() {
 RicePack() {
     rice -i github.com/iikira/BaiduPCS-Go/pcsweb append --exec "$output/$1/$2"
 }
-
-Build $name-$version"-windows-x86" windows 386
-exit 0
 
 # Android
 export NDK_INSTALL=$ANDROID_NDK_ROOT/bin

@@ -1,7 +1,12 @@
 # BaiduPCS-Go 百度网盘客户端 v3.3.Beta3
+
+仿 Linux 文件处理命令的百度网盘命令行客户端.
+
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
 
 # 特色
+
+多平台支持, 支持 Windows, macOS, linux, 移动设备等.
 
 百度帐号多用户支持;
 
