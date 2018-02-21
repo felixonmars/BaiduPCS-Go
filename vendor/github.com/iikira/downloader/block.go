@@ -43,18 +43,21 @@ func (b *Block) isDone() bool {
 	// 其他, End 值 减去 Begin 值为 -1, 则返回 true
 	//
 	// 暂时先这么判断吧
-	return b.End-b.Begin <= -1 || (b.IsFinal == true && b.End-b.Begin <= 0) || (b.End == 0 && b.Begin == 0)
+	begin, end := atomic.LoadInt64(&b.Begin), atomic.LoadInt64(&b.End)
+	return end-begin <= -1 || (b.IsFinal == true && end-begin <= 0) || (end == 0 && begin == 0)
 }
 
 // setDone 设置线程为完成下载任务状态 (简单粗暴)
 func (b *Block) setDone() {
 	// 只操作 End 部分
 	// 避免操作 Begin 部分, 否则可能写文件时, 会出现异常
+	begin := atomic.LoadInt64(&b.Begin)
+
 	if b.Begin == 0 {
-		b.End = 0
+		atomic.StoreInt64(&b.End, 0)
 		return
 	}
-	b.End = b.Begin - 1
+	atomic.StoreInt64(&b.End, begin-1)
 }
 
 // isComplete 判断线程是否空闲,
@@ -65,13 +68,15 @@ func (b *Block) isComplete() bool {
 
 // expectedContentLength 获取期望的 Content-Length
 func (b *Block) expectedContentLength() int64 {
+	begin, end := atomic.LoadInt64(&b.Begin), atomic.LoadInt64(&b.End)
+
 	if b.isDone() {
 		return 0
 	}
 	if b.IsFinal {
-		return b.End - b.Begin
+		return end - begin
 	}
-	return b.End - b.Begin + 1
+	return end - begin + 1
 }
 
 // avaliableThread 筛选空闲的线程,
@@ -112,16 +117,14 @@ for_2: // code 为 1 时, 不重试
 			break
 		}
 
+		// fmt.Println(id, code, err)
+
 		// 未成功(有错误), 继续
 		switch code {
-		case -1: // 下载线程问题, 不重试
-			break for_2 // break for循环
 		case 1: // 不重试
 			break for_2
-		case 2:
-			// 连接太多, 可能会 connect refuse
-			time.Sleep(3 * time.Second)
-		case 10: // 无限重试
+		case 61: // 不休息无限重试
+			continue
 		default: // 休息 3 秒, 再无限重试
 			time.Sleep(3 * time.Second)
 		}
@@ -138,7 +141,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 	block := der.status.BlockList[id]
 
 	if block.isDone() {
-		return -1, errors.New("thread is done")
+		return 1, errors.New("thread is done")
 	}
 
 	// 设置 Range 请求头, 给各线程分配内容
@@ -153,8 +156,9 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 	}
 
 	// 检测响应Body的错误
-	if resp.ContentLength != block.expectedContentLength() {
-		return 3, fmt.Errorf("Content-Length is unexpected: %d", resp.ContentLength)
+	es := block.expectedContentLength()
+	if resp.ContentLength != es {
+		return 2, fmt.Errorf("Content-Length is unexpected: %d, need %d", resp.ContentLength, es)
 	}
 
 	switch resp.StatusCode {
@@ -162,18 +166,18 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 		// do nothing, continue
 	case 416: //Requested Range Not Satisfiable
 		// 可能是线程在等待响应时, 已被其他线程重载
-		return -1, errors.New("thread reload, " + resp.Status)
+		return 1, errors.New("thread reload, " + resp.Status)
 	case 403: // Forbidden
 		fallthrough
 	case 406: // Not Acceptable
 		// 暂时不知道出错的原因......
-		return 1, errors.New(resp.Status)
+		return 2, errors.New(resp.Status)
 	case 429, 509: // Too Many Requests
 		for der.status.Speeds >= der.status.MaxSpeeds/5 {
 			// 下载速度若不减慢, 循环就不会退出
 			time.Sleep(1 * time.Second)
 		}
-		return 3, errors.New(resp.Status)
+		return 2, errors.New(resp.Status)
 	default:
 		fmt.Printf("unexpected http status code, %d, %s\n", resp.StatusCode, resp.Status) // 调试
 		return 2, errors.New(resp.Status)
@@ -182,7 +186,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 	defer resp.Body.Close()
 
 	var (
-		n, loopSize int
+		n int
 	)
 
 	for {
@@ -190,7 +194,6 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 
 		n, err = resp.Body.Read(block.buf)
 
-		loopSize += n
 		n64 := int64(n)
 
 		// 获得剩余的数据量
@@ -198,7 +201,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 
 		// 已完成 (未雨绸缪)
 		if expectedSize <= 0 {
-			return -1, errors.New("thread already complete")
+			return 1, errors.New("thread already complete")
 		}
 
 		if n64 > expectedSize {
@@ -224,22 +227,18 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 		// 两次 begin 不相等, 可能已有新的空闲线程参与
 		// 旧线程应该被结束
 		if begin != block.Begin {
-			return -1, errors.New("thread already reload")
+			return 1, errors.New("thread already reload")
 		}
 
 		// 更新数据
 		atomic.AddInt64(&der.status.Downloaded, n64)
 		atomic.AddInt64(&block.Begin, n64)
 
-		// reload connection (百度的限制)
-		if loopSize == 256*1024 {
-			return 10, errors.New("reach to loop size, reload connection")
-		}
-
 		if err != nil {
 			// 下载数据可能出现异常, 重新下载
-			if block.End != -1 && !block.isDone() {
-				return 11, fmt.Errorf("download failed, %s, reset", err)
+			if !block.isDone() {
+				fmt.Println(id, block.Begin, block.End, block.IsFinal)
+				return 2, fmt.Errorf("download failed, %s, reset", err)
 			}
 
 			switch {
@@ -248,7 +247,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 				return 0, nil
 			default:
 				// 其他错误, 返回
-				return 5, err
+				return 2, err
 			}
 		}
 	}

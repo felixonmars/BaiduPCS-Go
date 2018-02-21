@@ -1,4 +1,4 @@
-# 百度BDUSS获取工具 v1.2 Go语言
+# 百度BDUSS获取工具 v1.2.1 Go语言
 [![GoDoc](https://godoc.org/github.com/iikira/Baidu-Login?status.svg)](https://godoc.org/github.com/iikira/Baidu-Login)
 
 ## 功能

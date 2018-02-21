@@ -44,13 +44,13 @@
   revision = "92343d88e3e4a33c4e6e2975367a138e66179736"
 
 [[projects]]
-  branch = "master"
   name = "github.com/iikira/Baidu-Login"
   packages = [
     ".",
     "bdcrypto"
   ]
-  revision = "a7c121934a1d5887d0d835e3aebb3e8d1d920a20"
+  revision = "ca53cf59adad8c774ae70ef03b402024bd4c4ab5"
+  version = "v1.2.1"
 
 [[projects]]
   branch = "master"
@@ -66,7 +66,7 @@
   branch = "master"
   name = "github.com/iikira/downloader"
   packages = ["."]
-  revision = "724633f4ba039ba3e66e4054f0706bf58627915b"
+  revision = "89f6d1c07890b427be9d1a0e8e8ff199fcb2eb95"
 
 [[projects]]
   branch = "master"
