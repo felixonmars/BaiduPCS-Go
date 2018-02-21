@@ -237,7 +237,6 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 		if err != nil {
 			// 下载数据可能出现异常, 重新下载
 			if !block.isDone() {
-				fmt.Println(id, block.Begin, block.End, block.IsFinal)
 				return 2, fmt.Errorf("download failed, %s, reset", err)
 			}
 
