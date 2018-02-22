@@ -53,7 +53,7 @@ func (b *Block) setDone() {
 	// 避免操作 Begin 部分, 否则可能写文件时, 会出现异常
 	begin := atomic.LoadInt64(&b.Begin)
 
-	if b.Begin == 0 {
+	if begin == 0 {
 		atomic.StoreInt64(&b.End, 0)
 		return
 	}
@@ -123,9 +123,11 @@ for_2: // code 为 1 时, 不重试
 		switch code {
 		case 1: // 不重试
 			break for_2
+		case 2: // 休息 3 秒, 再无限重试
+			time.Sleep(3 * time.Second)
 		case 61: // 不休息无限重试
 			continue
-		default: // 休息 3 秒, 再无限重试
+		default:
 			time.Sleep(3 * time.Second)
 		}
 
@@ -145,12 +147,10 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 	}
 
 	// 设置 Range 请求头, 给各线程分配内容
-	header := map[string]string{
-		"Range": fmt.Sprintf("bytes=%d-%d", block.Begin, block.End),
-	}
-
 	// 开始 http 请求
-	resp, err := der.config.Client.Req("GET", der.url, nil, header)
+	resp, err := der.config.Client.Req("GET", der.url, nil, map[string]string{
+		"Range": fmt.Sprintf("bytes=%d-%d", atomic.LoadInt64(&block.Begin), atomic.LoadInt64(&block.End)),
+	})
 	if err != nil {
 		return 2, err
 	}
@@ -190,7 +190,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 	)
 
 	for {
-		begin := block.Begin // 用于下文比较
+		begin := atomic.LoadInt64(&block.Begin) // 用于下文比较
 
 		n, err = resp.Body.Read(block.buf)
 
@@ -226,7 +226,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 
 		// 两次 begin 不相等, 可能已有新的空闲线程参与
 		// 旧线程应该被结束
-		if begin != block.Begin {
+		if begin != atomic.LoadInt64(&block.Begin) {
 			return 1, errors.New("thread already reload")
 		}
 
@@ -237,7 +237,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 		if err != nil {
 			// 下载数据可能出现异常, 重新下载
 			if !block.isDone() {
-				return 2, fmt.Errorf("download failed, %s, reset", err)
+				return 61, fmt.Errorf("download failed, %s, reset", err)
 			}
 
 			switch {

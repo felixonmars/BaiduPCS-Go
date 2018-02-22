@@ -57,6 +57,13 @@ func NewDownloader(durl string, cfg *Config) (der *Downloader, err error) {
 		return nil, fmt.Errorf(resp.Status)
 	}
 
+	// 设置新的url, 如果网页存在跳转
+	if resp.Request != nil {
+		if resp.Request.URL != nil {
+			durl = resp.Request.URL.String()
+		}
+	}
+
 	der = &Downloader{
 		url:    durl,
 		config: cfg,

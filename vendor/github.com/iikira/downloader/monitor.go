@@ -70,38 +70,38 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 						mu.Unlock()             // 解锁
 						der.addExecBlock(index) // 添加任务
 					}(k)
+					/*
+						// 动态分配新线程
+						go func(k int) {
+							mu.Lock()
 
-					// 动态分配新线程
-					go func(k int) {
-						mu.Lock()
+							// 筛选空闲的线程
+							index, ok := der.status.BlockList.avaliableThread()
+							if !ok { // 没有空的
+								mu.Unlock() // 解锁
+								return
+							}
 
-						// 筛选空闲的线程
-						index, ok := der.status.BlockList.avaliableThread()
-						if !ok { // 没有空的
-							mu.Unlock() // 解锁
-							return
-						}
+							middle := (der.status.BlockList[k].Begin + der.status.BlockList[k].End) / 2
+							if der.status.BlockList[k].End-middle <= 102400 { // 如果线程剩余的下载量太少, 不分配空闲线程
+								mu.Unlock()
+								return
+							}
 
-						middle := (der.status.BlockList[k].Begin + der.status.BlockList[k].End) / 2
-						if der.status.BlockList[k].End-middle <= 102400 { // 如果线程剩余的下载量太少, 不分配空闲线程
+							// 折半
+							der.status.BlockList[index].Begin = middle + 1
+							der.status.BlockList[index].End = der.status.BlockList[k].End
+							der.status.BlockList[index].IsFinal = der.status.BlockList[k].IsFinal
+							der.status.BlockList[k].End = middle
+
+							// End 已变, 取消 Final
+							der.status.BlockList[k].IsFinal = false
+
 							mu.Unlock()
-							return
-						}
 
-						// 折半
-						der.status.BlockList[index].Begin = middle + 1
-						der.status.BlockList[index].End = der.status.BlockList[k].End
-						der.status.BlockList[index].IsFinal = der.status.BlockList[k].IsFinal
-						der.status.BlockList[k].End = middle
-
-						// End 已变, 取消 Final
-						der.status.BlockList[k].IsFinal = false
-
-						mu.Unlock()
-
-						der.addExecBlock(index)
-					}(k)
-
+							der.addExecBlock(index)
+						}(k)
+					*/
 				}(k)
 			}
 			time.Sleep(1 * time.Second) // 监测频率 1 秒
