@@ -3,7 +3,6 @@
 package jsoniter
 
 import (
-	"reflect"
 	"sync"
 )
 
@@ -15,39 +14,39 @@ type frozenConfig struct {
 	onlyTaggedField               bool
 	disallowUnknownFields         bool
 	cacheLock                     *sync.RWMutex
-	decoderCache                  map[reflect.Type]ValDecoder
-	encoderCache                  map[reflect.Type]ValEncoder
+	decoderCache                  map[uintptr]ValDecoder
+	encoderCache                  map[uintptr]ValEncoder
 	extensions                    []Extension
-	streamPool                    chan *Stream
-	iteratorPool                  chan *Iterator
+	streamPool                    *sync.Pool
+	iteratorPool                  *sync.Pool
 }
 
 func (cfg *frozenConfig) initCache() {
 	cfg.cacheLock = &sync.RWMutex{}
-	cfg.decoderCache = map[reflect.Type]ValDecoder{}
-	cfg.encoderCache = map[reflect.Type]ValEncoder{}
+	cfg.decoderCache = map[uintptr]ValDecoder{}
+	cfg.encoderCache = map[uintptr]ValEncoder{}
 }
 
-func (cfg *frozenConfig) addDecoderToCache(cacheKey reflect.Type, decoder ValDecoder) {
+func (cfg *frozenConfig) addDecoderToCache(cacheKey uintptr, decoder ValDecoder) {
 	cfg.cacheLock.Lock()
 	cfg.decoderCache[cacheKey] = decoder
 	cfg.cacheLock.Unlock()
 }
 
-func (cfg *frozenConfig) addEncoderToCache(cacheKey reflect.Type, encoder ValEncoder) {
+func (cfg *frozenConfig) addEncoderToCache(cacheKey uintptr, encoder ValEncoder) {
 	cfg.cacheLock.Lock()
 	cfg.encoderCache[cacheKey] = encoder
 	cfg.cacheLock.Unlock()
 }
 
-func (cfg *frozenConfig) getDecoderFromCache(cacheKey reflect.Type) ValDecoder {
+func (cfg *frozenConfig) getDecoderFromCache(cacheKey uintptr) ValDecoder {
 	cfg.cacheLock.RLock()
 	decoder, _ := cfg.decoderCache[cacheKey].(ValDecoder)
 	cfg.cacheLock.RUnlock()
 	return decoder
 }
 
-func (cfg *frozenConfig) getEncoderFromCache(cacheKey reflect.Type) ValEncoder {
+func (cfg *frozenConfig) getEncoderFromCache(cacheKey uintptr) ValEncoder {
 	cfg.cacheLock.RLock()
 	encoder, _ := cfg.encoderCache[cacheKey].(ValEncoder)
 	cfg.cacheLock.RUnlock()

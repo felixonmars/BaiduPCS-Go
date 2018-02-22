@@ -3,13 +3,39 @@ package jsoniter
 import (
 	"fmt"
 	"io"
-	"reflect"
 	"strings"
 	"unsafe"
+	"github.com/v2pro/plz/reflect2"
 )
 
-func createStructDecoder(cfg *frozenConfig, typ reflect.Type, fields map[string]*structFieldDecoder) ValDecoder {
-	if cfg.disallowUnknownFields {
+func decoderOfStruct(ctx *ctx, typ reflect2.Type) ValDecoder {
+	bindings := map[string]*Binding{}
+	structDescriptor := describeStruct(ctx, typ)
+	for _, binding := range structDescriptor.Fields {
+		for _, fromName := range binding.FromNames {
+			old := bindings[fromName]
+			if old == nil {
+				bindings[fromName] = binding
+				continue
+			}
+			ignoreOld, ignoreNew := resolveConflictBinding(ctx.frozenConfig, old, binding)
+			if ignoreOld {
+				delete(bindings, fromName)
+			}
+			if !ignoreNew {
+				bindings[fromName] = binding
+			}
+		}
+	}
+	fields := map[string]*structFieldDecoder{}
+	for k, binding := range bindings {
+		fields[k] = binding.Decoder.(*structFieldDecoder)
+	}
+	return createStructDecoder(ctx, typ, fields)
+}
+
+func createStructDecoder(ctx *ctx, typ reflect2.Type, fields map[string]*structFieldDecoder) ValDecoder {
+	if ctx.disallowUnknownFields {
 		return &generalStructDecoder{typ: typ, fields: fields, disallowUnknownFields: true}
 	}
 	knownHash := map[int64]struct{}{
@@ -454,7 +480,7 @@ func createStructDecoder(cfg *frozenConfig, typ reflect.Type, fields map[string]
 }
 
 type generalStructDecoder struct {
-	typ                   reflect.Type
+	typ                   reflect2.Type
 	fields                map[string]*structFieldDecoder
 	disallowUnknownFields bool
 }
@@ -509,7 +535,7 @@ func (decoder *generalStructDecoder) decodeOneField(ptr unsafe.Pointer, iter *It
 }
 
 type skipObjectDecoder struct {
-	typ reflect.Type
+	typ reflect2.Type
 }
 
 func (decoder *skipObjectDecoder) Decode(ptr unsafe.Pointer, iter *Iterator) {
@@ -522,7 +548,7 @@ func (decoder *skipObjectDecoder) Decode(ptr unsafe.Pointer, iter *Iterator) {
 }
 
 type oneFieldStructDecoder struct {
-	typ          reflect.Type
+	typ          reflect2.Type
 	fieldHash    int64
 	fieldDecoder *structFieldDecoder
 }
@@ -547,7 +573,7 @@ func (decoder *oneFieldStructDecoder) Decode(ptr unsafe.Pointer, iter *Iterator)
 }
 
 type twoFieldsStructDecoder struct {
-	typ           reflect.Type
+	typ           reflect2.Type
 	fieldHash1    int64
 	fieldDecoder1 *structFieldDecoder
 	fieldHash2    int64
@@ -577,7 +603,7 @@ func (decoder *twoFieldsStructDecoder) Decode(ptr unsafe.Pointer, iter *Iterator
 }
 
 type threeFieldsStructDecoder struct {
-	typ           reflect.Type
+	typ           reflect2.Type
 	fieldHash1    int64
 	fieldDecoder1 *structFieldDecoder
 	fieldHash2    int64
@@ -611,7 +637,7 @@ func (decoder *threeFieldsStructDecoder) Decode(ptr unsafe.Pointer, iter *Iterat
 }
 
 type fourFieldsStructDecoder struct {
-	typ           reflect.Type
+	typ           reflect2.Type
 	fieldHash1    int64
 	fieldDecoder1 *structFieldDecoder
 	fieldHash2    int64
@@ -649,7 +675,7 @@ func (decoder *fourFieldsStructDecoder) Decode(ptr unsafe.Pointer, iter *Iterato
 }
 
 type fiveFieldsStructDecoder struct {
-	typ           reflect.Type
+	typ           reflect2.Type
 	fieldHash1    int64
 	fieldDecoder1 *structFieldDecoder
 	fieldHash2    int64
@@ -691,7 +717,7 @@ func (decoder *fiveFieldsStructDecoder) Decode(ptr unsafe.Pointer, iter *Iterato
 }
 
 type sixFieldsStructDecoder struct {
-	typ           reflect.Type
+	typ           reflect2.Type
 	fieldHash1    int64
 	fieldDecoder1 *structFieldDecoder
 	fieldHash2    int64
@@ -737,7 +763,7 @@ func (decoder *sixFieldsStructDecoder) Decode(ptr unsafe.Pointer, iter *Iterator
 }
 
 type sevenFieldsStructDecoder struct {
-	typ           reflect.Type
+	typ           reflect2.Type
 	fieldHash1    int64
 	fieldDecoder1 *structFieldDecoder
 	fieldHash2    int64
@@ -787,7 +813,7 @@ func (decoder *sevenFieldsStructDecoder) Decode(ptr unsafe.Pointer, iter *Iterat
 }
 
 type eightFieldsStructDecoder struct {
-	typ           reflect.Type
+	typ           reflect2.Type
 	fieldHash1    int64
 	fieldDecoder1 *structFieldDecoder
 	fieldHash2    int64
@@ -841,7 +867,7 @@ func (decoder *eightFieldsStructDecoder) Decode(ptr unsafe.Pointer, iter *Iterat
 }
 
 type nineFieldsStructDecoder struct {
-	typ           reflect.Type
+	typ           reflect2.Type
 	fieldHash1    int64
 	fieldDecoder1 *structFieldDecoder
 	fieldHash2    int64
@@ -899,7 +925,7 @@ func (decoder *nineFieldsStructDecoder) Decode(ptr unsafe.Pointer, iter *Iterato
 }
 
 type tenFieldsStructDecoder struct {
-	typ            reflect.Type
+	typ            reflect2.Type
 	fieldHash1     int64
 	fieldDecoder1  *structFieldDecoder
 	fieldHash2     int64
@@ -961,14 +987,48 @@ func (decoder *tenFieldsStructDecoder) Decode(ptr unsafe.Pointer, iter *Iterator
 }
 
 type structFieldDecoder struct {
-	field        *reflect.StructField
+	field        reflect2.StructField
 	fieldDecoder ValDecoder
 }
 
 func (decoder *structFieldDecoder) Decode(ptr unsafe.Pointer, iter *Iterator) {
-	fieldPtr := unsafe.Pointer(uintptr(ptr) + decoder.field.Offset)
+	fieldPtr := decoder.field.UnsafeGet(ptr)
 	decoder.fieldDecoder.Decode(fieldPtr, iter)
 	if iter.Error != nil && iter.Error != io.EOF {
 		iter.Error = fmt.Errorf("%s: %s", decoder.field.Name, iter.Error.Error())
+	}
+}
+
+type stringModeStringDecoder struct {
+	elemDecoder ValDecoder
+	cfg         *frozenConfig
+}
+
+func (decoder *stringModeStringDecoder) Decode(ptr unsafe.Pointer, iter *Iterator) {
+	decoder.elemDecoder.Decode(ptr, iter)
+	str := *((*string)(ptr))
+	tempIter := decoder.cfg.BorrowIterator([]byte(str))
+	defer decoder.cfg.ReturnIterator(tempIter)
+	*((*string)(ptr)) = tempIter.ReadString()
+}
+
+type stringModeNumberDecoder struct {
+	elemDecoder ValDecoder
+}
+
+func (decoder *stringModeNumberDecoder) Decode(ptr unsafe.Pointer, iter *Iterator) {
+	c := iter.nextToken()
+	if c != '"' {
+		iter.ReportError("stringModeNumberDecoder", `expect ", but found `+string([]byte{c}))
+		return
+	}
+	decoder.elemDecoder.Decode(ptr, iter)
+	if iter.Error != nil {
+		return
+	}
+	c = iter.readByte()
+	if c != '"' {
+		iter.ReportError("stringModeNumberDecoder", `expect ", but found `+string([]byte{c}))
+		return
 	}
 }

@@ -2,10 +2,10 @@ package jsoniter
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
-	"reflect"
 	"unsafe"
+	"github.com/v2pro/plz/reflect2"
+	"sync"
 )
 
 // Config customize how the API should behave.
@@ -67,21 +67,37 @@ func (cfg Config) Froze() API {
 		objectFieldMustBeSimpleString: cfg.ObjectFieldMustBeSimpleString,
 		onlyTaggedField:               cfg.OnlyTaggedField,
 		disallowUnknownFields:         cfg.DisallowUnknownFields,
-		streamPool:                    make(chan *Stream, 16),
-		iteratorPool:                  make(chan *Iterator, 16),
+	}
+	api.streamPool = &sync.Pool{
+		New: func() interface{} {
+			return NewStream(api, nil, 512)
+		},
+	}
+	api.iteratorPool = &sync.Pool{
+		New: func() interface{} {
+			return NewIterator(api)
+		},
 	}
 	api.initCache()
+	encoderExtension := EncoderExtension{}
+	decoderExtension := DecoderExtension{}
 	if cfg.MarshalFloatWith6Digits {
-		api.marshalFloatWith6Digits()
+		api.marshalFloatWith6Digits(encoderExtension)
 	}
 	if cfg.EscapeHTML {
-		api.escapeHTML()
+		api.escapeHTML(encoderExtension)
 	}
 	if cfg.UseNumber {
-		api.useNumber()
+		api.useNumber(decoderExtension)
 	}
 	if cfg.ValidateJsonRawMessage {
-		api.validateJsonRawMessage()
+		api.validateJsonRawMessage(encoderExtension)
+	}
+	if len(encoderExtension) > 0 {
+		api.extensions = append(api.extensions, encoderExtension)
+	}
+	if len(decoderExtension) > 0 {
+		api.extensions = append(api.extensions, decoderExtension)
 	}
 	api.configBeforeFrozen = cfg
 	return api
@@ -97,7 +113,7 @@ func (cfg Config) frozeWithCacheReuse() *frozenConfig {
 	return api
 }
 
-func (cfg *frozenConfig) validateJsonRawMessage() {
+func (cfg *frozenConfig) validateJsonRawMessage(extension EncoderExtension) {
 	encoder := &funcEncoder{func(ptr unsafe.Pointer, stream *Stream) {
 		rawMessage := *(*json.RawMessage)(ptr)
 		iter := cfg.BorrowIterator([]byte(rawMessage))
@@ -111,18 +127,18 @@ func (cfg *frozenConfig) validateJsonRawMessage() {
 	}, func(ptr unsafe.Pointer) bool {
 		return false
 	}}
-	cfg.addEncoderToCache(reflect.TypeOf((*json.RawMessage)(nil)).Elem(), encoder)
-	cfg.addEncoderToCache(reflect.TypeOf((*RawMessage)(nil)).Elem(), encoder)
+	extension[reflect2.TypeOfPtr((*json.RawMessage)(nil)).Elem()] = encoder
+	extension[reflect2.TypeOfPtr((*RawMessage)(nil)).Elem()] = encoder
 }
 
-func (cfg *frozenConfig) useNumber() {
-	cfg.addDecoderToCache(reflect.TypeOf((*interface{})(nil)).Elem(), &funcDecoder{func(ptr unsafe.Pointer, iter *Iterator) {
+func (cfg *frozenConfig) useNumber(extension DecoderExtension) {
+	extension[reflect2.TypeOfPtr((*interface{})(nil)).Elem()] = &funcDecoder{func(ptr unsafe.Pointer, iter *Iterator) {
 		if iter.WhatIsNext() == NumberValue {
 			*((*interface{})(ptr)) = json.Number(iter.readNumberAsString())
 		} else {
 			*((*interface{})(ptr)) = iter.Read()
 		}
-	}})
+	}}
 }
 func (cfg *frozenConfig) getTagKey() string {
 	tagKey := cfg.configBeforeFrozen.TagKey
@@ -143,10 +159,6 @@ func (encoder *lossyFloat32Encoder) Encode(ptr unsafe.Pointer, stream *Stream) {
 	stream.WriteFloat32Lossy(*((*float32)(ptr)))
 }
 
-func (encoder *lossyFloat32Encoder) EncodeInterface(val interface{}, stream *Stream) {
-	WriteToStream(val, stream, encoder)
-}
-
 func (encoder *lossyFloat32Encoder) IsEmpty(ptr unsafe.Pointer) bool {
 	return *((*float32)(ptr)) == 0
 }
@@ -158,20 +170,16 @@ func (encoder *lossyFloat64Encoder) Encode(ptr unsafe.Pointer, stream *Stream) {
 	stream.WriteFloat64Lossy(*((*float64)(ptr)))
 }
 
-func (encoder *lossyFloat64Encoder) EncodeInterface(val interface{}, stream *Stream) {
-	WriteToStream(val, stream, encoder)
-}
-
 func (encoder *lossyFloat64Encoder) IsEmpty(ptr unsafe.Pointer) bool {
 	return *((*float64)(ptr)) == 0
 }
 
 // EnableLossyFloatMarshalling keeps 10**(-6) precision
 // for float variables for better performance.
-func (cfg *frozenConfig) marshalFloatWith6Digits() {
+func (cfg *frozenConfig) marshalFloatWith6Digits(extension EncoderExtension) {
 	// for better performance
-	cfg.addEncoderToCache(reflect.TypeOf((*float32)(nil)).Elem(), &lossyFloat32Encoder{})
-	cfg.addEncoderToCache(reflect.TypeOf((*float64)(nil)).Elem(), &lossyFloat64Encoder{})
+	extension[reflect2.TypeOfPtr((*float32)(nil)).Elem()] = &lossyFloat32Encoder{}
+	extension[reflect2.TypeOfPtr((*float64)(nil)).Elem()] = &lossyFloat64Encoder{}
 }
 
 type htmlEscapedStringEncoder struct {
@@ -182,16 +190,12 @@ func (encoder *htmlEscapedStringEncoder) Encode(ptr unsafe.Pointer, stream *Stre
 	stream.WriteStringWithHTMLEscaped(str)
 }
 
-func (encoder *htmlEscapedStringEncoder) EncodeInterface(val interface{}, stream *Stream) {
-	WriteToStream(val, stream, encoder)
-}
-
 func (encoder *htmlEscapedStringEncoder) IsEmpty(ptr unsafe.Pointer) bool {
 	return *((*string)(ptr)) == ""
 }
 
-func (cfg *frozenConfig) escapeHTML() {
-	cfg.addEncoderToCache(reflect.TypeOf((*string)(nil)).Elem(), &htmlEscapedStringEncoder{})
+func (cfg *frozenConfig) escapeHTML(encoderExtension EncoderExtension) {
+	encoderExtension[reflect2.TypeOfPtr((*string)(nil)).Elem()] = &htmlEscapedStringEncoder{}
 }
 
 func (cfg *frozenConfig) cleanDecoders() {
@@ -245,19 +249,17 @@ func (cfg *frozenConfig) MarshalIndent(v interface{}, prefix, indent string) ([]
 
 func (cfg *frozenConfig) UnmarshalFromString(str string, v interface{}) error {
 	data := []byte(str)
-	data = data[:lastNotSpacePos(data)]
 	iter := cfg.BorrowIterator(data)
 	defer cfg.ReturnIterator(iter)
 	iter.ReadVal(v)
-	if iter.head == iter.tail {
-		iter.loadMore()
+	c := iter.nextToken()
+	if c == 0 {
+		if iter.Error == io.EOF {
+			return nil
+		}
+		return iter.Error
 	}
-	if iter.Error == io.EOF {
-		return nil
-	}
-	if iter.Error == nil {
-		iter.ReportError("UnmarshalFromString", "there are bytes left after unmarshal")
-	}
+	iter.ReportError("Unmarshal", "there are bytes left after unmarshal")
 	return iter.Error
 }
 
@@ -268,24 +270,17 @@ func (cfg *frozenConfig) Get(data []byte, path ...interface{}) Any {
 }
 
 func (cfg *frozenConfig) Unmarshal(data []byte, v interface{}) error {
-	data = data[:lastNotSpacePos(data)]
 	iter := cfg.BorrowIterator(data)
 	defer cfg.ReturnIterator(iter)
-	typ := reflect.TypeOf(v)
-	if typ.Kind() != reflect.Ptr {
-		// return non-pointer error
-		return errors.New("the second param must be ptr type")
-	}
 	iter.ReadVal(v)
-	if iter.head == iter.tail {
-		iter.loadMore()
+	c := iter.nextToken()
+	if c == 0 {
+		if iter.Error == io.EOF {
+			return nil
+		}
+		return iter.Error
 	}
-	if iter.Error == io.EOF {
-		return nil
-	}
-	if iter.Error == nil {
-		iter.ReportError("Unmarshal", "there are bytes left after unmarshal")
-	}
+	iter.ReportError("Unmarshal", "there are bytes left after unmarshal")
 	return iter.Error
 }
 

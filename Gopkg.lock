@@ -66,7 +66,7 @@
   branch = "master"
   name = "github.com/iikira/downloader"
   packages = ["."]
-  revision = "8182ac18360f103a177f15b34fcc686e3fd32058"
+  revision = "18e2f32018f5ba2e0cd732398a4d351e206110e6"
 
 [[projects]]
   branch = "master"
@@ -77,8 +77,8 @@
 [[projects]]
   name = "github.com/json-iterator/go"
   packages = ["."]
-  revision = "e7c7f3b33712573affdcc7a107218e7926b9a05b"
-  version = "1.0.6"
+  revision = "be70f29b04dea7efb4d82a8989c33aee989b74d1"
+  version = "1.1.0"
 
 [[projects]]
   branch = "master"
@@ -122,9 +122,18 @@
   revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
   version = "v1.20.0"
 
+[[projects]]
+  name = "github.com/v2pro/plz"
+  packages = [
+    "concurrent",
+    "reflect2"
+  ]
+  revision = "571356917fca907b069b7b47a14cd32ba0b340d4"
+  version = "0.9.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2db1c8bda783973b1df46b80f06daf74020d399d175cff6b38a482d194afebf8"
+  inputs-digest = "ba84a985822daff93df5645e01be93aa9bcb5d28c5e0fdafbfde94b0566d5049"
   solver-name = "gps-cdcl"
   solver-version = 1
