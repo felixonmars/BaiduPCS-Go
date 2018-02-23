@@ -24,8 +24,7 @@ BeijingTimeOption 根据给定的 get 返回时间格式.
 */
 func BeijingTimeOption(get string) string {
 	//获取北京（东八区）时间
-	CSTLoc := time.FixedZone("CST", 8*3600) // 东8区
-	now := time.Now().In(CSTLoc)
+	now := time.Now().In(CSTLocation)
 	year, mon, day := now.Date()
 	hour, min, sec := now.Clock()
 	millisecond := now.Nanosecond() / 1e6
@@ -43,4 +42,12 @@ func BeijingTimeOption(get string) string {
 	default:
 		return fmt.Sprint(time.Now().Unix())
 	}
+}
+
+// FormatTime 将 Unix 时间戳, 转换为字符串
+func FormatTime(t int64) string {
+	tt := time.Unix(t, 0).In(CSTLocation)
+	year, mon, day := tt.Date()
+	hour, min, sec := tt.Clock()
+	return fmt.Sprintf("%d-%02d-%02d %02d:%02d:%02d", year, mon, day, hour, min, sec)
 }

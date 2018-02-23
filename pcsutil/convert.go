@@ -2,7 +2,6 @@ package pcsutil
 
 import (
 	"fmt"
-	"time"
 	"unsafe"
 )
 
@@ -61,11 +60,6 @@ func ToBytes(str string) []byte {
 // IntToBool int 类型转换为 bool
 func IntToBool(i int) bool {
 	return i != 0
-}
-
-// FormatTime 将 Unix 时间戳, 转换为字符串
-func FormatTime(t int64) string {
-	return time.Unix(t, 0).Format("2006-01-02 03:04:05")
 }
 
 // ShortDisplay 缩略显示字符串s, 显示长度为num, 缩略的内容用"..."填充
