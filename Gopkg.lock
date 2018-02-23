@@ -77,8 +77,8 @@
 [[projects]]
   name = "github.com/json-iterator/go"
   packages = ["."]
-  revision = "be70f29b04dea7efb4d82a8989c33aee989b74d1"
-  version = "1.1.0"
+  revision = "0ac74bba4a81211b28e32ef260c0f16ae41f1377"
+  version = "1.1.1"
 
 [[projects]]
   branch = "master"
@@ -128,8 +128,8 @@
     "concurrent",
     "reflect2"
   ]
-  revision = "571356917fca907b069b7b47a14cd32ba0b340d4"
-  version = "0.9.0"
+  revision = "10fc95fad3224a032229e59f6e7023137d82b526"
+  version = "0.9.1"
 
 [solve-meta]
   analyzer-name = "dep"

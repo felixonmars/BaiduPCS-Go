@@ -21,13 +21,25 @@
 
 [[projects]]
   name = "github.com/stretchr/testify"
-  packages = ["assert","require"]
-  revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
-  version = "v1.1.4"
+  packages = [
+    "assert",
+    "require"
+  ]
+  revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
+  version = "v1.2.1"
+
+[[projects]]
+  name = "github.com/v2pro/plz"
+  packages = [
+    "concurrent",
+    "reflect2"
+  ]
+  revision = "10fc95fad3224a032229e59f6e7023137d82b526"
+  version = "0.9.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f8b7cf3941d3792cbbd570bb53c093adaf774334d1162c651565c97a58dc9d09"
+  inputs-digest = "64fe3937a1afce5cb551c06ff7109065c971643e082512243d1071bab428ff14"
   solver-name = "gps-cdcl"
   solver-version = 1
