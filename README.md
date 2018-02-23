@@ -1,4 +1,4 @@
-# BaiduPCS-Go 百度网盘客户端 v3.3.Beta3
+# BaiduPCS-Go 百度网盘客户端
 
 仿 Linux 文件处理命令的百度网盘命令行客户端.
 

@@ -24,7 +24,7 @@ import (
 
 var (
 	// Version 版本号
-	Version = "v3.3.Beta3"
+	Version = "v3.3.Beta4"
 
 	historyFilePath = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
@@ -645,13 +645,13 @@ func main() {
 	appid	百度 PCS 应用ID
 
 	user_agent	浏览器标识
-	cache_size	下载缓存, 如果硬盘占用高或下载速度慢, 请尝试调大此值, 建议值 ( 1024 ~ 16384 )
+	cache_size	下载缓存, 如果硬盘占用高或下载速度慢, 请尝试调大此值, 建议值 ( 1024 ~ 262144 )
 	max_parallel	下载最大并发量 - 建议值 ( 50 ~ 500 )
 	savedir	下载文件的储存目录
 
 例子:
 	set appid 260149
-	set cache_size 2048
+	set cache_size 20480
 	set max_parallel 250
 	set savedir D:/download
 `,
