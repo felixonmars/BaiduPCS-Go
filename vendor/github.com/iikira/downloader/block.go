@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -20,8 +21,9 @@ type Block struct {
 	IsFinal bool  `json:"isfinal"` // 最后线程, 因为最后的下载线程, 需要另外做处理
 
 	buf            []byte // 缓冲
-	running        int    // 线程的载入量
-	waitingToWrite bool   // 是否正在等待写入磁盘
+	resp           *http.Response
+	running        int  // 线程的载入量
+	waitingToWrite bool // 是否正在等待写入磁盘
 }
 
 // BlockList 下载区块列表
@@ -155,6 +157,8 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 		return 2, err
 	}
 
+	block.resp = resp
+
 	// 检测响应Body的错误
 	es := block.expectedContentLength()
 	if resp.ContentLength != es {
@@ -186,15 +190,16 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 	defer resp.Body.Close()
 
 	var (
-		n int
+		n          int
+		n64, begin int64
 	)
 
 	for {
-		begin := atomic.LoadInt64(&block.Begin) // 用于下文比较
+		begin = atomic.LoadInt64(&block.Begin) // 用于下文比较
 
 		n, err = resp.Body.Read(block.buf)
 
-		n64 := int64(n)
+		n64 = int64(n)
 
 		// 获得剩余的数据量
 		expectedSize := block.expectedContentLength()

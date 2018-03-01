@@ -224,7 +224,7 @@ func (der *Downloader) singleDownload() error {
 	)
 
 	for {
-		n, err = resp.Body.Read(buf)
+		n, err = io.ReadFull(resp.Body, buf)
 		if err != nil {
 			if err == io.EOF {
 				break
