@@ -22,8 +22,9 @@ type Block struct {
 
 	buf            []byte // 缓冲
 	resp           *http.Response
-	running        int  // 线程的载入量
-	waitingToWrite bool // 是否正在等待写入磁盘
+	speed          int64 // 速度
+	running        int   // 线程的载入量
+	waitingToWrite bool  // 是否正在等待写入磁盘
 }
 
 // BlockList 下载区块列表

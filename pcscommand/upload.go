@@ -147,6 +147,7 @@ func RunUpload(localPaths []string, savePath string) {
 	}
 
 	filesTotalNum := len(uploads)
+
 	if filesTotalNum == 0 {
 		fmt.Printf("未检测到上传的文件, 请检查文件路径或通配符是否正确.\n")
 		return
@@ -170,8 +171,6 @@ func RunUpload(localPaths []string, savePath string) {
 					fmt.Printf("文件不可读, 跳过...\n")
 					return
 				}
-
-				defer localPathInfo.File.Close() // 关闭文件
 
 				subSavePath := strings.TrimPrefix(localPathInfo.Path, uploadInfo.dir)
 
@@ -321,6 +320,7 @@ func RunUpload(localPaths []string, savePath string) {
 					fmt.Printf("上传文件失败, %s\n", err)
 					return
 				}
+
 				fmt.Printf("上传文件成功, 保存到网盘路径: %s\n", targetPath)
 			}()
 		}

@@ -27,7 +27,7 @@ func getDownloadFunc(cfg *downloader.Config) downloadFunc {
 
 		h.SetCookiejar(jar)
 		h.SetKeepAlive(true)
-		h.SetTimeout(2 * time.Minute)
+		h.SetTimeout(10 * time.Minute)
 
 		cfg.Client = h
 		cfg.SavePath = savePath

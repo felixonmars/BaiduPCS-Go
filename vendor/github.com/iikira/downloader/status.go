@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/json-iterator/go"
 	"io/ioutil"
+	"sync/atomic"
 	"time"
 )
 
@@ -27,15 +28,16 @@ func (der *Downloader) GetStatusChan() <-chan *Status {
 	c := make(chan *Status)
 
 	go func() {
-		var old = der.status.Downloaded
+		var old = atomic.LoadInt64(&der.status.Downloaded)
 		for {
 			time.Sleep(1 * time.Second) // 每秒统计
 
-			der.status.Speeds = der.status.Downloaded - old
+			atomic.StoreInt64(&der.status.Speeds, atomic.LoadInt64(&der.status.Downloaded)-old)
+
 			old = der.status.Downloaded
 
-			if der.status.Speeds > der.status.MaxSpeeds {
-				der.status.MaxSpeeds = der.status.Speeds
+			if speeds := atomic.LoadInt64(&der.status.Speeds); speeds > atomic.LoadInt64(&der.status.MaxSpeeds) {
+				atomic.StoreInt64(&der.status.MaxSpeeds, speeds)
 			}
 
 			der.status.TimeElapsed = time.Since(der.sinceTime) / 1e6 * 1e6
