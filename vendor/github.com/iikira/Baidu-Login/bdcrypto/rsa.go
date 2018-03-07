@@ -48,7 +48,7 @@ func RSAEncryptNoPadding(rsaPublicKeyModulus string, rsaPublicKeyExponent int64,
 func RSADecryptNoPadding(rsaPrivateKey string, ciphertext []byte) ([]byte, error) {
 	block, _ := pem.Decode([]byte(rsaPrivateKey))
 	if block == nil {
-		return nil, errors.New("private key error!")
+		return nil, errors.New("private key error")
 	}
 
 	priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)

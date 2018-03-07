@@ -7,10 +7,12 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcscommand"
 	"github.com/iikira/BaiduPCS-Go/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
+	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/pcsweb"
 	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
 	"os"
 	"os/exec"
@@ -259,8 +261,8 @@ func main() {
 			Usage:   "切换已登录的百度帐号",
 			Description: fmt.Sprintf("%s\n   示例:\n\n      %s\n      %s\n",
 				"如果运行该条命令没有提供参数, 程序将会列出所有的百度帐号, 供选择切换",
-				filepath.Base(os.Args[0])+" su --uid=123456789",
-				filepath.Base(os.Args[0])+" su",
+				app.Name+" su --uid=123456789",
+				app.Name+" su",
 			),
 			Category: "百度帐号",
 			Before:   reloadFn,
@@ -388,7 +390,7 @@ func main() {
 			Name:      "cd",
 			Category:  "百度网盘",
 			Usage:     "切换工作目录",
-			UsageText: fmt.Sprintf("%s cd <目录 绝对路径或相对路径>", filepath.Base(os.Args[0])),
+			UsageText: fmt.Sprintf("%s cd <目录 绝对路径或相对路径>", app.Name),
 			Before:    reloadFn,
 			After:     reloadFn,
 			Action: func(c *cli.Context) error {
@@ -412,7 +414,7 @@ func main() {
 			Name:      "ls",
 			Aliases:   []string{"l", "ll"},
 			Usage:     "列出当前工作目录内的文件和目录 或 指定目录内的文件和目录",
-			UsageText: fmt.Sprintf("%s ls <目录 绝对路径或相对路径>", filepath.Base(os.Args[0])),
+			UsageText: fmt.Sprintf("%s ls <目录 绝对路径或相对路径>", app.Name),
 			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -423,7 +425,7 @@ func main() {
 		{
 			Name:      "pwd",
 			Usage:     "输出当前所在目录 (工作目录)",
-			UsageText: fmt.Sprintf("%s pwd", filepath.Base(os.Args[0])),
+			UsageText: fmt.Sprintf("%s pwd", app.Name),
 			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -434,7 +436,7 @@ func main() {
 		{
 			Name:      "meta",
 			Usage:     "获取单个文件/目录的元信息 (详细信息)",
-			UsageText: fmt.Sprintf("%s meta <文件/目录 绝对路径或相对路径>", filepath.Base(os.Args[0])),
+			UsageText: fmt.Sprintf("%s meta <文件/目录 绝对路径或相对路径>", app.Name),
 			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -445,7 +447,7 @@ func main() {
 		{
 			Name:      "rm",
 			Usage:     "删除 单个/多个 文件/目录",
-			UsageText: fmt.Sprintf("%s rm <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", filepath.Base(os.Args[0])),
+			UsageText: fmt.Sprintf("%s rm <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", app.Name),
 			Description: fmt.Sprintf("\n   %s\n   %s\n",
 				"注意: 删除多个文件和目录时, 请确保每一个文件和目录都存在, 否则删除操作会失败.",
 				"被删除的文件或目录可在网盘文件回收站找回.",
@@ -465,7 +467,7 @@ func main() {
 		{
 			Name:      "mkdir",
 			Usage:     "创建目录",
-			UsageText: fmt.Sprintf("%s mkdir <目录 绝对路径或相对路径> ...", filepath.Base(os.Args[0])),
+			UsageText: fmt.Sprintf("%s mkdir <目录 绝对路径或相对路径> ...", app.Name),
 			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -483,8 +485,8 @@ func main() {
 			Usage: "拷贝(复制) 文件/目录",
 			UsageText: fmt.Sprintf(
 				"%s cp <文件/目录> <目标 文件/目录>\n   %s cp <文件/目录1> <文件/目录2> <文件/目录3> ... <目标目录>",
-				filepath.Base(os.Args[0]),
-				filepath.Base(os.Args[0]),
+				app.Name,
+				app.Name,
 			),
 			Category: "百度网盘",
 			Before:   reloadFn,
@@ -503,8 +505,8 @@ func main() {
 			Usage: "移动/重命名 文件/目录",
 			UsageText: fmt.Sprintf(
 				"移动\t: %s mv <文件/目录1> <文件/目录2> <文件/目录3> ... <目标目录>\n   重命名: %s mv <文件/目录> <重命名的文件/目录>",
-				filepath.Base(os.Args[0]),
-				filepath.Base(os.Args[0]),
+				app.Name,
+				app.Name,
 			),
 			Category: "百度网盘",
 			Before:   reloadFn,
@@ -522,7 +524,7 @@ func main() {
 			Name:        "download",
 			Aliases:     []string{"d"},
 			Usage:       "下载文件或目录",
-			UsageText:   fmt.Sprintf("%s download <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", filepath.Base(os.Args[0])),
+			UsageText:   fmt.Sprintf("%s download <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", app.Name),
 			Description: "下载的文件将会保存到, 程序所在目录的 download/ 目录 (文件夹).\n   已支持目录下载.\n   已支持多个文件或目录下载.\n   自动跳过下载重名的文件! \n",
 			Category:    "百度网盘",
 			Before:      reloadFn,
@@ -550,7 +552,7 @@ func main() {
 			Name:        "upload",
 			Aliases:     []string{"u"},
 			Usage:       "上传文件或目录",
-			UsageText:   fmt.Sprintf("%s upload <本地文件或目录的路径1> <文件或目录2> <文件或目录3> ... <网盘的目标目录>", filepath.Base(os.Args[0])),
+			UsageText:   fmt.Sprintf("%s upload <本地文件或目录的路径1> <文件或目录2> <文件或目录3> ... <网盘的目标目录>", app.Name),
 			Description: "上传的文件将会保存到 网盘的目标目录.\n   遇到同名文件将会自动覆盖! \n",
 			Category:    "百度网盘",
 			Before:      reloadFn,
@@ -570,7 +572,7 @@ func main() {
 			Name:        "rapidupload",
 			Aliases:     []string{"ru"},
 			Usage:       "手动秒传文件",
-			UsageText:   fmt.Sprintf("%s rapidupload -length=<文件的大小> -md5=<文件的md5值> -slicemd5=<文件前256KB切片的md5值> -crc32=<文件的crc32值(可选)> <保存的网盘路径, 需包含文件名>", filepath.Base(os.Args[0])),
+			UsageText:   fmt.Sprintf("%s rapidupload -length=<文件的大小> -md5=<文件的md5值> -slicemd5=<文件前256KB切片的md5值> -crc32=<文件的crc32值(可选)> <保存的网盘路径, 需包含文件名>", app.Name),
 			Description: "上传的文件将会保存到 网盘的目标目录.\n   遇到同名文件将会自动覆盖! \n",
 			Category:    "百度网盘",
 			Before:      reloadFn,
@@ -606,7 +608,7 @@ func main() {
 			Name:        "sumfile",
 			Aliases:     []string{"sf"},
 			Usage:       "获取文件的秒传信息",
-			UsageText:   fmt.Sprintf("%s sumfile <本地文件的路径>", filepath.Base(os.Args[0])),
+			UsageText:   app.Name + " sumfile <本地文件的路径>",
 			Description: "获取文件的大小, md5, 前256KB切片的md5, crc32, 可用于秒传文件.",
 			Category:    "其他",
 			Before:      reloadFn,
@@ -635,41 +637,198 @@ func main() {
 			},
 		},
 		{
-			Name:      "set",
-			Usage:     "修改程序配置项",
-			UsageText: fmt.Sprintf("%s set OptionName Value", filepath.Base(os.Args[0])),
-			Description: `
-可设置的值:
-	OptionName		Value
-	------------------------------------------------------
-	appid	百度 PCS 应用ID
-
-	user_agent	浏览器标识
-	cache_size	下载缓存, 如果硬盘占用高或下载速度慢, 请尝试调大此值, 建议值 ( 1024 ~ 262144 )
-	max_parallel	下载最大并发量 - 建议值 ( 50 ~ 500 )
-	savedir	下载文件的储存目录
-
-例子:
-	set appid 260149
-	set cache_size 20480
-	set max_parallel 250
-	set savedir D:/download
-`,
+			// 兼容旧版本
+			Name:     "set",
+			Usage:    "修改程序配置项",
 			Category: "配置",
 			Before:   reloadFn,
 			After:    reloadFn,
 			Action: func(c *cli.Context) error {
-				if c.NArg() < 2 || c.Args().Get(1) == "" {
-					cli.ShowCommandHelp(c, c.Command.Name)
-					return nil
-				}
-
-				err := pcsconfig.Config.SetConfig(c.Args().Get(0), c.Args().Get(1)) // 设置
-				if err != nil {
-					fmt.Println(err)
-					cli.ShowCommandHelp(c, "set")
-				}
+				fmt.Printf("请使用 BaiduPCS-Go config set 修改程序配置项\n")
 				return nil
+			},
+			Hidden:   true,
+			HideHelp: true,
+		},
+		{
+			Name:        "config",
+			Usage:       "显示和修改程序配置项",
+			Description: "显示和修改程序配置项",
+			Category:    "配置",
+			Before:      reloadFn,
+			After:       reloadFn,
+			Action: func(c *cli.Context) error {
+				fmt.Printf("----\n运行 %s config set 可进行设置配置\n\n当前配置:\n", app.Name)
+				tb := pcstable.NewTable(os.Stdout)
+				tb.SetHeader([]string{"名称", "值", "建议值", "描述"})
+				tb.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_LEFT})
+				tb.AppendBulk([][]string{
+					[]string{"appid", fmt.Sprint(pcsconfig.Config.AppID), "", "百度 PCS 应用ID"},
+					[]string{"user_agent", pcsconfig.Config.UserAgent, "", "浏览器标识"},
+					[]string{"cache_size", strconv.Itoa(pcsconfig.Config.CacheSize), "1024 ~ 262144", "下载缓存, 如果硬盘占用高或下载速度慢, 请尝试调大此值"},
+					[]string{"max_parallel", strconv.Itoa(pcsconfig.Config.MaxParallel), "50 ~ 500", "下载最大并发量"},
+					[]string{"savedir", pcsconfig.Config.SaveDir, "", "下载文件的储存目录"},
+				})
+				tb.Render()
+				return nil
+			},
+			Subcommands: []cli.Command{
+				{
+					Name:      "set",
+					Usage:     "修改程序配置项",
+					UsageText: app.Name + " config set [arguments...]",
+					Description: `
+	例子:
+		BaiduPCS-Go config set -appid=260149
+		BaiduPCS-Go config set -user_agent="chrome"
+		BaiduPCS-Go config set -cache_size 16384 -max_parallel 200 -savedir D:/download`,
+					Action: func(c *cli.Context) error {
+						if c.NumFlags() <= 0 || c.NArg() > 0 {
+							cli.ShowCommandHelp(c, c.Command.Name)
+							return nil
+						}
+
+						err := pcsconfig.Config.Save()
+						if err != nil {
+							fmt.Println(err)
+							return err
+						}
+
+						fmt.Printf("保存配置成功\n")
+
+						return nil
+					},
+					Flags: []cli.Flag{
+						cli.UintFlag{
+							Name:        "appid",
+							Usage:       "百度 PCS 应用ID",
+							Value:       pcsconfig.Config.AppID,
+							Destination: &pcsconfig.Config.AppID,
+						},
+						cli.StringFlag{
+							Name:        "user_agent",
+							Usage:       "浏览器标识",
+							Value:       pcsconfig.Config.UserAgent,
+							Destination: &pcsconfig.Config.UserAgent,
+						},
+						cli.IntFlag{
+							Name:        "cache_size",
+							Usage:       "下载缓存",
+							Value:       pcsconfig.Config.CacheSize,
+							Destination: &pcsconfig.Config.CacheSize,
+						},
+						cli.IntFlag{
+							Name:        "max_parallel",
+							Usage:       "下载最大并发量",
+							Value:       pcsconfig.Config.MaxParallel,
+							Destination: &pcsconfig.Config.MaxParallel,
+						},
+						cli.StringFlag{
+							Name:        "savedir",
+							Usage:       "下载文件的储存目录",
+							Value:       pcsconfig.Config.SaveDir,
+							Destination: &pcsconfig.Config.SaveDir,
+						},
+					},
+				},
+			},
+		},
+		{
+			Name:  "tool",
+			Usage: "工具箱",
+			Action: func(c *cli.Context) error {
+				cli.ShowCommandHelp(c, c.Command.Name)
+				return nil
+			},
+			Subcommands: []cli.Command{
+				{
+					Name:  "showtime",
+					Usage: "显示当前时间(北京时间)",
+					Action: func(c *cli.Context) error {
+						fmt.Printf(pcsutil.BeijingTimeOption("printLog"))
+						return nil
+					},
+				},
+				{
+					Name:        "enc",
+					Usage:       "加密文件",
+					UsageText:   app.Name + " enc -method=<method> -key=<key> [files...]",
+					Description: cryptoDescription,
+					Action: func(c *cli.Context) error {
+						if c.NArg() <= 0 {
+							cli.ShowCommandHelp(c, c.Command.Name)
+							return nil
+						}
+
+						for _, filePath := range c.Args() {
+							encryptedFilePath, err := pcsutil.EncryptFile(c.String("method"), []byte(c.String("key")), filePath, !c.Bool("disable-gzip"))
+							if err != nil {
+								fmt.Printf("%s\n", err)
+								continue
+							}
+
+							fmt.Printf("加密成功, %s -> %s\n", filePath, encryptedFilePath)
+						}
+
+						return nil
+					},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "method",
+							Usage: "加密方法",
+							Value: "aes-128-ctr",
+						},
+						cli.StringFlag{
+							Name:  "key",
+							Usage: "加密密钥",
+							Value: app.Name,
+						},
+						cli.BoolFlag{
+							Name:  "disable-gzip",
+							Usage: "不启用GZIP",
+						},
+					},
+				},
+				{
+					Name:        "dec",
+					Usage:       "解密文件",
+					UsageText:   app.Name + " dec -method=<method> -key=<key> [files...]",
+					Description: cryptoDescription,
+					Action: func(c *cli.Context) error {
+						if c.NArg() <= 0 {
+							cli.ShowCommandHelp(c, c.Command.Name)
+							return nil
+						}
+
+						for _, filePath := range c.Args() {
+							decryptedFilePath, err := pcsutil.DecryptFile(c.String("method"), []byte(c.String("key")), filePath, !c.Bool("disable-gzip"))
+							if err != nil {
+								fmt.Printf("%s\n", err)
+								continue
+							}
+
+							fmt.Printf("解密成功, %s -> %s\n", filePath, decryptedFilePath)
+						}
+
+						return nil
+					},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "method",
+							Usage: "加密方法",
+							Value: "aes-128-ctr",
+						},
+						cli.StringFlag{
+							Name:  "key",
+							Usage: "加密密钥",
+							Value: app.Name,
+						},
+						cli.BoolFlag{
+							Name:  "disable-gzip",
+							Usage: "不启用GZIP",
+						},
+					},
+				},
 			},
 		},
 		{

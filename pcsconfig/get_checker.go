@@ -52,6 +52,17 @@ func (c *PCSConfig) CheckUIDExist(uid uint64) bool {
 	return false
 }
 
+// CheckValid 检查配置的有效性
+func (c *PCSConfig) CheckValid() error {
+	if c.CacheSize <= 0 {
+		return fmt.Errorf("invalid cache size: %d", c.CacheSize)
+	}
+	if c.MaxParallel <= 0 {
+		return fmt.Errorf("invalid max parallel: %d", c.MaxParallel)
+	}
+	return nil
+}
+
 // GetSavePath 根据提供的网盘文件路径 path, 返回本地储存路径,
 // 返回绝对路径, 获取绝对路径出错时才返回相对路径...
 func GetSavePath(path string) string {

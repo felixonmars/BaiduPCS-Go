@@ -38,8 +38,8 @@
   name = "github.com/gobs/args"
 
 [[constraint]]
+  branch = "master"
   name = "github.com/iikira/Baidu-Login"
-  version = "1.2.1"
 
 [[constraint]]
   branch = "master"

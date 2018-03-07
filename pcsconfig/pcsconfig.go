@@ -92,6 +92,12 @@ func loadConfig() error {
 
 // Save 保存配置信息到配置文件
 func (c *PCSConfig) Save() error {
+	// 检测配置项是否合法, 不合法则无法保存
+	err := c.CheckValid()
+	if err != nil {
+		return err
+	}
+
 	data, err := json.MarshalIndent(c, "", "\t")
 	if err != nil {
 		panic(err)

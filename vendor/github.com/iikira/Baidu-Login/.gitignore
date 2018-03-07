@@ -3,7 +3,7 @@
 *.dll
 *.so
 *.dylib
-Baidu-Login
+cmd/Baidu-Login/Baidu-Login
 
 # Test binary, build with `go test -c`
 *.test
