@@ -11,7 +11,7 @@ Build() {
     echo "Building $1..."
     export GOOS=$2 GOARCH=$3 GO386=sse2 CGO_ENABLED=0
     if [ $2 = "windows" ];then
-        goversioninfo -icon=assets/icon.ico -manifest="$name".exe.manifest -product-name="$name" -file-version="$version" -product-version="$version" -company=iikira -copyright="© 2016-2018 iikira." -o=resource_windows.syso
+        goversioninfo -icon=assets/$name.ico -manifest="$name".exe.manifest -product-name="$name" -file-version="$version" -product-version="$version" -company=iikira -copyright="© 2016-2018 iikira." -o=resource_windows.syso
         go build -ldflags "-s -w" -o "$output/$1/$name.exe"
         RicePack $1 $name.exe
     else

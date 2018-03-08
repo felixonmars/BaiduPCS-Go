@@ -10,17 +10,15 @@ import (
 
 // Status 下载状态
 type Status struct {
-	done bool // 是否已经结束, alignment, for 32-bit device
+	TotalSize  int64 `json:"total_size"` // 总大小
+	Downloaded int64 `json:"downloaded"` // 已下载的数据量
+	Speeds     int64 `json:"-"`          // 下载速度, 每秒
+	MaxSpeeds  int64 `json:"-"`          // 最大下载速度
 
-	TotalSize      int64 `json:"total_size"` // 总大小
-	blockUnsupport bool  // 服务端是否支持断点续传, alignment
-
-	Downloaded int64     `json:"downloaded"` // 已下载的数据量
-	BlockList  BlockList `json:"block_list"` // 下载区块列表
-
-	Speeds      int64         `json:"-"` // 下载速度, 每秒
-	MaxSpeeds   int64         `json:"-"` // 最大下载速度
-	TimeElapsed time.Duration `json:"-"` // 下载的时间
+	BlockList      BlockList     `json:"block_list"` // 下载区块列表
+	TimeElapsed    time.Duration `json:"-"`          // 下载的时间
+	blockUnsupport bool          // 服务端是否支持断点续传
+	done           bool          // 是否已经结束
 }
 
 // GetStatusChan 返回 Status 对象的 channel

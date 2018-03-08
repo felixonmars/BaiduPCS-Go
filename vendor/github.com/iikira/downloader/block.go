@@ -18,13 +18,13 @@ var (
 type Block struct {
 	Begin   int64 `json:"begin"`
 	End     int64 `json:"end"`
+	speed   int64 // 速度
 	IsFinal bool  `json:"isfinal"` // 最后线程, 因为最后的下载线程, 需要另外做处理
 
 	buf            []byte // 缓冲
 	resp           *http.Response
-	speed          int64 // 速度
-	running        int   // 线程的载入量
-	waitingToWrite bool  // 是否正在等待写入磁盘
+	running        int  // 线程的载入量
+	waitingToWrite bool // 是否正在等待写入磁盘
 }
 
 // BlockList 下载区块列表

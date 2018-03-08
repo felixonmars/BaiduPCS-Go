@@ -38,6 +38,6 @@
             "CharsetID": "04B0"
         }
     },
-    "IconPath": "assets/icon.ico",
+    "IconPath": "assets/BaiduPCS-Go.ico",
     "ManifestPath": "BaiduPCS-Go.exe.manifest"
 }
