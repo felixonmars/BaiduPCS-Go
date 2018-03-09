@@ -2,14 +2,19 @@ name="BaiduPCS-Go"
 version=$1
 
 if [ "$1" = "" ];then
-    version=v3.3.Beta4
+    version=v3.3
 fi
 
 output="out/"
 
 Build() {
+    goarm=$4
+    if [ "$4" = "" ];then
+        goarm=7
+    fi
+
     echo "Building $1..."
-    export GOOS=$2 GOARCH=$3 GO386=sse2 CGO_ENABLED=0
+    export GOOS=$2 GOARCH=$3 GO386=sse2 CGO_ENABLED=0 GOARM=$4
     if [ $2 = "windows" ];then
         goversioninfo -icon=assets/$name.ico -manifest="$name".exe.manifest -product-name="$name" -file-version="$version" -product-version="$version" -company=iikira -copyright="© 2016-2018 iikira." -o=resource_windows.syso
         go build -ldflags "-s -w" -o "$output/$1/$name.exe"
@@ -26,7 +31,8 @@ ArmBuild() {
     echo "Building $1..."
     export GOOS=$2 GOARCH=$3 GOARM=$4 CGO_ENABLED=1
     go build -ldflags '-s -w -linkmode=external -extldflags=-pie' -o "$output/$1/$name"
-    if [ $2 = "darwin" -a $3 = "arm64" ];then
+    if (( $2 = "darwin" )) && (( $3 = "arm" || $3 = "arm64" ));then
+    echo 1;
         ldid -S "$output/$1/$name"
     fi
 
@@ -53,6 +59,9 @@ RicePack() {
     rice -i github.com/iikira/BaiduPCS-Go/pcsweb append --exec "$output/$1/$2"
 }
 
+CC=$NDK_INSTALL/aarch64-linux-android-4.9/bin/aarch64-linux-android-gcc ArmBuild $name-$version"-android-21-arm64" android arm64 7
+exit
+
 # Android
 export NDK_INSTALL=$ANDROID_NDK_ROOT/bin
 # CC=$NDK_INSTALL/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-gcc ArmBuild $name-$version"-android-16-armv5" android arm 5
@@ -77,7 +86,8 @@ Build $name-$version"-windows-x64" windows amd64
 # Linux
 Build $name-$version"-linux-386" linux 386
 Build $name-$version"-linux-amd64" linux amd64
-Build $name-$version"-linux-arm" linux arm
+Build $name-$version"-linux-armv5" linux arm 5
+Build $name-$version"-linux-armv7" linux arm 7
 Build $name-$version"-linux-arm64" linux arm64
 # Build $name-$version"-linux-mips" linux mips
 # Build $name-$version"-linux-mips64" linux mips64

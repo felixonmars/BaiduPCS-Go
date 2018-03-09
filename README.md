@@ -196,7 +196,7 @@ BaiduPCS-Go d <网盘文件或目录的路径1> <文件或目录2> <文件或目
 ```
 # 设置保存目录, 保存到 D:\Downloads
 # 注意区别反斜杠 "\" 和 斜杠 "/" !!!
-BaiduPCS-Go set savedir D:/Downloads
+BaiduPCS-Go config set -savedir D:/Downloads
 
 # 下载 /我的资源/1.mp4
 BaiduPCS-Go d /我的资源/1.mp4
@@ -326,21 +326,26 @@ BaiduPCS-Go mv /我的资源/1.mp4 /
 BaiduPCS-Go mv /我的资源/1.mp4 /我的资源/3.mp4
 ```
 
-## 设置
+## 显示和修改程序配置项
 ```
-BaiduPCS-Go set OptionName Value
+BaiduPCS-Go config
+BaiduPCS-Go config set
 ```
 
 #### 例子
 ```
-# 查看所有可以设置的值
-BaiduPCS-Go set -h
+# 显示所有可以设置的值
+BaiduPCS-Go config -h
+BaiduPCS-Go config set -h
 
 # 设置下载文件的储存目录
-BaiduPCS-Go set savedir D:/Downloads
+BaiduPCS-Go config set -savedir D:/Downloads
 
 # 设置下载最大并发量为 150
-BaiduPCS-Go set max_parallel 150
+BaiduPCS-Go config set -max_parallel 150
+
+# 组合设置, 
+BaiduPCS-Go config set -max_parallel 150 -savedir D:/Downloads
 ```
 
 # 举一些例子 
@@ -423,9 +428,9 @@ d /我的资源
 
 ## 6. 设置下载最大并发数
 
-console 模式下, 运行命令 `set -h` (注意空格) 查看设置帮助以及可供设置的值
+console 模式下, 运行命令 `config set -h` (注意空格) 查看设置帮助以及可供设置的值
 
-console 模式下, 运行命令 `set max_parallel 250` 将下载最大并发数设置为 250
+console 模式下, 运行命令 `config set -max_parallel 250` 将下载最大并发数设置为 250
 
 下载最大并发数建议值: 50~500, 太低下载速度提升不明显甚至速度会变为0, 太高可能会导致程序出错被操作系统结束掉.
 
