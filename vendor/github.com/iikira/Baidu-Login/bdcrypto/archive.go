@@ -49,29 +49,35 @@ func gzipCompressFile(op, filePath string) (err error) {
 		return
 	}
 
-	f2, err := os.Create(filePath + ".gzip.tmp")
+	defer f.Close()
+
+	fInfo, err := f.Stat()
 	if err != nil {
-		f.Close()
 		return
 	}
 
-	defer f2.Close()
+	tempFilePath := os.TempDir() + string(os.PathSeparator) + filePath + ".gzip.tmp"
+	// 保留文件权限
+	tempFile, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fInfo.Mode())
+	if err != nil {
+		return
+	}
+
+	defer tempFile.Close()
 
 	switch op {
 	case "en":
-		err = GZIPCompress(f, f2)
+		err = GZIPCompress(f, tempFile)
 	case "de":
-		err = GZIPUncompress(f, f2)
+		err = GZIPUncompress(f, tempFile)
 	default:
 		panic("unknown op" + op)
 	}
 
 	if err != nil {
-		os.Remove(f2.Name())
+		os.Remove(tempFilePath)
 		return
 	}
 
-	f.Close()
-	os.Remove(filePath)
-	return os.Rename(filePath+".gzip.tmp", filePath)
+	return os.Rename(tempFilePath, filePath)
 }

@@ -51,7 +51,7 @@
     "bdcrypto",
     "bdcrypto/ecb"
   ]
-  revision = "48c7c58e3e4c444474e9102c0b8987fda85d649a"
+  revision = "78f160190f5d66733c165f269a4b81449e5eb703"
 
 [[projects]]
   branch = "master"

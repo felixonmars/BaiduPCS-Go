@@ -31,7 +31,7 @@ func EncryptFile(method string, key []byte, filePath string, isGzip bool) (encry
 		}
 	}
 
-	plainFile, err := os.OpenFile(filePath, os.O_RDONLY, 0644)
+	plainFile, err := os.OpenFile(filePath, os.O_RDONLY, 0)
 	if err != nil {
 		return
 	}
@@ -66,8 +66,13 @@ func EncryptFile(method string, key []byte, filePath string, isGzip bool) (encry
 		return
 	}
 
+	plainFileInfo, err := plainFile.Stat()
+	if err != nil {
+		return
+	}
+
 	encryptedFilePath = filePath + ".encrypt"
-	encryptedFile, err := os.OpenFile(encryptedFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	encryptedFile, err := os.OpenFile(encryptedFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, plainFileInfo.Mode())
 	if err != nil {
 		return
 	}
@@ -125,9 +130,14 @@ func DecryptFile(method string, key []byte, filePath string, isGzip bool) (decry
 		return
 	}
 
+	cipherFileInfo, err := cipherFile.Stat()
+	if err != nil {
+		return
+	}
+
 	decryptedFilePath = strings.TrimSuffix(filePath, ".encrypt")
 	decryptedTmpFilePath := decryptedFilePath + ".decrypted"
-	decryptedTmpFile, err := os.OpenFile(decryptedTmpFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	decryptedTmpFile, err := os.OpenFile(decryptedTmpFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, cipherFileInfo.Mode())
 
 	_, err = io.Copy(decryptedTmpFile, plainReader)
 	if err != nil {
