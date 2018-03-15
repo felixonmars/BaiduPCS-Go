@@ -1,6 +1,7 @@
 package pcscommand
 
 import (
+	"container/list"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/pcsconfig"
@@ -13,10 +14,17 @@ import (
 	"time"
 )
 
+// dtask 下载任务
+type dtask struct {
+	ListTask
+	path         string                  // 下载的路径
+	downloadInfo *baidupcs.FileDirectory // 文件或目录详情
+}
+
 // downloadFunc 用于下载文件的函数
 type downloadFunc func(downloadURL string, jar *cookiejar.Jar, savePath string) error
 
-func getDownloadFunc(cfg *downloader.Config) downloadFunc {
+func getDownloadFunc(id int, cfg *downloader.Config) downloadFunc {
 	if cfg == nil {
 		cfg = downloader.NewConfig()
 	}
@@ -41,7 +49,7 @@ func getDownloadFunc(cfg *downloader.Config) downloadFunc {
 
 		download.OnExecute = func() {
 			if cfg.Testing {
-				fmt.Printf("测试下载开始\n\n")
+				fmt.Printf("[%d] 测试下载开始\n\n", id)
 			}
 
 			ds := download.GetStatusChan()
@@ -52,7 +60,7 @@ func getDownloadFunc(cfg *downloader.Config) downloadFunc {
 						return
 					}
 
-					fmt.Printf("\r↓ %s/%s %s/s in %s ............",
+					fmt.Printf("\r[%d] ↓ %s/%s %s/s in %s ............", id,
 						pcsutil.ConvertFileSize(v.Downloaded, 2),
 						pcsutil.ConvertFileSize(v.TotalSize, 2),
 						pcsutil.ConvertFileSize(v.Speeds, 2),
@@ -70,9 +78,9 @@ func getDownloadFunc(cfg *downloader.Config) downloadFunc {
 		<-exitDownloadFunc
 
 		if !cfg.Testing {
-			fmt.Printf("\n\n下载完成, 保存位置: %s\n\n", savePath)
+			fmt.Printf("\n\n[%d] 下载完成, 保存位置: %s\n\n", id, savePath)
 		} else {
-			fmt.Printf("\n\n测试下载结束\n\n")
+			fmt.Printf("\n\n[%d] 测试下载结束\n\n", id)
 		}
 
 		close(exitDownloadFunc)
@@ -100,97 +108,116 @@ func RunDownload(testing bool, parallel int, paths []string) {
 		return
 	}
 
-	fmt.Println()
-	for k := range paths {
-		fmt.Printf("添加下载任务: %s\n", paths[k])
-	}
-	fmt.Println()
+	fmt.Printf("\n")
+	fmt.Printf("[0] 提示: 当前下载最大并发量为: %d\n", cfg.Parallel)
 
-	for k, path := range paths {
-		downloadInfo, err := info.FilesDirectoriesMeta(path)
-		if err != nil {
-			fmt.Println(err)
+	dlist := list.New()
+	lastID := 0
+
+	for k := range paths {
+		lastID++
+		dlist.PushBack(&dtask{
+			ListTask: ListTask{
+				id:       lastID,
+				maxRetry: 3,
+			},
+			path: paths[k],
+		})
+		fmt.Printf("[%d] 加入下载队列: %s\n", lastID, paths[k])
+	}
+
+	var (
+		e             *list.Element
+		task          *dtask
+		handleTaskErr = func(task *dtask, errManifest string, err error) {
+			if task == nil {
+				panic("task is nil")
+			}
+
+			if err == nil {
+				return
+			}
+
+			// 不重试的情况
+			switch {
+			case strings.Compare(errManifest, "下载文件错误") == 0 && strings.Contains(err.Error(), "文件已存在"):
+				fmt.Printf("[%d] %s, %s\n", task.id, errManifest, err)
+				return
+			}
+
+			fmt.Printf("[%d] %s, %s, 重试 %d/%d\n", task.id, errManifest, err, task.retry, task.maxRetry)
+
+			// 未达到失败重试最大次数, 将任务推送到队列末尾
+			if task.retry < task.maxRetry {
+				task.retry++
+				dlist.PushBack(task)
+			}
+			time.Sleep(3 * time.Second)
+		}
+		totalSize int64
+	)
+
+	for {
+		e = dlist.Front()
+		if e == nil { // 结束
+			break
+		}
+
+		dlist.Remove(e) // 载入任务后, 移除队列
+
+		task = e.Value.(*dtask)
+		if task == nil {
 			continue
 		}
 
-		fmt.Printf("[ %d / %d ] %s\n", k+1, len(paths), downloadInfo.String())
-
-		// 如果是一个目录, 递归下载该目录下的所有文件
-		if downloadInfo.Isdir {
-			fmt.Printf("即将下载目录: %s, 获取目录信息中...\n\n", path)
-
-			dirInfo, err := info.FilesDirectoriesList(path, true)
+		if task.downloadInfo == nil {
+			task.downloadInfo, err = info.FilesDirectoriesMeta(task.path)
 			if err != nil {
-				fmt.Printf("发生错误, %s\n", err)
+				// 不重试
+				fmt.Printf("[%d] 获取路径信息错误, %s\n", task.id, err)
+				continue
+			}
+		}
+
+		fmt.Printf("\n")
+		fmt.Printf("[%d] ----\n%s\n", task.id, task.downloadInfo.String())
+
+		// 如果是一个目录, 将子文件和子目录加入队列
+		if task.downloadInfo.Isdir {
+			os.MkdirAll(pcsconfig.GetSavePath(task.path), 0777) // 首先在本地创建目录
+
+			fileList, err := info.FilesDirectoriesList(task.path, false)
+			if err != nil {
+				// 不重试
+				fmt.Printf("[%d] 获取目录信息错误, %s\n", task.id, err)
 				continue
 			}
 
-			fN, dN := dirInfo.Count()
-			statText := fmt.Sprintf("统计: 文件总数: %d, 目录总数: %d, 文件总大小: %s\n\n",
-				fN, dN,
-				pcsutil.ConvertFileSize(dirInfo.TotalSize()),
-			)
-
-			fmt.Printf(statText) // 输出统计信息
-
-			downloadDirectory(path, dirInfo, cfg) // 开始下载目录
-
-			fmt.Printf("目录 %s 下载完成, %s", path, statText) // 再次输出统计信息
-
-			continue
-		}
-
-		fmt.Printf("即将开始下载文件\n\n")
-
-		err = info.FileDownload(path, getDownloadFunc(cfg))
-		if err != nil {
-			fmt.Printf("下载文件时发生错误: %s (跳过...)\n\n", err)
-		}
-	}
-}
-
-// downloadDirectory 下载目录
-func downloadDirectory(pcspath string, dirInfo baidupcs.FileDirectoryList, cfg *downloader.Config) {
-	// 遇到空目录, 则创建目录
-	if len(dirInfo) == 0 {
-		fmt.Printf("创建目录: %s\n\n", pcspath)
-		os.MkdirAll(pcsconfig.GetSavePath(pcspath), 0777)
-		return
-	}
-
-	for k := range dirInfo {
-		if dirInfo[k] == nil {
-			continue
-		}
-
-		if dirInfo[k].Children != nil {
-			downloadDirectory(dirInfo[k].Path, dirInfo[k].Children, cfg)
-		}
-
-		// 如果文件或目录存在, 跳过
-		if pcsconfig.CheckFileExist(dirInfo[k].Path) {
-			// 如果是目录, 不输出消息
-			if !dirInfo[k].Isdir {
-				fmt.Printf("文件已存在 (自动跳过): %s\n\n", pcsconfig.GetSavePath(dirInfo[k].Path))
+			for k := range fileList {
+				lastID++
+				dlist.PushBack(&dtask{
+					ListTask: ListTask{
+						id:       lastID,
+						maxRetry: 3,
+					},
+					path:         fileList[k].Path,
+					downloadInfo: fileList[k],
+				})
+				fmt.Printf("[%d] 加入下载队列: %s\n", lastID, fileList[k].Path)
 			}
-
 			continue
 		}
 
-		fmt.Println(dirInfo[k]) // 输出文件或目录的详情
+		fmt.Printf("[%d] 准备下载: %s\n\n", task.id, task.path)
 
-		if dirInfo[k].Isdir {
-			downloadDirectory(dirInfo[k].Path, nil, cfg)
-			continue
-		}
-
-		fmt.Printf("即将开始下载文件: %s\n\n", dirInfo[k].Filename)
-
-		err := info.FileDownload(dirInfo[k].Path, getDownloadFunc(cfg))
+		err = info.FileDownload(task.path, getDownloadFunc(task.id, cfg))
 		if err != nil {
-			fmt.Println(err)
+			handleTaskErr(task, "下载文件错误", err)
+			continue
 		}
 
-		fmt.Println(strings.Repeat("-", 60))
+		totalSize += task.downloadInfo.Size
 	}
+
+	fmt.Printf("全部下载完毕, 总大小: %s\n", pcsutil.ConvertFileSize(totalSize))
 }

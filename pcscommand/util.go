@@ -15,6 +15,13 @@ var (
 	patternRE = regexp.MustCompile(`[\*\?]`)
 )
 
+// ListTask 队列状态 (基类)
+type ListTask struct {
+	id       int // 任务id
+	retry    int // 任务失败的重试次数
+	maxRetry int // 最大重试次数
+}
+
 // getAllAbsPaths 获取所有绝对路径
 func getAllAbsPaths(paths ...string) (absPaths []string, err error) {
 	for k := range paths {

@@ -3,6 +3,7 @@ package pcscommand
 import (
 	"bufio"
 	"bytes"
+	"container/list"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -20,13 +21,15 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const requiredSliceLen = 256 * pcsutil.KB // 256 KB
 
-type upload struct {
-	dir   string   // 目录路径
-	files []string // 目录下所有子文件
+type utask struct {
+	ListTask
+	uploadInfo *LocalPathInfo // 要上传的本地文件详情
+	savePath   string
 }
 
 // LocalPathInfo 本地文件详情
@@ -40,6 +43,7 @@ type LocalPathInfo struct {
 	CRC32    uint32 // 文件的 crc32
 }
 
+// check 检查文件状态并获取文件的大小 (Length)
 func (lp *LocalPathInfo) check() bool {
 	var err error
 	lp.File, err = os.Open(lp.Path)
@@ -124,207 +128,248 @@ func RunUpload(localPaths []string, savePath string) {
 		return
 	}
 
-	var uploads []upload
+	var (
+		ulist       = list.New()
+		lastID      int
+		subSavePath string
+	)
+
 	for k := range localPaths {
-		_paths, err := filepath.Glob(localPaths[k])
+		globedPaths, err := filepath.Glob(localPaths[k])
 		if err != nil {
 			fmt.Printf("上传文件, 匹配本地路径失败, %s\n", err)
 			continue
 		}
 
-		for k2 := range _paths {
-			_files, err := pcsutil.WalkDir(_paths[k2], "")
+		for k2 := range globedPaths {
+			walkedFiles, err := pcsutil.WalkDir(globedPaths[k2], "")
 			if err != nil {
-				fmt.Println(err)
+				fmt.Printf("警告: %s\n", err)
 				continue
 			}
 
-			uploads = append(uploads, upload{
-				dir:   filepath.Dir(_paths[k2]),
-				files: _files,
-			})
-		}
-	}
-
-	filesTotalNum := len(uploads)
-
-	if filesTotalNum == 0 {
-		fmt.Printf("未检测到上传的文件, 请检查文件路径或通配符是否正确.\n")
-		return
-	}
-
-	for ftN, uploadInfo := range uploads {
-
-		filesNum := len(uploadInfo.files)
-
-		for fN, file := range uploadInfo.files {
-			func() {
-				defer fmt.Println()
-
-				fmt.Printf("[%d/%d - %d/%d] - [%s]: 任务开始\n", ftN+1, filesTotalNum, fN+1, filesNum, file)
-
-				localPathInfo := &LocalPathInfo{
-					Path: file,
-				}
-
-				if !localPathInfo.check() {
-					fmt.Printf("文件不可读, 跳过...\n")
-					return
-				}
-
-				subSavePath := strings.TrimPrefix(localPathInfo.Path, uploadInfo.dir)
+			for k3 := range walkedFiles {
+				subSavePath = strings.TrimPrefix(walkedFiles[k3], filepath.Dir(globedPaths[k2]))
 
 				// 针对 windows 的目录处理
 				if os.PathSeparator == '\\' {
 					subSavePath = strings.Replace(subSavePath, "\\", "/", -1)
 				}
 
-				targetPath := path.Clean(absSavePath + "/" + subSavePath)
-
-				panDir, panFile := path.Split(targetPath)
-
-				// 设置缓存
-				if !pcscache.DirCache.Existed(panDir) {
-					fdl, err := info.FilesDirectoriesList(panDir, false)
-					if err == nil {
-						pcscache.DirCache.Set(panDir, &fdl)
-					}
-				}
-
-				if localPathInfo.Length >= 128*pcsutil.MB {
-					fmt.Printf("检测秒传中, 请稍候...\n")
-				}
-
-				localPathInfo.md5Sum()
-
-				// 检测缓存, 通过文件的md5值判断本地文件和网盘文件是否一样
-				fd := pcscache.DirCache.FindFileDirectory(panDir, panFile)
-				if fd != nil {
-					decodedMD5, _ := hex.DecodeString(fd.MD5)
-					if bytes.Compare(decodedMD5, localPathInfo.MD5) == 0 {
-						fmt.Printf("目标文件, %s, 已存在, 跳过...\n", targetPath)
-						return
-					}
-				}
-
-				// 文件大于256kb, 应该要检测秒传, 反之则不检测秒传
-				// 经检验, 秒传文件并非一定要大于256KB
-				if localPathInfo.Length >= requiredSliceLen {
-					// do nothing.
-				}
-
-				localPathInfo.sliceMD5Sum()
-
-				// 经检验, 文件的 crc32 值并非秒传文件所必需
-				// localPathInfo.crc32Sum()
-
-				err := info.RapidUpload(targetPath, hex.EncodeToString(localPathInfo.MD5), hex.EncodeToString(localPathInfo.SliceMD5), fmt.Sprint(localPathInfo.CRC32), localPathInfo.Length)
-				if err == nil {
-					fmt.Printf("秒传成功, 保存到网盘路径: %s\n", targetPath)
-					return
-				}
-				fmt.Printf("秒传失败, 开始上传文件...\n")
-
-				// 秒传失败, 开始上传文件
-				err = info.Upload(targetPath, func(uploadURL string, jar *cookiejar.Jar) (uperr error) {
-					h := requester.NewHTTPClient()
-					h.SetCookiejar(jar)
-
-					u := uploader.NewUploader(uploadURL, multipartreader.NewFileReadedLen64(localPathInfo.File), &uploader.Options{
-						IsMultiPart: true,
-						Client:      h,
-					})
-
-					exit := make(chan struct{})
-
-					u.OnExecute(func() {
-						for {
-							select {
-							case v, ok := <-u.UploadStatus:
-								if !ok {
-									return
-								}
-
-								if v.Length == 0 {
-									fmt.Printf("\rPrepareing upload...")
-									continue
-								}
-
-								fmt.Printf("\r↑ %s/%s %s/s in %s ............",
-									pcsutil.ConvertFileSize(v.Uploaded, 2),
-									pcsutil.ConvertFileSize(v.Length, 2),
-									pcsutil.ConvertFileSize(v.Speed, 2),
-									v.TimeElapsed,
-								)
-							}
-						}
-					})
-
-					u.OnFinish(func() {
-						exit <- struct{}{}
-					})
-
-					<-u.Execute(func(resp *http.Response, err error) {
-						if err != nil {
-							uperr = err
-							return
-						}
-
-						defer resp.Body.Close()
-
-						// http 响应错误处理
-						switch resp.StatusCode {
-						case 413: // Request Entity Too Large
-							// 上传的文件太大了
-							uperr = fmt.Errorf(resp.Status)
-							return
-						}
-
-						// 数据处理
-						jsonData := &struct {
-							Path string `json:"path"`
-							*baidupcs.ErrInfo
-						}{
-							ErrInfo: baidupcs.NewErrorInfo("上传文件"),
-						}
-
-						d := jsoniter.NewDecoder(resp.Body)
-
-						err = d.Decode(jsonData)
-						if err != nil {
-							uperr = fmt.Errorf("json parse error, %s", err)
-							return
-						}
-
-						if jsonData.ErrCode != 0 {
-							uperr = jsonData.ErrInfo
-							return
-						}
-
-						if jsonData.Path == "" {
-							uperr = fmt.Errorf("unknown response data, file saved path not found")
-							return
-						}
-
-						targetPath = jsonData.Path
-					})
-
-					<-exit
-					close(exit)
-					return uperr
+				lastID++
+				ulist.PushBack(&utask{
+					ListTask: ListTask{
+						id:       lastID,
+						maxRetry: 3,
+					},
+					uploadInfo: &LocalPathInfo{
+						Path: walkedFiles[k3],
+					},
+					savePath: path.Clean(absSavePath + "/" + subSavePath),
 				})
 
-				fmt.Printf("\n")
+				fmt.Printf("[%d] 加入上传队列: %s\n", lastID, walkedFiles[k3])
+			}
+		}
+	}
 
+	if lastID == 0 {
+		fmt.Printf("未检测到上传的文件, 请检查文件路径或通配符是否正确.\n")
+		return
+	}
+
+	var (
+		e             *list.Element
+		task          *utask
+		handleTaskErr = func(task *utask, errManifest string, err error) {
+			if task == nil {
+				panic("task is nil")
+			}
+
+			if err == nil {
+				return
+			}
+
+			// 不重试的情况, 暂无
+
+			fmt.Printf("[%d] %s, %s, 重试 %d/%d\n", task.id, errManifest, err, task.retry, task.maxRetry)
+
+			// 未达到失败重试最大次数, 将任务推送到队列末尾
+			if task.retry < task.maxRetry {
+				task.retry++
+				ulist.PushBack(task)
+			}
+			time.Sleep(3 * time.Second)
+		}
+		totalSize int64
+	)
+
+	for {
+		e = ulist.Front()
+		if e == nil { // 结束
+			break
+		}
+
+		ulist.Remove(e) // 载入任务后, 移除队列
+
+		task = e.Value.(*utask)
+		if task == nil {
+			continue
+		}
+
+		if !task.uploadInfo.check() {
+			fmt.Printf("[%d] 文件不可读, 跳过...\n", task.id)
+			continue
+		}
+
+		panDir, panFile := path.Split(task.savePath)
+
+		// 设置缓存
+		if !pcscache.DirCache.Existed(panDir) {
+			fdl, err := info.FilesDirectoriesList(panDir, false)
+			if err == nil {
+				pcscache.DirCache.Set(panDir, &fdl)
+			}
+		}
+
+		if task.uploadInfo.Length >= 128*pcsutil.MB {
+			fmt.Printf("[%d] 检测秒传中, 请稍候...\n", task.id)
+		}
+
+		task.uploadInfo.md5Sum()
+
+		// 检测缓存, 通过文件的md5值判断本地文件和网盘文件是否一样
+		fd := pcscache.DirCache.FindFileDirectory(panDir, panFile)
+		if fd != nil {
+			decodedMD5, _ := hex.DecodeString(fd.MD5)
+			if bytes.Compare(decodedMD5, task.uploadInfo.MD5) == 0 {
+				fmt.Printf("[%d] 目标文件, %s, 已存在, 跳过...\n", task.id, task.savePath)
+				continue
+			}
+		}
+
+		// 文件大于256kb, 应该要检测秒传, 反之则不应检测秒传
+		// 经测试, 秒传文件并非一定要大于256KB
+		if task.uploadInfo.Length >= requiredSliceLen {
+			// do nothing
+		}
+
+		task.uploadInfo.sliceMD5Sum()
+
+		// 经检验, 文件的 crc32 值并非秒传文件所必需
+		// task.uploadInfo.crc32Sum()
+
+		err := info.RapidUpload(task.savePath, hex.EncodeToString(task.uploadInfo.MD5), hex.EncodeToString(task.uploadInfo.SliceMD5), fmt.Sprint(task.uploadInfo.CRC32), task.uploadInfo.Length)
+		if err == nil {
+			fmt.Printf("[%d] 秒传成功, 保存到网盘路径: %s\n\n", task.id, task.savePath)
+			totalSize += task.uploadInfo.Length
+			continue
+		}
+
+		fmt.Printf("[%d] 秒传失败, 开始上传文件...\n\n", task.id)
+
+		// 秒传失败, 开始上传文件
+		err = info.Upload(task.savePath, func(uploadURL string, jar *cookiejar.Jar) (uperr error) {
+			h := requester.NewHTTPClient()
+			h.SetCookiejar(jar)
+
+			u := uploader.NewUploader(uploadURL, multipartreader.NewFileReadedLen64(task.uploadInfo.File), &uploader.Options{
+				IsMultiPart: true,
+				Client:      h,
+			})
+
+			exit := make(chan struct{})
+
+			u.OnExecute(func() {
+				for {
+					select {
+					case v, ok := <-u.UploadStatus:
+						if !ok {
+							return
+						}
+
+						if v.Length == 0 {
+							fmt.Printf("\r[%d] Prepareing upload...", task.id)
+							continue
+						}
+
+						fmt.Printf("\r[%d] ↑ %s/%s %s/s in %s ............", task.id,
+							pcsutil.ConvertFileSize(v.Uploaded, 2),
+							pcsutil.ConvertFileSize(v.Length, 2),
+							pcsutil.ConvertFileSize(v.Speed, 2),
+							v.TimeElapsed,
+						)
+					}
+				}
+			})
+
+			u.OnFinish(func() {
+				exit <- struct{}{}
+			})
+
+			<-u.Execute(func(resp *http.Response, err error) {
 				if err != nil {
-					fmt.Printf("上传文件失败, %s\n", err)
+					uperr = err
 					return
 				}
 
-				fmt.Printf("上传文件成功, 保存到网盘路径: %s\n", targetPath)
-			}()
+				defer resp.Body.Close()
+
+				// http 响应错误处理
+				switch resp.StatusCode {
+				case 413: // Request Entity Too Large
+					// 上传的文件太大了
+					uperr = fmt.Errorf(resp.Status)
+					return
+				}
+
+				// 数据处理
+				jsonData := &struct {
+					Path string `json:"path"`
+					*baidupcs.ErrInfo
+				}{
+					ErrInfo: baidupcs.NewErrorInfo("上传文件"),
+				}
+
+				d := jsoniter.NewDecoder(resp.Body)
+
+				err = d.Decode(jsonData)
+				if err != nil {
+					uperr = fmt.Errorf("json parse error, %s", err)
+					return
+				}
+
+				if jsonData.ErrCode != 0 {
+					uperr = jsonData.ErrInfo
+					return
+				}
+
+				if jsonData.Path == "" {
+					uperr = fmt.Errorf("unknown response data, file saved path not found")
+					return
+				}
+
+				task.savePath = jsonData.Path
+			})
+
+			<-exit
+			close(exit)
+			return uperr
+		})
+
+		fmt.Printf("\n")
+
+		if err != nil {
+			handleTaskErr(task, "上传文件失败", err)
+			continue
 		}
+
+		fmt.Printf("[%d] 上传文件成功, 保存到网盘路径: %s\n", task.id, task.savePath)
+		totalSize += task.uploadInfo.Length
 	}
+
+	fmt.Printf("\n")
+	fmt.Printf("全部上传完毕, 总大小: %s\n", pcsutil.ConvertFileSize(totalSize))
 }
 
 // GetFileSum 获取文件的大小, md5, 前256KB切片的 md5, crc32,
