@@ -10,8 +10,8 @@ import (
 func (p *PCSApi) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) (err error) {
 	operation := "秒传文件"
 
-	if targetPath == "/" {
-		return fmt.Errorf("%s 遇到错误, 保存路径不能是根目录", operation)
+	if targetPath == "/" || p.Isdir(targetPath) {
+		return fmt.Errorf("%s 遇到错误, 保存路径不能是目录", operation)
 	}
 
 	p.setAPI("file", "rapidupload", map[string]string{
@@ -52,8 +52,8 @@ func (p *PCSApi) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, len
 
 // Upload 上传单个文件
 func (p *PCSApi) Upload(targetPath string, uploadFunc func(uploadURL string, jar *cookiejar.Jar) error) (err error) {
-	if targetPath == "/" {
-		return fmt.Errorf("上传文件 遇到错误, 保存路径不能是根目录")
+	if targetPath == "/" || p.Isdir(targetPath) {
+		return fmt.Errorf("上传文件 遇到错误, 保存路径不能是目录")
 	}
 
 	p.setAPI("file", "upload", map[string]string{
@@ -77,8 +77,8 @@ func (p *PCSApi) UploadTmpFile(targetPath string, uploadFunc func(uploadURL stri
 func (p *PCSApi) UploadCreateSuperFile(targetPath string, blockList ...string) (err error) {
 	operation := "分片上传—合并分片文件"
 
-	if targetPath == "/" {
-		return fmt.Errorf("%s 遇到错误, 保存路径不能是根目录", operation)
+	if targetPath == "/" || p.Isdir(targetPath) {
+		return fmt.Errorf("%s 遇到错误, 保存路径不能是目录", operation)
 	}
 
 	bl := struct {

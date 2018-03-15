@@ -37,6 +37,7 @@ var (
 type Scanner struct {
 	in              *bufio.Reader
 	InfieldBrackets bool
+        UserTokens      string
 }
 
 // Creates a new Scanner with io.Reader as input source
@@ -167,6 +168,15 @@ func (scanner *Scanner) NextToken() (s string, delim int, err error) {
 					}
 				}
 
+                                if quote == NO_QUOTE && strings.ContainsRune(scanner.UserTokens, c) {
+                                        //
+                                        // user defined token
+                                        //
+                                        s = buf.String()
+                                        delim = int(c)
+                                        return
+                                }
+
 				//
 				// append to buffer
 				//
@@ -262,12 +272,17 @@ func (scanner *Scanner) getTokens(max int) ([]string, string, error) {
 			}
 		}
 
-		tok, _, err := scanner.NextToken()
+		tok, delim, err := scanner.NextToken()
 		if err != nil {
 			return tokens, "", err
 		}
 
 		tokens = append(tokens, tok)
+
+                if strings.ContainsRune(scanner.UserTokens, rune(delim)) {
+                    tokens = append(tokens, string(delim))
+                }
+
 	}
 
 	rest, err := ioutil.ReadAll(scanner.in)
@@ -285,6 +300,13 @@ func InfieldBrackets() GetArgsOption {
 	return func(s *Scanner) {
 		s.InfieldBrackets = true
 	}
+}
+
+// UserTokens allows a client to define a list of tokens (runes) that can be used as additional separators
+func UserTokens(t string) GetArgsOption {
+	return func(s *Scanner) {
+                s.UserTokens = t
+        }
 }
 
 func getScanner(line string, options ...GetArgsOption) *Scanner {

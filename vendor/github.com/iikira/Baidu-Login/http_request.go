@@ -113,6 +113,7 @@ func (bc *BaiduClient) BaiduLogin(username, password, verifycode, vcodestr strin
 		lj.parseCookies("https://wappass.baidu.com", bc.Jar.(*cookiejar.Jar)) // 解析登录数据
 	case "400023", "400101": // 需要验证手机或邮箱
 		lj.parsePhoneAndEmail(bc)
+	case "400408": // 应国家相关法律要求，自6月1日起使用信息发布、即时通讯等互联网服务需进行身份信息验证。为保障您对相关服务功能的正常使用，建议您尽快完成手机号验证，感谢您的理解和支持。
 	}
 
 	return lj

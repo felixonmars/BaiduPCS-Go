@@ -17,24 +17,23 @@ var (
 	templatesBox = new(rice.Box) // go.rice 文件盒子
 )
 
-func boxInit() error {
-	hb, err := rice.FindBox("static")
+func boxInit() (err error) {
+	staticBox, err = rice.FindBox("static")
 	if err != nil {
-		return err
+		return
 	}
-	staticBox = hb
 
-	hb, err = rice.FindBox("template")
+	templatesBox, err = rice.FindBox("template")
 	if err != nil {
-		return err
+		return
 	}
-	templatesBox = hb
+
 	return nil
 }
 
 // StartServer 开启web服务
 func StartServer(port uint) error {
-	if port <= 0 || port >= 0x10000 {
+	if port <= 0 || port > 65535 {
 		return fmt.Errorf("invalid port %d", port)
 	}
 
@@ -43,7 +42,7 @@ func StartServer(port uint) error {
 		return err
 	}
 
-	http.Handle("/lib/", http.StripPrefix("/lib/", http.FileServer(staticBox.HTTPBox())))
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(staticBox.HTTPBox())))
 	http.HandleFunc("/about.html", aboutPage)
 	http.HandleFunc("/", indexPage)
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)

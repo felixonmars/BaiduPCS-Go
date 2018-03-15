@@ -41,7 +41,7 @@
   branch = "master"
   name = "github.com/gobs/args"
   packages = ["."]
-  revision = "92343d88e3e4a33c4e6e2975367a138e66179736"
+  revision = "86002b4df18c1c4919c97bd7b7bd46e216fc69c3"
 
 [[projects]]
   branch = "master"
@@ -51,7 +51,7 @@
     "bdcrypto",
     "bdcrypto/ecb"
   ]
-  revision = "78f160190f5d66733c165f269a4b81449e5eb703"
+  revision = "01f9768b7ceb4c353564313949cf08fa4aae1a55"
 
 [[projects]]
   branch = "master"
@@ -61,7 +61,7 @@
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "4db4a2d0671562fc3eb65bd73c1388ce3ac45ddb"
+  revision = "06db8d3549b0a7d34b21e10e3d24ade59430b905"
 
 [[projects]]
   branch = "master"

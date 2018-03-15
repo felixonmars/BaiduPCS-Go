@@ -3,10 +3,14 @@ package baidupcs
 import (
 	"bytes"
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
 	"github.com/json-iterator/go"
+	"github.com/olekukonko/tablewriter"
+	"strconv"
+	"strings"
 )
 
 // FileDirectory 文件或目录的详细信息
@@ -201,26 +205,38 @@ func (p *PCSApi) FilesDirectoriesList(path string, recurse bool) (data FileDirec
 }
 
 func (f *FileDirectory) String() string {
+	builder := &strings.Builder{}
+	tb := pcstable.NewTable(builder)
+	tb.SetColumnAlignment([]int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})
+
 	if f.Isdir {
-		return fmt.Sprintf("类型: 目录 \n目录名称: %s \n目录路径: %s \nfs_id: %d \n创建日期: %s \n修改日期: %s \n是否含有子目录: %t\n",
-			f.Filename,
-			f.Path,
-			f.FsID,
-			pcsutil.FormatTime(f.Ctime),
-			pcsutil.FormatTime(f.Mtime),
-			f.Ifhassubdir,
-		)
+		tb.AppendBulk([][]string{
+			[]string{"类型", "目录"},
+			[]string{"目录路径", f.Path},
+			[]string{"目录名称", f.Filename},
+		})
+	} else {
+		tb.AppendBulk([][]string{
+			[]string{"类型", "文件"},
+			[]string{"文件路径", f.Path},
+			[]string{"文件名称", f.Filename},
+			[]string{"文件大小", strconv.FormatInt(f.Size, 10) + ", " + pcsutil.ConvertFileSize(f.Size)},
+			[]string{"md5", f.MD5},
+		})
 	}
 
-	return fmt.Sprintf("类型: 文件 \n文件名: %s \n文件路径: %s \n文件大小: %d, (%s) \nmd5: %s \nfs_id: %d \n创建日期: %s \n修改日期: %s \n",
-		f.Filename,
-		f.Path,
-		f.Size, pcsutil.ConvertFileSize(f.Size),
-		f.MD5,
-		f.FsID,
-		pcsutil.FormatTime(f.Ctime),
-		pcsutil.FormatTime(f.Mtime),
-	)
+	tb.Append([]string{"fs_id", strconv.FormatInt(f.FsID, 10)})
+	tb.AppendBulk([][]string{
+		[]string{"创建日期", pcsutil.FormatTime(f.Ctime)},
+		[]string{"修改日期", pcsutil.FormatTime(f.Mtime)},
+	})
+
+	if f.Ifhassubdir {
+		tb.Append([]string{"是否含有子目录", "true"})
+	}
+
+	tb.Render()
+	return builder.String()
 }
 
 // TotalSize 获取目录下文件的总大小
