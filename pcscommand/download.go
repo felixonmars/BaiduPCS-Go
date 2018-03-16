@@ -184,7 +184,9 @@ func RunDownload(testing bool, parallel int, paths []string) {
 
 		// 如果是一个目录, 将子文件和子目录加入队列
 		if task.downloadInfo.Isdir {
-			os.MkdirAll(pcsconfig.GetSavePath(task.path), 0777) // 首先在本地创建目录
+			if !testing { // 测试下载, 不建立空目录
+				os.MkdirAll(pcsconfig.GetSavePath(task.path), 0777) // 首先在本地创建目录
+			}
 
 			fileList, err := info.FilesDirectoriesList(task.path, false)
 			if err != nil {
