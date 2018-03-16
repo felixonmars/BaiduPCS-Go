@@ -43,3 +43,8 @@ func WalkDir(dirPth, suffix string) (files []string, err error) {
 	})
 	return files, err
 }
+
+// ConvertToUnixPathSeparator 将 windows 目录分隔符转换为 Unix 的
+func ConvertToUnixPathSeparator(p string) string {
+	return strings.Replace(p, "\\", "/", -1)
+}

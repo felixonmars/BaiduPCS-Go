@@ -4,6 +4,11 @@ import (
 	"fmt"
 )
 
+const (
+	// StrRemoteError 远端服务器返回错误
+	StrRemoteError = "远端服务器返回错误"
+)
+
 // ErrInfo 远端服务器返回的错误信息
 type ErrInfo struct {
 	Operation string `json:"-"`          // 正在进行的操作
@@ -29,7 +34,7 @@ func (e *ErrInfo) Error() string {
 	}
 
 	code, msg := e.FindErr()
-	return fmt.Sprintf("%s 遇到错误, 远端服务器返回错误代码: %d, 消息: %s", e.Operation, code, msg)
+	return fmt.Sprintf("%s 遇到错误, %s, 代码: %d, 消息: %s", e.Operation, StrRemoteError, code, msg)
 }
 
 // findErr 检查 PCS 错误, 查找已知错误

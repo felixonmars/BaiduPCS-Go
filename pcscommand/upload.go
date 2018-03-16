@@ -129,9 +129,10 @@ func RunUpload(localPaths []string, savePath string) {
 	}
 
 	var (
-		ulist       = list.New()
-		lastID      int
-		subSavePath string
+		ulist         = list.New()
+		lastID        int
+		globedPathDir string
+		subSavePath   string
 	)
 
 	for k := range localPaths {
@@ -149,12 +150,15 @@ func RunUpload(localPaths []string, savePath string) {
 			}
 
 			for k3 := range walkedFiles {
-				subSavePath = strings.TrimPrefix(walkedFiles[k3], filepath.Dir(globedPaths[k2]))
-
 				// 针对 windows 的目录处理
 				if os.PathSeparator == '\\' {
-					subSavePath = strings.Replace(subSavePath, "\\", "/", -1)
+					walkedFiles[k3] = pcsutil.ConvertToUnixPathSeparator(walkedFiles[k3])
+					globedPathDir = pcsutil.ConvertToUnixPathSeparator(filepath.Dir(globedPaths[k2]))
+				} else {
+					globedPathDir = filepath.Dir(globedPaths[k2])
 				}
+
+				subSavePath = strings.TrimPrefix(walkedFiles[k3], globedPathDir)
 
 				lastID++
 				ulist.PushBack(&utask{
@@ -190,7 +194,12 @@ func RunUpload(localPaths []string, savePath string) {
 				return
 			}
 
-			// 不重试的情况, 暂无
+			// 不重试的情况
+			switch {
+			case strings.Contains(err.Error(), baidupcs.StrRemoteError):
+				fmt.Printf("[%d] %s, %s\n", task.id, errManifest, err)
+				return
+			}
 
 			fmt.Printf("[%d] %s, %s, 重试 %d/%d\n", task.id, errManifest, err, task.retry, task.maxRetry)
 
