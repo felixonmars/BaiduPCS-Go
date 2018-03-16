@@ -10,10 +10,6 @@ import (
 
 // Check 检查配置, 环境, 准备下载条件
 func (der *Downloader) Check() (err error) {
-	if der.Config == nil {
-		der.Config = NewConfig()
-	}
-
 	der.Config.Fix()
 
 	// 如果文件存在, 取消下载
@@ -40,7 +36,7 @@ func (der *Downloader) Check() (err error) {
 		return fmt.Errorf(resp.Status)
 	}
 
-	der.status.TotalSize = resp.ContentLength
+	der.status.StatusStat.TotalSize = resp.ContentLength
 
 	// 判断服务端是否支持断点续传
 	if resp.ContentLength <= 0 {

@@ -40,7 +40,7 @@ func getDownloadFunc(id int, cfg *downloader.Config) downloadFunc {
 		cfg.Client = h
 		cfg.SavePath = savePath
 
-		download, err := downloader.NewDownloader(downloadURL, cfg)
+		download, err := downloader.NewDownloader(downloadURL, *cfg)
 		if err != nil {
 			return err
 		}
@@ -221,5 +221,5 @@ func RunDownload(testing bool, parallel int, paths []string) {
 		totalSize += task.downloadInfo.Size
 	}
 
-	fmt.Printf("全部下载完毕, 总大小: %s\n", pcsutil.ConvertFileSize(totalSize))
+	fmt.Printf("任务结束, 数据总量: %s\n", pcsutil.ConvertFileSize(totalSize))
 }

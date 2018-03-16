@@ -178,7 +178,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 		// 暂时不知道出错的原因......
 		return 2, errors.New(resp.Status)
 	case 429, 509: // Too Many Requests
-		for der.status.Speeds >= der.status.maxSpeeds/5 {
+		for der.status.StatusStat.Speeds >= der.status.StatusStat.maxSpeeds/5 {
 			// 下载速度若不减慢, 循环就不会退出
 			time.Sleep(1 * time.Second)
 		}
@@ -201,7 +201,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 		n, err = resp.Body.Read(block.buf)
 
 		n64 = int64(n)
-		der.status.speedsStat.AddReaded(n64)
+		der.status.StatusStat.speedsStat.AddReaded(n64)
 		block.speedsStat.AddReaded(n64)
 
 		// 获得剩余的数据量
@@ -237,7 +237,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 		}
 
 		// 更新数据
-		atomic.AddInt64(&der.status.Downloaded, n64)
+		atomic.AddInt64(&der.status.StatusStat.Downloaded, n64)
 		atomic.AddInt64(&block.Begin, n64)
 
 		if err != nil {

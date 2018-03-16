@@ -6,7 +6,7 @@ import (
 )
 
 // DoDownload 执行下载
-func DoDownload(url string, cfg *Config) {
+func DoDownload(url string, cfg Config) {
 	download, err := NewDownloader(url, cfg)
 	if err != nil {
 		fmt.Println(err)

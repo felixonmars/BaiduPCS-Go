@@ -36,14 +36,14 @@ func (der *Downloader) GetStatusChan() <-chan StatusStat {
 		for {
 			// 针对单线程下载的速度统计
 			if der.status.blockUnsupport {
-				der.status.speedsStat.Start()
+				der.status.StatusStat.speedsStat.Start()
 			}
 
 			time.Sleep(1 * time.Second)
-			der.status.TimeElapsed = time.Since(der.sinceTime) / 1e6 * 1e6
+			der.status.StatusStat.TimeElapsed = time.Since(der.sinceTime) / 1e6 * 1e6
 
 			if der.status.blockUnsupport {
-				der.status.Speeds = der.status.speedsStat.EndAndGetSpeedsPerSecond()
+				der.status.StatusStat.Speeds = der.status.StatusStat.speedsStat.EndAndGetSpeedsPerSecond()
 			}
 
 			// 下载结束, 关闭 chan

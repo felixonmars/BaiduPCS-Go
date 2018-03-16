@@ -15,7 +15,7 @@ type Downloader struct {
 	OnResume  func()
 
 	URL    string
-	Config *Config
+	Config Config
 
 	sinceTime time.Time
 	status    Status
@@ -23,7 +23,7 @@ type Downloader struct {
 }
 
 // NewDownloader 创建新的文件下载
-func NewDownloader(durl string, cfg *Config) (der *Downloader, err error) {
+func NewDownloader(durl string, cfg Config) (der *Downloader, err error) {
 	der = &Downloader{
 		URL:    durl,
 		Config: cfg,
@@ -50,11 +50,11 @@ func (der *Downloader) Execute() (err error) {
 		if !der.status.blockUnsupport {
 			// 控制线程
 			// 如果文件不大, 或者线程数设置过高, 则调低线程数
-			if int64(der.Config.Parallel) > der.status.TotalSize/int64(MinParallelSize) {
-				der.Config.Parallel = int(der.status.TotalSize/int64(MinParallelSize)) + 1
+			if int64(der.Config.Parallel) > der.status.StatusStat.TotalSize/int64(MinParallelSize) {
+				der.Config.Parallel = int(der.status.StatusStat.TotalSize/int64(MinParallelSize)) + 1
 			}
 
-			blockSize := der.status.TotalSize / int64(der.Config.Parallel)
+			blockSize := der.status.StatusStat.TotalSize / int64(der.Config.Parallel)
 
 			// 如果 cache size 过高, 则调低
 			if int64(der.Config.CacheSize) > blockSize {
@@ -74,7 +74,7 @@ func (der *Downloader) Execute() (err error) {
 			}
 
 			// 将余出数据分配给最后一个线程
-			der.status.BlockList[der.Config.Parallel-1].End += der.status.TotalSize - der.status.BlockList[der.Config.Parallel-1].End
+			der.status.BlockList[der.Config.Parallel-1].End += der.status.StatusStat.TotalSize - der.status.BlockList[der.Config.Parallel-1].End
 			der.status.BlockList[der.Config.Parallel-1].IsFinal = true
 		}
 	}
@@ -166,7 +166,7 @@ func (der *Downloader) singleDownload() error {
 		n, err = io.ReadFull(resp.Body, buf)
 		n64 := int64(n)
 
-		der.status.speedsStat.AddReaded(n64)
+		der.status.StatusStat.speedsStat.AddReaded(n64)
 		if err != nil {
 			if err == io.EOF {
 				break
@@ -180,7 +180,7 @@ func (der *Downloader) singleDownload() error {
 			return err
 		}
 
-		der.status.Downloaded += n64
+		der.status.StatusStat.Downloaded += n64
 	}
 
 	return nil

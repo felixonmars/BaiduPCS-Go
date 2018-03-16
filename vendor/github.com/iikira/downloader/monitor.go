@@ -40,10 +40,10 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 			}
 
 			// 获取下载速度
-			speeds := der.status.speedsStat.EndAndGetSpeedsPerSecond()
-			atomic.StoreInt64(&der.status.Speeds, speeds)
-			if speeds > atomic.LoadInt64(&der.status.maxSpeeds) {
-				atomic.StoreInt64(&der.status.maxSpeeds, speeds)
+			speeds := der.status.StatusStat.speedsStat.EndAndGetSpeedsPerSecond()
+			atomic.StoreInt64(&der.status.StatusStat.Speeds, speeds)
+			if speeds > atomic.LoadInt64(&der.status.StatusStat.maxSpeeds) {
+				atomic.StoreInt64(&der.status.StatusStat.maxSpeeds, speeds)
 			}
 
 			// 统计各线程的速度
@@ -59,8 +59,8 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 			}()
 
 			// 速度减慢, 开启监控
-			if atomic.LoadInt64(&der.status.Speeds) < atomic.LoadInt64(&der.status.maxSpeeds)/10 {
-				atomic.StoreInt64(&der.status.maxSpeeds, 0)
+			if atomic.LoadInt64(&der.status.StatusStat.Speeds) < atomic.LoadInt64(&der.status.StatusStat.maxSpeeds)/10 {
+				atomic.StoreInt64(&der.status.StatusStat.maxSpeeds, 0)
 				for k := range der.status.BlockList {
 					go func(k int) {
 						// 重设长时间无响应, 和下载速度为 0 的线程
@@ -90,7 +90,7 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 						end := atomic.LoadInt64(&der.status.BlockList[k].End)
 						middle := (atomic.LoadInt64(&der.status.BlockList[k].Begin) + end) / 2
 
-						if end-middle <= 128*1024 { // 如果线程剩余的下载量太少, 不分配空闲线程
+						if end-middle <= MinParallelSize { // 如果线程剩余的下载量太少, 不分配空闲线程
 							mu.Unlock()
 							return
 						}
@@ -112,8 +112,8 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 				}
 			}
 
-			der.status.speedsStat.Start() // 重新开始统计速度
-			time.Sleep(1 * time.Second)   // 监测频率 1 秒
+			der.status.StatusStat.speedsStat.Start() // 重新开始统计速度
+			time.Sleep(1 * time.Second)              // 监测频率 1 秒
 		}
 	}()
 	return c
