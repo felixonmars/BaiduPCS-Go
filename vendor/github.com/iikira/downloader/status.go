@@ -22,17 +22,12 @@ type Status struct {
 }
 
 // GetStatusChan 返回 Status 对象的 channel
-func (der *Downloader) GetStatusChan() <-chan *Status {
-	c := make(chan *Status)
+func (der *Downloader) GetStatusChan() <-chan Status {
+	c := make(chan Status)
 
 	go func() {
-		var old = atomic.LoadInt64(&der.status.Downloaded)
 		for {
 			time.Sleep(1 * time.Second) // 每秒统计
-
-			atomic.StoreInt64(&der.status.Speeds, atomic.LoadInt64(&der.status.Downloaded)-old)
-
-			old = der.status.Downloaded
 
 			if speeds := atomic.LoadInt64(&der.status.Speeds); speeds > atomic.LoadInt64(&der.status.MaxSpeeds) {
 				atomic.StoreInt64(&der.status.MaxSpeeds, speeds)
@@ -46,7 +41,8 @@ func (der *Downloader) GetStatusChan() <-chan *Status {
 				return
 			}
 
-			c <- &der.status
+			c <- der.status
+			atomic.StoreInt64(&der.status.Speeds, 0) // 清空速度统计
 		}
 	}()
 

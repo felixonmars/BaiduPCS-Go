@@ -15,6 +15,8 @@ import (
 type Downloader struct {
 	OnExecute func()
 	OnFinish  func()
+	OnPause   func()
+	OnResume  func()
 
 	url    string
 	config *Config
@@ -23,6 +25,7 @@ type Downloader struct {
 
 	sinceTime time.Time
 	status    Status
+	paused    bool
 }
 
 // NewDownloader 创建新的文件下载
@@ -184,11 +187,9 @@ func (der *Downloader) Execute() (err error) {
 			}
 		} else {
 			for id := range der.status.BlockList {
-				go func(id int) {
-					// 分配缓存空间
-					der.status.BlockList[id].buf = make([]byte, der.config.CacheSize)
-					der.addExecBlock(id)
-				}(id)
+				// 分配缓存空间
+				der.status.BlockList[id].buf = make([]byte, der.config.CacheSize)
+				der.addExecBlock(id)
 			}
 
 			// 开启监控
@@ -202,6 +203,36 @@ func (der *Downloader) Execute() (err error) {
 	}()
 
 	return err
+}
+
+// Pause 暂停下载, 不支持单线程暂停下载
+func (der *Downloader) Pause() {
+	defer trigger(der.OnPause)
+	if der.paused { // 已经暂停, 退出
+		return
+	}
+
+	der.paused = true
+	for _, block := range der.status.BlockList {
+		if block != nil && block.resp != nil && !block.resp.Close {
+			block.resp.Body.Close()
+		}
+	}
+}
+
+// Resume 恢复下载, 不支持单线程
+func (der *Downloader) Resume() {
+	defer trigger(der.OnResume)
+	if !der.paused { // 未被暂停, 退出
+		return
+	}
+
+	der.paused = false
+	for id := range der.status.BlockList {
+		// 分配缓存空间
+		der.status.BlockList[id].buf = make([]byte, der.config.CacheSize)
+		der.addExecBlock(id)
+	}
 }
 
 func (der *Downloader) singleDownload() error {

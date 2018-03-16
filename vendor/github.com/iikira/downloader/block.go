@@ -109,36 +109,38 @@ func (bl *BlockList) isAllDone() bool {
 
 // addExecBlock 增加线程任务
 func (der *Downloader) addExecBlock(id int) {
-	der.status.BlockList[id].running++
-for_2: // code 为 1 时, 不重试
-	// 其他的 code, 无限重试
-	for {
-		code, err := der.execBlock(id)
+	go func(id int) {
+		der.status.BlockList[id].running++
+	for_2: // code 为 1 时, 不重试
+		// 其他的 code, 无限重试
+		for {
+			code, err := der.execBlock(id)
 
-		// 成功, 退出循环
-		if code == 0 || err == nil {
-			break
-		}
+			// 下载成功, 或者下载暂停, 退出循环
+			if code == 0 || err == nil || der.paused {
+				break
+			}
 
-		// fmt.Println(id, code, err)
+			// fmt.Println(id, code, err)
 
-		// 未成功(有错误), 继续
-		switch code {
-		case 1: // 不重试
-			break for_2
-		case 2: // 休息 3 秒, 再无限重试
-			time.Sleep(3 * time.Second)
-		case 61: // 不休息无限重试
+			// 未成功(有错误), 继续
+			switch code {
+			case 1: // 不重试
+				break for_2
+			case 2: // 休息 3 秒, 再无限重试
+				time.Sleep(3 * time.Second)
+			case 61: // 不休息无限重试
+				continue
+			default:
+				time.Sleep(3 * time.Second)
+			}
+
+			// 重新下载
 			continue
-		default:
-			time.Sleep(3 * time.Second)
 		}
 
-		// 重新下载
-		continue
-	}
-
-	der.status.BlockList[id].running--
+		der.status.BlockList[id].running--
+	}(id)
 }
 
 // downloadBlock 块执行下载任务
@@ -201,6 +203,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 		n, err = resp.Body.Read(block.buf)
 
 		n64 = int64(n)
+		atomic.AddInt64(&der.status.Speeds, n64)
 
 		// 获得剩余的数据量
 		expectedSize := block.expectedContentLength()

@@ -18,6 +18,12 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 	c := make(chan struct{})
 	go func() {
 		for {
+			// 下载暂停, 不开启监控
+			if der.paused {
+				time.Sleep(2 * time.Second)
+				continue
+			}
+
 			// 下载完毕, 线程全部完成下载任务, 发送结束信号
 			if der.status.BlockList.isAllDone() {
 				c <- struct{}{}
