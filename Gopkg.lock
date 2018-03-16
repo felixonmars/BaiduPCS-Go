@@ -51,7 +51,7 @@
     "bdcrypto",
     "bdcrypto/ecb"
   ]
-  revision = "01f9768b7ceb4c353564313949cf08fa4aae1a55"
+  revision = "99d8aa16f27779b5d7d0b305153b8b19218316fe"
 
 [[projects]]
   branch = "master"
@@ -67,7 +67,7 @@
   branch = "master"
   name = "github.com/iikira/downloader"
   packages = ["."]
-  revision = "af8695b1f186726b275f7aa6f2c46a9635d54d8c"
+  revision = "1468002154b8696e21e09123ba785fe3c513bf75"
 
 [[projects]]
   branch = "master"

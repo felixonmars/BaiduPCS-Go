@@ -19,7 +19,7 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 	go func() {
 		for {
 			// 下载暂停, 不开启监控
-			if der.paused {
+			if der.status.paused {
 				time.Sleep(2 * time.Second)
 				continue
 			}
@@ -28,36 +28,44 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 			if der.status.BlockList.isAllDone() {
 				c <- struct{}{}
 
-				if !der.config.Testing {
-					os.Remove(der.config.SavePath + DownloadingFileSuffix) // 删除断点信息
+				if !der.Config.Testing {
+					os.Remove(der.Config.SavePath + DownloadingFileSuffix) // 删除断点信息
 				}
 
 				return
 			}
 
-			if !der.config.Testing {
+			if !der.Config.Testing {
 				der.recordBreakPoint()
+			}
+
+			// 获取下载速度
+			speeds := der.status.speedsStat.EndAndGetSpeedsPerSecond()
+			atomic.StoreInt64(&der.status.Speeds, speeds)
+			if speeds > atomic.LoadInt64(&der.status.maxSpeeds) {
+				atomic.StoreInt64(&der.status.maxSpeeds, speeds)
 			}
 
 			// 统计各线程的速度
 			go func() {
 				for k := range der.status.BlockList {
 					go func(k int) {
-						old := atomic.LoadInt64(&der.status.BlockList[k].Begin)
+						block := der.status.BlockList[k]
+						block.speedsStat.Start()
 						time.Sleep(1 * time.Second)
-						atomic.StoreInt64(&der.status.BlockList[k].speed, old)
+						atomic.StoreInt64(&block.speed, block.speedsStat.EndAndGetSpeedsPerSecond())
 					}(k)
 				}
 			}()
 
 			// 速度减慢, 开启监控
-			if atomic.LoadInt64(&der.status.Speeds) < atomic.LoadInt64(&der.status.MaxSpeeds)/10 {
-				atomic.StoreInt64(&der.status.MaxSpeeds, 0)
+			if atomic.LoadInt64(&der.status.Speeds) < atomic.LoadInt64(&der.status.maxSpeeds)/10 {
+				atomic.StoreInt64(&der.status.maxSpeeds, 0)
 				for k := range der.status.BlockList {
 					go func(k int) {
 						// 重设长时间无响应, 和下载速度为 0 的线程
-						// 过滤速度有变化的线程, 不过滤正在等待写入磁盘的线程
-						if der.status.BlockList[k].waitingToWrite || atomic.LoadInt64(&der.status.BlockList[k].speed) == 0 {
+						// 过滤速度有变化的线程
+						if atomic.LoadInt64(&der.status.BlockList[k].speed) != 0 {
 							return
 						}
 
@@ -99,11 +107,13 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 
 						mu.Unlock()
 
-						der.addExecBlock(index)
+						go der.addExecBlock(index)
 					}(k)
 				}
 			}
-			time.Sleep(1 * time.Second) // 监测频率 1 秒
+
+			der.status.speedsStat.Start() // 重新开始统计速度
+			time.Sleep(1 * time.Second)   // 监测频率 1 秒
 		}
 	}()
 	return c
