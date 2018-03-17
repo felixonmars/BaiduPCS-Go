@@ -2,7 +2,7 @@ name="BaiduPCS-Go"
 version=$1
 
 if [ "$1" = "" ];then
-    version=v3.3
+    version=v3.3.1
 fi
 
 output="out/"
@@ -58,9 +58,6 @@ Pack() {
 RicePack() {
     rice -i github.com/iikira/BaiduPCS-Go/pcsweb append --exec "$output/$1/$2"
 }
-
-CC=$NDK_INSTALL/aarch64-linux-android-4.9/bin/aarch64-linux-android-gcc ArmBuild $name-$version"-android-21-arm64" android arm64 7
-exit
 
 # Android
 export NDK_INSTALL=$ANDROID_NDK_ROOT/bin
