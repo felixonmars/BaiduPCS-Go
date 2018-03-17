@@ -51,7 +51,7 @@ $GOROOT 即Go语言的安装目录
 
 #### 编译安装(需要设置GOPATH环境变量)
 ```shell
-go get -u -v github.com/iikira/Baidu-Login/cmd/baidu-login
+go get -u -v github.com/iikira/Baidu-Login/cmd/Baidu-Login
 ```
 编译生成的文件在GOPATH的bin目录下
 

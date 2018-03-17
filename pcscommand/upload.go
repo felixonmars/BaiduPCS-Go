@@ -226,6 +226,8 @@ func RunUpload(localPaths []string, savePath string) {
 			continue
 		}
 
+		fmt.Printf("[%d] 准备上传: %s\n", task.id, task.uploadInfo.Path)
+
 		if !task.uploadInfo.check() {
 			fmt.Printf("[%d] 文件不可读, 跳过...\n", task.id)
 			continue

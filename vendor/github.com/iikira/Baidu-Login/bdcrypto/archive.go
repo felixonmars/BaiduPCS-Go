@@ -56,7 +56,7 @@ func gzipCompressFile(op, filePath string) (err error) {
 		return
 	}
 
-	tempFilePath := os.TempDir() + string(os.PathSeparator) + filePath + ".gzip.tmp"
+	tempFilePath := filePath + ".gzip.tmp"
 	// 保留文件权限
 	tempFile, err := os.OpenFile(tempFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, fInfo.Mode())
 	if err != nil {
