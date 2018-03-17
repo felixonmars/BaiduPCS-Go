@@ -3,6 +3,7 @@ package downloader
 import (
 	"errors"
 	"fmt"
+	"github.com/iikira/downloader/cachepool"
 	"io"
 	"net/http"
 	"sync"
@@ -22,7 +23,6 @@ type Block struct {
 	speedsStat SpeedsStat
 	IsFinal    bool `json:"isfinal"` // 最后线程, 因为最后的下载线程, 需要另外做处理
 
-	buf     []byte // 缓冲
 	resp    *http.Response
 	running int // 线程的载入量
 }
@@ -191,6 +191,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 	defer resp.Body.Close()
 
 	var (
+		buf        = cachepool.SetIfNotExist(int32(id), der.Config.CacheSize)
 		n          int
 		n64, begin int64
 	)
@@ -198,7 +199,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 	for {
 		begin = atomic.LoadInt64(&block.Begin) // 用于下文比较
 
-		n, err = resp.Body.Read(block.buf)
+		n, err = resp.Body.Read(buf)
 
 		n64 = int64(n)
 		der.status.StatusStat.speedsStat.AddReaded(n64)
@@ -225,7 +226,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 			writeMu.Lock()
 
 			// 写入数据
-			der.status.file.WriteAt(block.buf[:n], begin)
+			der.status.file.WriteAt(buf[:n], begin)
 
 			writeMu.Unlock()
 		}

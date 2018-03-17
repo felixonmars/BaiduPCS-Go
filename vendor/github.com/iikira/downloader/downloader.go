@@ -97,7 +97,6 @@ func (der *Downloader) Execute() (err error) {
 		} else {
 			for id := range der.status.BlockList {
 				// 分配缓存空间
-				der.status.BlockList[id].buf = make([]byte, der.Config.CacheSize)
 				go der.addExecBlock(id)
 			}
 
@@ -138,10 +137,6 @@ func (der *Downloader) Resume() {
 
 	der.status.paused = false
 	for id := range der.status.BlockList {
-		// 分配缓存空间
-		if der.status.BlockList[id].buf == nil {
-			der.status.BlockList[id].buf = make([]byte, der.Config.CacheSize)
-		}
 		go der.addExecBlock(id)
 	}
 }

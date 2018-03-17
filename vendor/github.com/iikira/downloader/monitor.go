@@ -26,11 +26,10 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 
 			// 下载完毕, 线程全部完成下载任务, 发送结束信号
 			if der.status.BlockList.isAllDone() {
-				c <- struct{}{}
-
 				if !der.Config.Testing {
 					os.Remove(der.Config.SavePath + DownloadingFileSuffix) // 删除断点信息
 				}
+				c <- struct{}{}
 
 				return
 			}
