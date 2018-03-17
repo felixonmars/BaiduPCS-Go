@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"github.com/gobs/args"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
@@ -572,12 +573,12 @@ func main() {
 			Name:        "rapidupload",
 			Aliases:     []string{"ru"},
 			Usage:       "手动秒传文件",
-			UsageText:   fmt.Sprintf("%s rapidupload -length=<文件的大小> -md5=<文件的md5值> -slicemd5=<文件前256KB切片的md5值> -crc32=<文件的crc32值(可选)> <保存的网盘路径, 需包含文件名>", app.Name),
+			UsageText:   fmt.Sprintf("%s rapidupload -length=<文件的大小> -md5=<文件的md5值> -slicemd5=<文件前256KB切片的md5值(可选)> -crc32=<文件的crc32值(可选)> <保存的网盘路径, 需包含文件名>", app.Name),
 			Description: "上传的文件将会保存到 网盘的目标目录.\n   遇到同名文件将会自动覆盖! \n",
 			Category:    "百度网盘",
 			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
-				if c.NArg() <= 0 || !c.IsSet("md5") || !c.IsSet("slicemd5") || !c.IsSet("length") {
+				if c.NArg() <= 0 || !c.IsSet("md5") || !c.IsSet("length") {
 					cli.ShowCommandHelp(c, c.Command.Name)
 					return nil
 				}
@@ -592,7 +593,7 @@ func main() {
 				},
 				cli.StringFlag{
 					Name:  "slicemd5",
-					Usage: "文件前 256KB 切片的 md5 值",
+					Usage: "文件前 256KB 切片的 md5 值 (可选)",
 				},
 				cli.StringFlag{
 					Name:  "crc32",
@@ -608,7 +609,7 @@ func main() {
 			Name:        "sumfile",
 			Aliases:     []string{"sf"},
 			Usage:       "获取文件的秒传信息",
-			UsageText:   app.Name + " sumfile <本地文件的路径>",
+			UsageText:   app.Name + " sumfile <本地文件的路径1> <本地文件的路径2> ...",
 			Description: "获取文件的大小, md5, 前256KB切片的md5, crc32, 可用于秒传文件.",
 			Category:    "其他",
 			Before:      reloadFn,
@@ -618,20 +619,35 @@ func main() {
 					return nil
 				}
 
-				lp, err := pcscommand.GetFileSum(c.Args().Get(0), false)
-				if err != nil {
-					fmt.Println(err)
-					return err
-				}
-
-				fmt.Printf(
-					"\n[%s]:\n文件大小: %d, md5: %x, 前256KB切片的md5: %x, crc32: %d, \n\n秒传命令: %s rapidupload -length=%d -md5=%x -slicemd5=%x -crc32=%d %s\n\n",
-					c.Args().Get(0),
-					lp.Length, lp.MD5, lp.SliceMD5, lp.CRC32,
-					os.Args[0],
-					lp.Length, lp.MD5, lp.SliceMD5, lp.CRC32,
-					filepath.Base(c.Args().Get(0)),
+				var (
+					fileName, strLength, strMd5, strSliceMd5, strCrc32 string
 				)
+
+				for k, filePath := range c.Args() {
+					lp, err := pcscommand.GetFileSum(filePath, false)
+					if err != nil {
+						fmt.Printf("[%d] %s\n", k+1, err)
+						continue
+					}
+
+					fmt.Printf("[%d] - [%s]:\n", k+1, filePath)
+
+					strLength, strMd5, strSliceMd5, strCrc32 = strconv.FormatInt(lp.Length, 10), hex.EncodeToString(lp.MD5), hex.EncodeToString(lp.SliceMD5), strconv.FormatUint(uint64(lp.CRC32), 10)
+					fileName = filepath.Base(filePath)
+
+					tb := pcstable.NewTable(os.Stdout)
+					tb.SetColumnAlignment([]int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})
+					tb.AppendBulk([][]string{
+						[]string{"文件大小", strLength},
+						[]string{"md5", strMd5},
+						[]string{"前256KB切片的md5", strSliceMd5},
+						[]string{"crc32", strCrc32},
+						[]string{"秒传命令 (完整)", app.Name + " rapidupload -length=" + strLength + " -md5=" + strMd5 + " -slicemd5=" + strSliceMd5 + " -crc32=" + strCrc32 + " " + fileName},
+						[]string{"秒传命令 (精简)", app.Name + " ru -length=" + strLength + " -md5=" + strMd5 + " " + fileName},
+					})
+					tb.Render()
+					fmt.Printf("\n")
+				}
 
 				return nil
 			},

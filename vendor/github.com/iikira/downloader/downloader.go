@@ -9,17 +9,20 @@ import (
 
 // Downloader 下载
 type Downloader struct {
+	// 涉及原子操作, 兼容32位设备, 注意内存地址对齐
+
 	OnExecute func()
 	OnFinish  func()
 	OnPause   func()
 	OnResume  func()
 
+	status    Status
+	sinceTime time.Time
+
 	URL    string
 	Config Config
 
-	sinceTime time.Time
-	status    Status
-	checked   bool
+	checked bool
 }
 
 // NewDownloader 创建新的文件下载

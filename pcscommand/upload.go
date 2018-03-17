@@ -99,10 +99,13 @@ func RunRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64
 
 	// 检测文件是否存在于网盘路径
 	// 很重要, 如果文件存在会直接覆盖!!! 即使是根目录!
-	_, err = info.FilesDirectoriesMeta(targetPath)
-	if err == nil {
-		fmt.Printf("错误: 路径 %s 已存在\n", targetPath)
+	if info.Isdir(targetPath) {
+		fmt.Printf("错误: 路径 %s 是一个目录, 不可覆盖\n", targetPath)
 		return
+	}
+
+	if sliceMD5 == "" {
+		sliceMD5 = "ec87a838931d4d5d2e94a04644788a55" // 长度为32
 	}
 
 	err = info.RapidUpload(targetPath, contentMD5, sliceMD5, crc32, length)
@@ -265,9 +268,10 @@ func RunUpload(localPaths []string, savePath string) {
 			// do nothing
 		}
 
+		// 经过测试, 秒传文件并非需要前256kb切片的md5值, 只需格式符合即可
 		task.uploadInfo.sliceMD5Sum()
 
-		// 经检验, 文件的 crc32 值并非秒传文件所必需
+		// 经测试, 文件的 crc32 值并非秒传文件所必需
 		// task.uploadInfo.crc32Sum()
 
 		err := info.RapidUpload(task.savePath, hex.EncodeToString(task.uploadInfo.MD5), hex.EncodeToString(task.uploadInfo.SliceMD5), fmt.Sprint(task.uploadInfo.CRC32), task.uploadInfo.Length)

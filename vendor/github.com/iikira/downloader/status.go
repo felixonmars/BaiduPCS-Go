@@ -9,7 +9,6 @@ import (
 
 // StatusStat 统计状态数据
 type StatusStat struct {
-	_           bool          // alignment
 	TotalSize   int64         `json:"total_size"` // 总大小
 	Downloaded  int64         `json:"downloaded"` // 已下载的数据量
 	Speeds      int64         // 下载速度

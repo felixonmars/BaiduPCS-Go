@@ -11,7 +11,7 @@ func (p *PCSApi) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, len
 	operation := "秒传文件"
 
 	if targetPath == "/" || p.Isdir(targetPath) {
-		return fmt.Errorf("%s 遇到错误, 保存路径不能是目录", operation)
+		return fmt.Errorf("%s 遇到错误, 保存路径不可以覆盖目录", operation)
 	}
 
 	p.setAPI("file", "rapidupload", map[string]string{
@@ -53,7 +53,7 @@ func (p *PCSApi) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, len
 // Upload 上传单个文件
 func (p *PCSApi) Upload(targetPath string, uploadFunc func(uploadURL string, jar *cookiejar.Jar) error) (err error) {
 	if targetPath == "/" || p.Isdir(targetPath) {
-		return fmt.Errorf("上传文件 遇到错误, 保存路径不能是目录")
+		return fmt.Errorf("上传文件 遇到错误, 保存路径不可以覆盖目录")
 	}
 
 	p.setAPI("file", "upload", map[string]string{
@@ -78,7 +78,7 @@ func (p *PCSApi) UploadCreateSuperFile(targetPath string, blockList ...string) (
 	operation := "分片上传—合并分片文件"
 
 	if targetPath == "/" || p.Isdir(targetPath) {
-		return fmt.Errorf("%s 遇到错误, 保存路径不能是目录", operation)
+		return fmt.Errorf("%s 遇到错误, 保存路径不可以覆盖目录", operation)
 	}
 
 	bl := struct {
