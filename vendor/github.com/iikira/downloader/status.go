@@ -9,12 +9,13 @@ import (
 
 // StatusStat 统计状态数据
 type StatusStat struct {
-	TotalSize   int64 `json:"total_size"` // 总大小
-	Downloaded  int64 `json:"downloaded"` // 已下载的数据量
-	Speeds      int64 // 下载速度
-	maxSpeeds   int64 // 最大下载速度
-	speedsStat  SpeedsStat
+	_           bool          // alignment
+	TotalSize   int64         `json:"total_size"` // 总大小
+	Downloaded  int64         `json:"downloaded"` // 已下载的数据量
+	Speeds      int64         // 下载速度
+	maxSpeeds   int64         // 最大下载速度
 	TimeElapsed time.Duration `json:"-"` // 下载的时间
+	speedsStat  SpeedsStat
 }
 
 // Status 下载状态

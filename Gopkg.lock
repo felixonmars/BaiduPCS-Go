@@ -67,7 +67,7 @@
   branch = "master"
   name = "github.com/iikira/downloader"
   packages = ["."]
-  revision = "c11a8afa8863e7c226e7342b8fa1867482687037"
+  revision = "23b907480f45fd7874b616e88fb36f498c697c6a"
 
 [[projects]]
   branch = "master"
