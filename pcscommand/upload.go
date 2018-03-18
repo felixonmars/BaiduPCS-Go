@@ -1,7 +1,6 @@
 package pcscommand
 
 import (
-	"bufio"
 	"bytes"
 	"container/list"
 	"crypto/md5"
@@ -15,6 +14,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/uploader"
 	"github.com/json-iterator/go"
 	"hash/crc32"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
@@ -34,60 +34,84 @@ type utask struct {
 
 // LocalPathInfo 本地文件详情
 type LocalPathInfo struct {
-	Path string   // 本地路径
-	File *os.File // 文件
+	Path string // 本地路径
 
 	Length   int64  // 文件大小
 	SliceMD5 []byte // 文件前 requiredSliceLen (256KB) 切片的 md5 值
 	MD5      []byte // 文件的 md5
 	CRC32    uint32 // 文件的 crc32
+
+	file *os.File // 文件
 }
 
-// check 检查文件状态并获取文件的大小 (Length)
-func (lp *LocalPathInfo) check() bool {
+// OpenPath 检查文件状态并获取文件的大小 (Length)
+func (lp *LocalPathInfo) OpenPath() bool {
+	if lp.file != nil {
+		lp.file.Close()
+	}
+
 	var err error
-	lp.File, err = os.Open(lp.Path)
+	lp.file, err = os.Open(lp.Path)
 	if err != nil {
 		return false
 	}
-	info, _ := lp.File.Stat()
+
+	info, _ := lp.file.Stat()
 	lp.Length = info.Size()
 	return true
 }
 
-// md5Sum 获取文件的 md5 值
-func (lp *LocalPathInfo) md5Sum() {
-	bf := bufio.NewReader(lp.File)
+// Close 关闭文件
+func (lp *LocalPathInfo) Close() error {
+	if lp.file == nil {
+		return fmt.Errorf("file is nil")
+	}
+
+	return lp.file.Close()
+}
+
+// Md5Sum 获取文件的 md5 值
+func (lp *LocalPathInfo) Md5Sum() {
+	if lp.file == nil {
+		return
+	}
+
 	m := md5.New()
-	bf.WriteTo(m)
+	io.Copy(m, lp.file)
 	lp.MD5 = m.Sum(nil)
 
 	// reset
-	lp.File, _ = os.Open(lp.Path)
-	bf.Reset(nil)
+	lp.file.Close()
+	lp.file, _ = os.Open(lp.Path)
 }
 
-// sliceMD5Sum 获取文件前 requiredSliceLen (256KB) 切片的 md5 值
-func (lp *LocalPathInfo) sliceMD5Sum() {
+// SliceMD5Sum 获取文件前 requiredSliceLen (256KB) 切片的 md5 值
+func (lp *LocalPathInfo) SliceMD5Sum() {
+	if lp.file == nil {
+		return
+	}
+
 	// 获取前 256KB 文件切片的 md5
 	buf := make([]byte, requiredSliceLen)
-	lp.File.ReadAt(buf[:], requiredSliceLen)
+	lp.file.ReadAt(buf[:], requiredSliceLen)
 	sliceMD5 := md5.Sum(buf[:])
 	lp.SliceMD5 = sliceMD5[:]
 }
 
-// crc32Sum 获取文件的 crc32 值
-func (lp *LocalPathInfo) crc32Sum() {
-	bf := bufio.NewReader(lp.File)
+// Crc32Sum 获取文件的 crc32 值
+func (lp *LocalPathInfo) Crc32Sum() {
+	if lp.file == nil {
+		return
+	}
 
 	// 获取 文件 crc32
 	c := crc32.NewIEEE()
-	bf.WriteTo(c)
+	io.Copy(c, lp.file)
 	lp.CRC32 = c.Sum32()
 
 	// reset
-	lp.File, _ = os.Open(lp.Path)
-	bf.Reset(nil)
+	lp.file.Close()
+	lp.file, _ = os.Open(lp.Path)
 }
 
 // RunRapidUpload 执行秒传文件, 前提是知道文件的大小, md5, 前256KB切片的 md5, crc32
@@ -210,8 +234,10 @@ func RunUpload(localPaths []string, savePath string) {
 			if task.retry < task.maxRetry {
 				task.retry++
 				ulist.PushBack(task)
+				time.Sleep(3 * time.Second)
+			} else {
+				task.uploadInfo.Close() // 关闭文件
 			}
-			time.Sleep(3 * time.Second)
 		}
 		totalSize int64
 	)
@@ -231,8 +257,9 @@ func RunUpload(localPaths []string, savePath string) {
 
 		fmt.Printf("[%d] 准备上传: %s\n", task.id, task.uploadInfo.Path)
 
-		if !task.uploadInfo.check() {
+		if !task.uploadInfo.OpenPath() {
 			fmt.Printf("[%d] 文件不可读, 跳过...\n", task.id)
+			task.uploadInfo.Close()
 			continue
 		}
 
@@ -250,7 +277,7 @@ func RunUpload(localPaths []string, savePath string) {
 			fmt.Printf("[%d] 检测秒传中, 请稍候...\n", task.id)
 		}
 
-		task.uploadInfo.md5Sum()
+		task.uploadInfo.Md5Sum()
 
 		// 检测缓存, 通过文件的md5值判断本地文件和网盘文件是否一样
 		fd := pcscache.DirCache.FindFileDirectory(panDir, panFile)
@@ -269,7 +296,7 @@ func RunUpload(localPaths []string, savePath string) {
 		}
 
 		// 经过测试, 秒传文件并非需要前256kb切片的md5值, 只需格式符合即可
-		task.uploadInfo.sliceMD5Sum()
+		task.uploadInfo.SliceMD5Sum()
 
 		// 经测试, 文件的 crc32 值并非秒传文件所必需
 		// task.uploadInfo.crc32Sum()
@@ -277,6 +304,8 @@ func RunUpload(localPaths []string, savePath string) {
 		err := info.RapidUpload(task.savePath, hex.EncodeToString(task.uploadInfo.MD5), hex.EncodeToString(task.uploadInfo.SliceMD5), fmt.Sprint(task.uploadInfo.CRC32), task.uploadInfo.Length)
 		if err == nil {
 			fmt.Printf("[%d] 秒传成功, 保存到网盘路径: %s\n\n", task.id, task.savePath)
+
+			task.uploadInfo.Close() // 关闭文件
 			totalSize += task.uploadInfo.Length
 			continue
 		}
@@ -288,7 +317,7 @@ func RunUpload(localPaths []string, savePath string) {
 			h := requester.NewHTTPClient()
 			h.SetCookiejar(jar)
 
-			u := uploader.NewUploader(uploadURL, multipartreader.NewFileReadedLen64(task.uploadInfo.File), &uploader.Options{
+			u := uploader.NewUploader(uploadURL, multipartreader.NewFileReadedLen64(task.uploadInfo.file), &uploader.Options{
 				IsMultiPart: true,
 				Client:      h,
 			})
@@ -380,6 +409,7 @@ func RunUpload(localPaths []string, savePath string) {
 		}
 
 		fmt.Printf("[%d] 上传文件成功, 保存到网盘路径: %s\n", task.id, task.savePath)
+		task.uploadInfo.Close() // 关闭文件
 		totalSize += task.uploadInfo.Length
 	}
 
@@ -395,6 +425,8 @@ func GetFileSum(localPath string, sliceMD5Only bool) (lp *LocalPathInfo, err err
 		return nil, err
 	}
 
+	// defer file.Close() // 这个没用, 因为计算文件摘要会重新载入文件
+
 	fileStat, err := file.Stat()
 	if err != nil {
 		return nil, err
@@ -405,16 +437,16 @@ func GetFileSum(localPath string, sliceMD5Only bool) (lp *LocalPathInfo, err err
 
 	lp = &LocalPathInfo{
 		Path:   localPath,
-		File:   file,
+		file:   file,
 		Length: fileStat.Size(),
 	}
 
-	lp.sliceMD5Sum()
+	lp.SliceMD5Sum()
 
 	if !sliceMD5Only {
-		lp.crc32Sum()
-		lp.md5Sum()
+		lp.Crc32Sum()
+		lp.Md5Sum()
 	}
 
-	return lp, nil
+	return lp, lp.Close() // 这个才有用
 }
