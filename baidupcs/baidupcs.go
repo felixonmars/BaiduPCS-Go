@@ -9,8 +9,15 @@ import (
 	"net/url"
 )
 
-// AppID 百度 PCS 应用 ID
-var AppID int
+const (
+	operationFilesDirectoriesBatchMeta = "获取文件/目录的元信息"
+	operationFilesDirectoriesList      = "获取目录下的文件列表"
+)
+
+var (
+	// AppID 百度 PCS 应用 ID
+	AppID int
+)
 
 // PCSApi 百度 PCS API 详情
 type PCSApi struct {

@@ -1,0 +1,27 @@
+@charset "utf-8";
+
+#logo {
+    display: none;
+}
+
+@media (max-width: 767px) {
+    #logo {
+        display: inline;
+    }
+}
+
+.navbar.navbar-inverse {
+    border: 0;
+    box-shadow: 0 0 10px #000;
+    background-color: rgba(255, 149, 117, 0.8);
+}
+
+header a {
+    color: #000 !important;
+}
+
+.directory-list-header {
+    font-family: "Microsoft YaHei", 微软雅黑, 黑体, 宋体, sans-serif;
+    font-weight: bold;
+    padding: 10px 15px;
+}

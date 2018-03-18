@@ -3,6 +3,7 @@ package downloader
 
 import (
 	"fmt"
+	"github.com/iikira/downloader/cachepool"
 	"io"
 	"time"
 )
@@ -156,7 +157,7 @@ func (der *Downloader) singleDownload() error {
 	}
 
 	var (
-		buf = make([]byte, der.Config.CacheSize)
+		buf = cachepool.SetIfNotExist(0, der.Config.CacheSize)
 		n   int
 	)
 

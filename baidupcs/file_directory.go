@@ -1,12 +1,10 @@
 package baidupcs
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
-	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
 	"github.com/json-iterator/go"
 	"github.com/olekukonko/tablewriter"
 	"strconv"
@@ -87,52 +85,22 @@ func (p *PCSApi) FilesDirectoriesMeta(path string) (data *FileDirectory, err err
 
 // FilesDirectoriesBatchMeta 获取多个文件/目录的元信息
 func (p *PCSApi) FilesDirectoriesBatchMeta(paths ...string) (data FileDirectoryList, err error) {
-	operation := "获取文件/目录的元信息"
-
-	type listStr struct {
-		Path string `json:"path"`
-	}
-
-	type postStr struct {
-		List []listStr `json:"list"`
-	}
-
-	// 数据处理
-	post := &postStr{
-		List: make([]listStr, len(paths)),
-	}
-
-	for k := range paths {
-		post.List[k].Path = paths[k]
-	}
-
-	sendData, err := jsoniter.Marshal(post)
+	dataReadCloser, err := p.PrepareFilesDirectoriesBatchMeta(paths...)
 	if err != nil {
-		panic(operation + ", json 数据构造失败, " + err.Error())
+		return nil, err
 	}
 
-	p.setAPI("file", "meta")
-
-	// 表单上传
-	mr := multipartreader.NewMultipartReader()
-	mr.AddFormFeild("param", bytes.NewReader(sendData))
-
-	resp, err := p.client.Req("POST", p.url.String(), mr, nil)
-	if err != nil {
-		return nil, fmt.Errorf("%s, 网络错误, %s", operation, err)
-	}
-
-	defer resp.Body.Close()
+	defer dataReadCloser.Close()
 
 	// 服务器返回数据进行处理
 	jsonData := &fdData{
-		ErrInfo: NewErrorInfo(operation),
+		ErrInfo: NewErrorInfo(operationFilesDirectoriesBatchMeta),
 	}
 
-	d := jsoniter.NewDecoder(resp.Body)
+	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(jsonData)
 	if err != nil {
-		return nil, fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
+		return nil, fmt.Errorf("%s, json 数据解析失败, %s", operationFilesDirectoriesBatchMeta, err)
 	}
 
 	// 错误处理
@@ -152,34 +120,21 @@ func (p *PCSApi) FilesDirectoriesBatchMeta(paths ...string) (data FileDirectoryL
 
 // FilesDirectoriesList 获取目录下的文件和目录列表, 可选是否递归
 func (p *PCSApi) FilesDirectoriesList(path string, recurse bool) (data FileDirectoryList, err error) {
-	operation := "获取目录下的文件列表"
-
-	if path == "" {
-		path = "/"
-	}
-
-	p.setAPI("file", "list", map[string]string{
-		"path":  path,
-		"by":    "name",
-		"order": "asc", // 升序
-		"limit": "0-2147483647",
-	})
-
-	resp, err := p.client.Req("GET", p.url.String(), nil, nil)
+	dataReadCloser, err := p.PrepareFilesDirectoriesList(path, recurse)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	defer resp.Body.Close()
+	defer dataReadCloser.Close()
 
 	jsonData := &fdData{
-		ErrInfo: NewErrorInfo(operation),
+		ErrInfo: NewErrorInfo(operationFilesDirectoriesList),
 	}
 
-	d := jsoniter.NewDecoder(resp.Body)
+	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(jsonData)
 	if err != nil {
-		return nil, fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
+		return nil, fmt.Errorf("%s, json 数据解析失败, %s", operationFilesDirectoriesList, err)
 	}
 
 	// 错误处理

@@ -70,7 +70,7 @@
     ".",
     "cachepool"
   ]
-  revision = "b1c361a001df363cf255b70e89645d419388f3dc"
+  revision = "22d2a323c30594ff4f0a9e5dee240cab095f3c57"
 
 [[projects]]
   branch = "master"
@@ -81,8 +81,8 @@
 [[projects]]
   name = "github.com/json-iterator/go"
   packages = ["."]
-  revision = "3353055b2a1a5ae1b6a8dfde887a524e7088f3a2"
-  version = "1.1.2"
+  revision = "ca39e5af3ece67bbcda3d0f4f56a8e24d9f2dad4"
+  version = "1.1.3"
 
 [[projects]]
   branch = "master"
