@@ -51,7 +51,7 @@
     "bdcrypto",
     "bdcrypto/ecb"
   ]
-  revision = "64d1736b2916f214dae690f87642a1708cb1bccc"
+  revision = "4e24e45b248a56e064275c9579bf1001f07a0ec6"
 
 [[projects]]
   branch = "master"
@@ -62,15 +62,6 @@
     "tieba/tiebautil"
   ]
   revision = "06db8d3549b0a7d34b21e10e3d24ade59430b905"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/iikira/downloader"
-  packages = [
-    ".",
-    "cachepool"
-  ]
-  revision = "22d2a323c30594ff4f0a9e5dee240cab095f3c57"
 
 [[projects]]
   branch = "master"
@@ -124,7 +115,7 @@
   branch = "master"
   name = "github.com/peterh/liner"
   packages = ["."]
-  revision = "161ea9c37d6d4e97afe7f8f9cde7e647d49bd091"
+  revision = "6106ee4fe3e8435f18cd10e34557e5e50f0e792a"
 
 [[projects]]
   branch = "master"
@@ -141,6 +132,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "03af4076e67f8dfe009d7b775754232d546dae87f1eab2973056b99c747b6d04"
+  inputs-digest = "ee280d746b347a8e056754d4b20e8dfda67b919d86aa584ed8413cd9d958a26c"
   solver-name = "gps-cdcl"
   solver-version = 1

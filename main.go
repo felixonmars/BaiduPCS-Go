@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/gobs/args"
+	"github.com/iikira/BaiduPCS-Go/downloader"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcscommand"
 	"github.com/iikira/BaiduPCS-Go/pcsconfig"
@@ -39,6 +40,8 @@ var (
 func init() {
 	pcsconfig.Init()
 	pcscommand.ReloadInfo()
+
+	downloader.Verbose = pcsverbose.IsVerbose
 
 	// 启动缓存回收
 	pcscache.DirCache.GC()
@@ -115,6 +118,7 @@ func main() {
 		})
 
 		for {
+			downloader.Verbose = pcsverbose.IsVerbose
 			var (
 				prompt          string
 				activeBaiduUser = pcsconfig.Config.MustGetActive()
@@ -198,8 +202,9 @@ func main() {
 			},
 		},
 		{
-			Name:  "login",
-			Usage: "登录百度账号",
+			Name:      "login",
+			Usage:     "登录百度账号",
+			UsageText: app.Name + " login [command options]",
 			Description: `
 	示例:
 		BaiduPCS-Go login
@@ -211,8 +216,7 @@ func main() {
 
 	百度BDUSS获取方法:
 		参考这篇 Wiki: https://github.com/iikira/BaiduPCS-Go/wiki/关于-获取百度-BDUSS
-		或者百度搜索: 获取百度BDUSS
-`,
+		或者百度搜索: 获取百度BDUSS`,
 			Category: "百度帐号",
 			Before:   reloadFn,
 			After:    reloadFn,
@@ -391,7 +395,7 @@ func main() {
 			Name:      "cd",
 			Category:  "百度网盘",
 			Usage:     "切换工作目录",
-			UsageText: fmt.Sprintf("%s cd <目录 绝对路径或相对路径>", app.Name),
+			UsageText: app.Name + "%s cd <目录 绝对路径或相对路径>",
 			Before:    reloadFn,
 			After:     reloadFn,
 			Action: func(c *cli.Context) error {

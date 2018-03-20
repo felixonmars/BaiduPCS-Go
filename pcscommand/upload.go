@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
+	"github.com/iikira/BaiduPCS-Go/downloader/cachepool"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
@@ -41,6 +42,7 @@ type LocalPathInfo struct {
 	MD5      []byte // 文件的 md5
 	CRC32    uint32 // 文件的 crc32
 
+	buf  []byte
 	file *os.File // 文件
 }
 
@@ -70,6 +72,33 @@ func (lp *LocalPathInfo) Close() error {
 	return lp.file.Close()
 }
 
+func (lp *LocalPathInfo) repeatRead(w io.Writer) {
+	if lp.buf == nil {
+		lp.buf = cachepool.SetIfNotExist(0, int(requiredSliceLen))
+	}
+
+	var (
+		begin int64
+		n     int
+		err   error
+	)
+
+	// 读文件
+	for {
+		n, err = lp.file.ReadAt(lp.buf, begin)
+		if err != nil {
+			if err == io.EOF {
+				w.Write(lp.buf[:n])
+				break
+			}
+			fmt.Printf("%s\n", err)
+			break
+		}
+		begin += int64(n)
+		w.Write(lp.buf)
+	}
+}
+
 // Md5Sum 获取文件的 md5 值
 func (lp *LocalPathInfo) Md5Sum() {
 	if lp.file == nil {
@@ -77,12 +106,8 @@ func (lp *LocalPathInfo) Md5Sum() {
 	}
 
 	m := md5.New()
-	io.Copy(m, lp.file)
+	lp.repeatRead(m)
 	lp.MD5 = m.Sum(nil)
-
-	// reset
-	lp.file.Close()
-	lp.file, _ = os.Open(lp.Path)
 }
 
 // SliceMD5Sum 获取文件前 requiredSliceLen (256KB) 切片的 md5 值
@@ -92,10 +117,19 @@ func (lp *LocalPathInfo) SliceMD5Sum() {
 	}
 
 	// 获取前 256KB 文件切片的 md5
-	buf := make([]byte, requiredSliceLen)
-	lp.file.ReadAt(buf[:], requiredSliceLen)
-	sliceMD5 := md5.Sum(buf[:])
-	lp.SliceMD5 = sliceMD5[:]
+	if lp.buf == nil {
+		lp.buf = cachepool.SetIfNotExist(0, int(requiredSliceLen))
+	}
+
+	m := md5.New()
+	n, err := lp.file.ReadAt(lp.buf, requiredSliceLen)
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		return
+	}
+
+	m.Write(lp.buf[:n])
+	lp.SliceMD5 = m.Sum(nil)
 }
 
 // Crc32Sum 获取文件的 crc32 值
@@ -104,14 +138,9 @@ func (lp *LocalPathInfo) Crc32Sum() {
 		return
 	}
 
-	// 获取 文件 crc32
 	c := crc32.NewIEEE()
-	io.Copy(c, lp.file)
+	lp.repeatRead(c)
 	lp.CRC32 = c.Sum32()
-
-	// reset
-	lp.file.Close()
-	lp.file, _ = os.Open(lp.Path)
 }
 
 // RunRapidUpload 执行秒传文件, 前提是知道文件的大小, md5, 前256KB切片的 md5, crc32
@@ -234,7 +263,7 @@ func RunUpload(localPaths []string, savePath string) {
 			if task.retry < task.maxRetry {
 				task.retry++
 				ulist.PushBack(task)
-				time.Sleep(3 * time.Second)
+				time.Sleep(3 * time.Duration(task.retry) * time.Second)
 			} else {
 				task.uploadInfo.Close() // 关闭文件
 			}

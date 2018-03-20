@@ -4,10 +4,10 @@ import (
 	"container/list"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
+	"github.com/iikira/BaiduPCS-Go/downloader"
 	"github.com/iikira/BaiduPCS-Go/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/downloader"
 	"net/http/cookiejar"
 	"os"
 	"strings"
@@ -152,7 +152,7 @@ func RunDownload(testing bool, parallel int, paths []string) {
 				task.retry++
 				dlist.PushBack(task)
 			}
-			time.Sleep(3 * time.Second)
+			time.Sleep(3 * time.Duration(task.retry) * time.Second)
 		}
 		totalSize int64
 	)

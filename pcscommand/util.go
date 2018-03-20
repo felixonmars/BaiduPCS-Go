@@ -54,7 +54,10 @@ func parsePath(path string) (paths []string, err error) {
 
 	if patternRE.MatchString(path) {
 		// 递归
-		paths = recurseParsePath(path)
+		paths, err = recurseParsePath(path)
+		if err != nil {
+			return nil, err
+		}
 		if len(paths) == 0 {
 			return nil, fmt.Errorf("文件路径匹配失败, 请检查通配符")
 		}
@@ -67,12 +70,12 @@ func parsePath(path string) (paths []string, err error) {
 }
 
 // recurseParsePath 递归解析通配符
-func recurseParsePath(path string) (paths []string) {
+func recurseParsePath(path string) (paths []string, err error) {
 	if !patternRE.MatchString(path) {
 		// 检测路径是否存在
-		_, err := info.FilesDirectoriesMeta(path)
+		_, err = info.FilesDirectoriesMeta(path)
 		if err != nil {
-			return nil
+			return nil, nil
 		}
 		paths = []string{path}
 		return
@@ -88,8 +91,7 @@ func recurseParsePath(path string) (paths []string) {
 
 		pfiles, err := info.FilesDirectoriesList(strings.Join(names[:k], ""), false)
 		if err != nil {
-			fmt.Println(err)
-			return nil
+			return nil, err
 		}
 
 		// 多线程获取信息
@@ -105,7 +107,11 @@ func recurseParsePath(path string) (paths []string) {
 						paths = append(paths, pfiles[k2].Path) // 插入数据
 						wg.Unlock()
 					} else if pfiles[k2].Isdir {
-						recPaths := recurseParsePath(pfiles[k2].Path + strings.Join(names[k+1:], ""))
+						recPaths, goerr := recurseParsePath(pfiles[k2].Path + strings.Join(names[k+1:], ""))
+						if goerr != nil {
+							err = goerr
+							return
+						}
 						wg.Lock()
 						paths = append(paths, recPaths...) // 插入数据
 						wg.Unlock()

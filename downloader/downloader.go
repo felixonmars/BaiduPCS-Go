@@ -3,8 +3,9 @@ package downloader
 
 import (
 	"fmt"
-	"github.com/iikira/downloader/cachepool"
+	"github.com/iikira/BaiduPCS-Go/downloader/cachepool"
 	"io"
+	"sync"
 	"time"
 )
 
@@ -12,13 +13,17 @@ import (
 type Downloader struct {
 	// 涉及原子操作, 兼容32位设备, 注意内存地址对齐
 
-	OnExecute func()
-	OnFinish  func()
-	OnPause   func()
-	OnResume  func()
+	OnExecute     func()
+	OnFinish      func()
+	OnPause       func()
+	OnResume      func()
+	OnCancel      func()                    // 手动取消
+	OnCancelError func(code int, err error) // 中途遇到下载错误而取消的
 
 	status    Status
 	sinceTime time.Time
+	writeMu   sync.Mutex
+	monitorMu sync.Mutex
 
 	URL    string
 	Config Config
@@ -65,12 +70,14 @@ func (der *Downloader) Execute() (err error) {
 				der.Config.CacheSize = int(blockSize)
 			}
 
-			var begin int64
+			verbosef("CREATED: parallel: %d, cache size: %d\n", der.Config.Parallel, der.Config.CacheSize)
+
 			// 数据平均分配给各个线程
+			var begin, end int64
 			der.status.BlockList = make(BlockList, der.Config.Parallel)
-			for i := 0; i < der.Config.Parallel; i++ {
-				var end = (int64(i) + 1) * blockSize
-				der.status.BlockList[i] = &Block{
+			for k := range der.status.BlockList {
+				end = int64(k+1) * blockSize
+				der.status.BlockList[k] = &Block{
 					Begin: begin,
 					End:   end,
 				}
@@ -78,7 +85,7 @@ func (der *Downloader) Execute() (err error) {
 			}
 
 			// 将余出数据分配给最后一个线程
-			der.status.BlockList[der.Config.Parallel-1].End += der.status.StatusStat.TotalSize - der.status.BlockList[der.Config.Parallel-1].End
+			der.status.BlockList[der.Config.Parallel-1].End = der.status.StatusStat.TotalSize
 			der.status.BlockList[der.Config.Parallel-1].IsFinal = true
 		}
 	}
@@ -142,18 +149,37 @@ func (der *Downloader) Resume() {
 	}
 }
 
-func (der *Downloader) singleDownload() error {
-	resp, err := der.Config.Client.Req("GET", der.URL, nil, nil)
-	if resp != nil {
-		defer resp.Body.Close()
+// Cancel 取消下载
+func (der *Downloader) Cancel() {
+	der.cancel()
+	trigger(der.OnCancel)
+}
+
+func (der *Downloader) cancel() {
+	// 关闭所有连接
+	for _, block := range der.status.BlockList {
+		if block != nil && block.resp != nil && !block.resp.Close {
+			block.resp.Body.Close()
+		}
+	}
+
+	if resp := der.status.singleResp; resp != nil && !resp.Close {
+		resp.Body.Close()
+	}
+}
+
+func (der *Downloader) singleDownload() (err error) {
+	der.status.singleResp, err = der.Config.Client.Req("GET", der.URL, nil, nil)
+	if der.status.singleResp != nil {
+		defer der.status.singleResp.Body.Close()
 	}
 	if err != nil {
 		return err
 	}
 
-	switch resp.StatusCode / 100 {
+	switch der.status.singleResp.StatusCode / 100 {
 	case 4, 5:
-		return fmt.Errorf(resp.Status)
+		return fmt.Errorf(der.status.singleResp.Status)
 	}
 
 	var (
@@ -162,7 +188,7 @@ func (der *Downloader) singleDownload() error {
 	)
 
 	for {
-		n, err = io.ReadFull(resp.Body, buf)
+		n, err = io.ReadFull(der.status.singleResp.Body, buf)
 		n64 := int64(n)
 
 		der.status.StatusStat.speedsStat.AddReaded(n64)

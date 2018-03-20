@@ -47,10 +47,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/iikira/downloader"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/iikira/osext"
 
 [[constraint]]

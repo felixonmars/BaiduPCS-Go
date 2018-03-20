@@ -3,16 +3,11 @@ package downloader
 import (
 	"errors"
 	"fmt"
-	"github.com/iikira/downloader/cachepool"
+	"github.com/iikira/BaiduPCS-Go/downloader/cachepool"
 	"io"
 	"net/http"
-	"sync"
 	"sync/atomic"
 	"time"
-)
-
-var (
-	writeMu sync.Mutex
 )
 
 // Block 下载区块
@@ -55,11 +50,11 @@ func (b *Block) setDone() {
 	// 只操作 End 部分
 	// 避免操作 Begin 部分, 否则可能写文件时, 会出现异常
 	begin := atomic.LoadInt64(&b.Begin)
-
 	if begin == 0 {
 		atomic.StoreInt64(&b.End, 0)
 		return
 	}
+
 	atomic.StoreInt64(&b.End, begin-1)
 }
 
@@ -72,7 +67,6 @@ func (b *Block) isComplete() bool {
 // expectedContentLength 获取期望的 Content-Length
 func (b *Block) expectedContentLength() int64 {
 	begin, end := atomic.LoadInt64(&b.Begin), atomic.LoadInt64(&b.End)
-
 	if b.isDone() {
 		return 0
 	}
@@ -120,9 +114,8 @@ for_2: // code 为 1 时, 不重试
 			break
 		}
 
-		// fmt.Println(id, code, err)
-
 		// 未成功(有错误), 继续
+		verbosef("DEBUG: thread failed, thread id: %d, code: %d, error: %s\n", id, code, err)
 		switch code {
 		case 1: // 不重试
 			break for_2
@@ -151,59 +144,56 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 
 	// 设置 Range 请求头, 给各线程分配内容
 	// 开始 http 请求
-	resp, err := der.Config.Client.Req("GET", der.URL, nil, map[string]string{
+	block.resp, err = der.Config.Client.Req("GET", der.URL, nil, map[string]string{
 		"Range": fmt.Sprintf("bytes=%d-%d", atomic.LoadInt64(&block.Begin), atomic.LoadInt64(&block.End)),
 	})
 	if err != nil {
 		return 2, err
 	}
 
-	block.resp = resp
-
 	// 检测响应Body的错误
 	es := block.expectedContentLength()
-	if resp.ContentLength != es {
-		return 2, fmt.Errorf("Content-Length is unexpected: %d, need %d", resp.ContentLength, es)
+	if block.resp.ContentLength != es {
+		return 2, fmt.Errorf("Content-Length is unexpected: %d, need %d", block.resp.ContentLength, es)
 	}
 
-	switch resp.StatusCode {
+	switch block.resp.StatusCode {
 	case 200, 206:
 		// do nothing, continue
 	case 416: //Requested Range Not Satisfiable
 		// 可能是线程在等待响应时, 已被其他线程重载
-		return 1, errors.New("thread reload, " + resp.Status)
+		return 1, errors.New("thread reload, " + block.resp.Status)
 	case 403: // Forbidden
 		fallthrough
 	case 406: // Not Acceptable
 		// 暂时不知道出错的原因......
-		return 2, errors.New(resp.Status)
+		return 2, errors.New(block.resp.Status)
 	case 429, 509: // Too Many Requests
-		for der.status.StatusStat.Speeds >= der.status.StatusStat.maxSpeeds/5 {
+		for atomic.LoadInt64(&der.status.StatusStat.Speeds) >= atomic.LoadInt64(&der.status.StatusStat.maxSpeeds)/5 {
 			// 下载速度若不减慢, 循环就不会退出
 			time.Sleep(1 * time.Second)
 		}
-		return 2, errors.New(resp.Status)
+		return 2, errors.New(block.resp.Status)
 	default:
-		fmt.Printf("unexpected http status code, %d, %s\n", resp.StatusCode, resp.Status) // 调试
-		return 2, errors.New(resp.Status)
+		fmt.Printf("unexpected http status code, %d, %s\n", block.resp.StatusCode, block.resp.Status) // 调试
+		return 2, errors.New(block.resp.Status)
 	}
 
-	defer resp.Body.Close()
+	defer block.resp.Body.Close()
 
 	var (
 		buf        = cachepool.SetIfNotExist(int32(id), der.Config.CacheSize)
 		n          int
 		n64, begin int64
+		writeErr   error // 写入磁盘发生的错误
 	)
 
 	for {
 		begin = atomic.LoadInt64(&block.Begin) // 用于下文比较
 
-		n, err = resp.Body.Read(buf)
+		n, err = readFullFrom(block.resp.Body, buf, &der.status.StatusStat.speedsStat, &block.speedsStat)
 
 		n64 = int64(n)
-		der.status.StatusStat.speedsStat.AddReaded(n64)
-		block.speedsStat.AddReaded(n64)
 
 		// 获得剩余的数据量
 		expectedSize := block.expectedContentLength()
@@ -222,13 +212,16 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 		}
 
 		if !der.Config.Testing {
-			// 加锁, 减轻硬盘的压力
-			writeMu.Lock()
+			der.writeMu.Lock()                                    // 加锁, 减轻硬盘的压力
+			_, writeErr = der.status.file.WriteAt(buf[:n], begin) // 写入数据
+			if writeErr != nil {
+				der.cancel()
+				triggerOnError(der.OnCancelError, 1, fmt.Errorf("写入文件错误, %s", writeErr))
+				der.writeMu.Unlock()
+				return 1, writeErr
+			}
 
-			// 写入数据
-			der.status.file.WriteAt(buf[:n], begin)
-
-			writeMu.Unlock()
+			der.writeMu.Unlock() //解锁
 		}
 
 		// 两次 begin 不相等, 可能已有新的空闲线程参与

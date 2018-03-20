@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/json-iterator/go"
 	"io/ioutil"
+	"net/http"
 	"time"
 )
 
@@ -11,7 +12,7 @@ import (
 type StatusStat struct {
 	TotalSize   int64         `json:"total_size"` // 总大小
 	Downloaded  int64         `json:"downloaded"` // 已下载的数据量
-	Speeds      int64         // 下载速度
+	Speeds      int64         `json:"-"`          // 下载速度
 	maxSpeeds   int64         // 最大下载速度
 	TimeElapsed time.Duration `json:"-"` // 下载的时间
 	speedsStat  SpeedsStat
@@ -20,6 +21,8 @@ type StatusStat struct {
 // Status 下载状态
 type Status struct {
 	StatusStat
+
+	singleResp *http.Response // 单线程下载的http响应
 
 	file           Writer
 	BlockList      BlockList `json:"block_list"` // 下载区块列表
@@ -34,16 +37,12 @@ func (der *Downloader) GetStatusChan() <-chan StatusStat {
 
 	go func() {
 		for {
-			// 针对单线程下载的速度统计
-			if der.status.blockUnsupport {
-				der.status.StatusStat.speedsStat.Start()
-			}
-
 			time.Sleep(1 * time.Second)
 			der.status.StatusStat.TimeElapsed = time.Since(der.sinceTime) / 1e6 * 1e6
 
+			// 针对单线程下载的速度统计
 			if der.status.blockUnsupport {
-				der.status.StatusStat.Speeds = der.status.StatusStat.speedsStat.EndAndGetSpeedsPerSecond()
+				der.status.StatusStat.Speeds = der.status.StatusStat.speedsStat.GetSpeedsPerSecond()
 			}
 
 			// 下载结束, 关闭 chan
@@ -69,7 +68,7 @@ func (der *Downloader) recordBreakPoint() error {
 		return errors.New("服务端不支持断点续传, 不记录断点信息")
 	}
 
-	byt, err := jsoniter.Marshal(der.status)
+	byt, err := jsoniter.Marshal(&der.status)
 	if err != nil {
 		return err
 	}

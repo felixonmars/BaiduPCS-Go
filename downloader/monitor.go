@@ -2,13 +2,8 @@ package downloader
 
 import (
 	"os"
-	"sync"
 	"sync/atomic"
 	"time"
-)
-
-var (
-	mu sync.Mutex
 )
 
 // blockMonitor 延迟监控各线程状态,
@@ -29,8 +24,8 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 				if !der.Config.Testing {
 					os.Remove(der.Config.SavePath + DownloadingFileSuffix) // 删除断点信息
 				}
-				c <- struct{}{}
 
+				c <- struct{}{}
 				return
 			}
 
@@ -39,7 +34,7 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 			}
 
 			// 获取下载速度
-			speeds := der.status.StatusStat.speedsStat.EndAndGetSpeedsPerSecond()
+			speeds := der.status.StatusStat.speedsStat.GetSpeedsPerSecond()
 			atomic.StoreInt64(&der.status.StatusStat.Speeds, speeds)
 			if speeds > atomic.LoadInt64(&der.status.StatusStat.maxSpeeds) {
 				atomic.StoreInt64(&der.status.StatusStat.maxSpeeds, speeds)
@@ -50,9 +45,8 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 				for k := range der.status.BlockList {
 					go func(k int) {
 						block := der.status.BlockList[k]
-						block.speedsStat.Start()
 						time.Sleep(1 * time.Second)
-						atomic.StoreInt64(&block.speed, block.speedsStat.EndAndGetSpeedsPerSecond())
+						atomic.StoreInt64(&block.speed, block.speedsStat.GetSpeedsPerSecond())
 					}(k)
 				}
 			}()
@@ -71,18 +65,19 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 						// 重设连接
 						if r := der.status.BlockList[k].resp; r != nil {
 							r.Body.Close()
+							verbosef("MONITER: thread reload, thread id: %d\n", k)
 						}
 
 					}(k)
 
 					// 动态分配新线程
 					go func(k int) {
-						mu.Lock()
+						der.monitorMu.Lock()
 
 						// 筛选空闲的线程
 						index, ok := der.status.BlockList.avaliableThread()
 						if !ok { // 没有空的
-							mu.Unlock() // 解锁
+							der.monitorMu.Unlock() // 解锁
 							return
 						}
 
@@ -90,7 +85,7 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 						middle := (atomic.LoadInt64(&der.status.BlockList[k].Begin) + end) / 2
 
 						if end-middle <= MinParallelSize { // 如果线程剩余的下载量太少, 不分配空闲线程
-							mu.Unlock()
+							der.monitorMu.Unlock()
 							return
 						}
 
@@ -104,15 +99,15 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 						// End 已变, 取消 Final
 						der.status.BlockList[k].IsFinal = false
 
-						mu.Unlock()
+						der.monitorMu.Unlock()
 
+						verbosef("MONITER: thread copied: %d -> %d\n", k, index)
 						go der.addExecBlock(index)
 					}(k)
 				}
 			}
 
-			der.status.StatusStat.speedsStat.Start() // 重新开始统计速度
-			time.Sleep(1 * time.Second)              // 监测频率 1 秒
+			time.Sleep(1 * time.Second) // 监测频率 1 秒
 		}
 	}()
 	return c

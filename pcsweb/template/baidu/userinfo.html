@@ -25,8 +25,8 @@
     </div>
 
     <textarea id="list-template" style="display:none;">
-        <li data-name="{server_filename}" data-href="?path={path}">
-            <a href="?path={path}" class="clearfix" data-name="{server_filename}">
+        <li data-name="{server_filename}" data-href="?path={encoded_url_path}">
+            <a href="?path={encoded_url_path}" class="clearfix" data-name="{server_filename}">
                 <div class="row">
                     <span class="file-name col-md-7 col-sm-6 col-xs-9">
                         <i class="fa {fa_class} fa-fw"></i>
@@ -50,6 +50,7 @@
 <script>
     var formParam = $("#path-content").serialize();
 
+    // 获取目录下的文件和目录列表
     $.ajax({
         type: "GET",
         url: "/cgi-bin/baidu/pcs/file/list",
@@ -59,6 +60,9 @@
             var dl = $("#directory-listing");
             for (k in result.list) {
                 var ele = result.list[k];
+
+                // uri编码
+                ele.encoded_url_path = encodeURIComponent(ele.path);
                 if (ele.isdir) {
                     ele.fa_class = "fa-folder";
                 } else {
@@ -68,7 +72,6 @@
                 var template = nano($("#list-template").val(), ele);
 
                 dl.append(template);
-                console.log(result.list[k].fs_id);
             };
         },
     });

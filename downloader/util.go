@@ -24,3 +24,17 @@ func trigger(f func()) {
 
 	go f()
 }
+
+func triggerOnError(f func(code int, err error), code int, err error) {
+	if f == nil {
+		return
+	}
+
+	go f(code, err)
+}
+
+func verbosef(format string, a ...interface{}) {
+	if Verbose {
+		fmt.Printf(format, a...)
+	}
+}

@@ -11,6 +11,9 @@ var (
 
 	// MinParallelSize 单个线程最小的数据量
 	MinParallelSize = 128 * pcsutil.KB
+
+	// Verbose 调试
+	Verbose = false
 )
 
 // Config 下载配置
