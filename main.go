@@ -624,7 +624,11 @@ func main() {
 				)
 
 				for k, filePath := range c.Args() {
-					lp, err := pcscommand.GetFileSum(filePath, false)
+					lp, err := pcscommand.GetFileSum(filePath, &pcscommand.SumOption{
+						IsMD5Sum:      true,
+						IsCRC32Sum:    true,
+						IsSliceMD5Sum: true,
+					})
 					if err != nil {
 						fmt.Printf("[%d] %s\n", k+1, err)
 						continue
