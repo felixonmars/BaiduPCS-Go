@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/gobs/args"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcscommand"
 	"github.com/iikira/BaiduPCS-Go/pcsconfig"
@@ -13,6 +12,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/pcsweb"
 	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/iikira/args"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
 	"os"
@@ -43,14 +43,6 @@ func init() {
 	// 启动缓存回收
 	pcscache.DirCache.GC()
 	requester.TCPAddrCache.GC()
-}
-
-// getSubArgs 获取子命令参数
-func getSubArgs(c *cli.Context) (sargs []string) {
-	for i := 0; c.Args().Get(i) != ""; i++ {
-		sargs = append(sargs, c.Args().Get(i))
-	}
-	return
 }
 
 func main() {
@@ -461,7 +453,7 @@ func main() {
 					return nil
 				}
 
-				pcscommand.RunRemove(getSubArgs(c)...)
+				pcscommand.RunRemove(c.Args()...)
 				return nil
 			},
 		},
@@ -497,7 +489,7 @@ func main() {
 					return nil
 				}
 
-				pcscommand.RunCopy(getSubArgs(c)...)
+				pcscommand.RunCopy(c.Args()...)
 				return nil
 			},
 		},
@@ -517,7 +509,7 @@ func main() {
 					return nil
 				}
 
-				pcscommand.RunMove(getSubArgs(c)...)
+				pcscommand.RunMove(c.Args()...)
 				return nil
 			},
 		},
@@ -535,7 +527,7 @@ func main() {
 					return nil
 				}
 
-				pcscommand.RunDownload(c.Bool("test"), c.Int("p"), getSubArgs(c))
+				pcscommand.RunDownload(c.Bool("test"), c.Int("p"), c.Args())
 				return nil
 			},
 			Flags: []cli.Flag{
@@ -563,7 +555,7 @@ func main() {
 					return nil
 				}
 
-				subArgs := getSubArgs(c)
+				subArgs := c.Args()
 
 				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1])
 				return nil

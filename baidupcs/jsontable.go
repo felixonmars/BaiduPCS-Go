@@ -17,6 +17,17 @@ type PathsListJSON struct {
 	List []*PathJSON `json:"list"`
 }
 
+// CpMvJSON 源文件目录的地址和目标文件目录的地址
+type CpMvJSON struct {
+	From string `json:"from"` // 源文件或目录
+	To   string `json:"to"`   // 目标文件或目录
+}
+
+// CpMvListJSON []*CpMvJSON 对象数组
+type CpMvListJSON struct {
+	List []*CpMvJSON `json:"list"`
+}
+
 // JSON json 数据构造
 func (plj *PathsListJSON) JSON(paths ...string) (data []byte, err error) {
 	plj.List = make([]*PathJSON, len(paths))
@@ -31,17 +42,6 @@ func (plj *PathsListJSON) JSON(paths ...string) (data []byte, err error) {
 	return
 }
 
-// CpMvJSON 源文件目录的地址和目标文件目录的地址
-type CpMvJSON struct {
-	From string `json:"from"` // 源文件或目录
-	To   string `json:"to"`   // 目标文件或目录
-}
-
-// CpMvListJSON []*CpMvJSON 对象数组
-type CpMvListJSON struct {
-	List []*CpMvJSON `json:"list"`
-}
-
 // JSON json 数据构造
 func (cj *CpMvJSON) JSON() (data []byte, err error) {
 	data, err = jsoniter.Marshal(cj)
@@ -49,8 +49,7 @@ func (cj *CpMvJSON) JSON() (data []byte, err error) {
 }
 
 // JSON json 数据构造
-func (clj *CpMvListJSON) JSON(cpmvJSON ...*CpMvJSON) (data []byte, err error) {
-	clj.List = cpmvJSON
+func (clj *CpMvListJSON) JSON() (data []byte, err error) {
 	data, err = jsoniter.Marshal(clj)
 	return
 }

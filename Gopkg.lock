@@ -39,12 +39,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/gobs/args"
-  packages = ["."]
-  revision = "86002b4df18c1c4919c97bd7b7bd46e216fc69c3"
-
-[[projects]]
-  branch = "master"
   name = "github.com/iikira/Baidu-Login"
   packages = [
     ".",
@@ -52,6 +46,12 @@
     "bdcrypto/ecb"
   ]
   revision = "4e24e45b248a56e064275c9579bf1001f07a0ec6"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/iikira/args"
+  packages = ["."]
+  revision = "9c7ef813cfacd8912dde29967d9e4ffb45ae1495"
 
 [[projects]]
   branch = "master"
@@ -132,6 +132,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ee280d746b347a8e056754d4b20e8dfda67b919d86aa584ed8413cd9d958a26c"
+  inputs-digest = "ce2c6e6dc00a94139e7f3262bef86ce0dc7146b0a7e654f451b563bbea5c07ee"
   solver-name = "gps-cdcl"
   solver-version = 1

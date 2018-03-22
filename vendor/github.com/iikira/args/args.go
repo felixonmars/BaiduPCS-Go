@@ -1,8 +1,7 @@
-/*
- This package provides methods to parse a shell-like command line string into a list of arguments.
+// Package args provides methods to parse a shell-like command line string into a list of arguments.
 
- Words are split on white spaces, respecting quotes (single and double) and the escape character (backslash)
-*/
+// Words are split on white spaces, respecting quotes (single and double) and the escape character (backslash)
+
 package args
 
 import (
@@ -37,7 +36,7 @@ var (
 type Scanner struct {
 	in              *bufio.Reader
 	InfieldBrackets bool
-        UserTokens      string
+	UserTokens      string
 }
 
 // Creates a new Scanner with io.Reader as input source
@@ -78,7 +77,7 @@ func (scanner *Scanner) NextToken() (s string, delim int, err error) {
 			//
 			if escape {
 				escape = false
-				buf.WriteString(string(c))
+				buf.WriteRune(c)
 				continue
 			}
 
@@ -100,7 +99,7 @@ func (scanner *Scanner) NextToken() (s string, delim int, err error) {
 					// start quoted token
 					//
 					quote = c
-					rawq = c == RAW_QUOTE
+					rawq = strings.ContainsRune(QUOTE_CHARS, c)
 					continue
 				}
 
@@ -110,7 +109,7 @@ func (scanner *Scanner) NextToken() (s string, delim int, err error) {
 					//
 					delim = int(c)
 					brackets = append(brackets, b)
-					buf.WriteString(string(c))
+					buf.WriteRune(c)
 					continue
 				}
 
@@ -118,7 +117,7 @@ func (scanner *Scanner) NextToken() (s string, delim int, err error) {
 					//
 					// if it's a symbol, return  all the remaining characters
 					//
-					buf.WriteString(string(c))
+					buf.WriteRune(c)
 					_, err = io.Copy(buf, scanner.in)
 					s = buf.String()
 					return // (token, delim, err)
@@ -142,7 +141,7 @@ func (scanner *Scanner) NextToken() (s string, delim int, err error) {
 					quote = NO_QUOTE
 					rawq = false
 					if infield {
-						buf.WriteString(string(c))
+						buf.WriteRune(c)
 					}
 					s = buf.String()
 					delim = int(c)
@@ -163,29 +162,29 @@ func (scanner *Scanner) NextToken() (s string, delim int, err error) {
 						// start quoted token
 						//
 						quote = c
-						rawq = c == RAW_QUOTE
+						rawq = strings.ContainsRune(QUOTE_CHARS, c)
 						infield = true
 					}
 				}
 
-                                if quote == NO_QUOTE && strings.ContainsRune(scanner.UserTokens, c) {
-                                        //
-                                        // user defined token
-                                        //
-                                        s = buf.String()
-                                        delim = int(c)
-                                        return
-                                }
+				if quote == NO_QUOTE && strings.ContainsRune(scanner.UserTokens, c) {
+					//
+					// user defined token
+					//
+					s = buf.String()
+					delim = int(c)
+					return
+				}
 
 				//
 				// append to buffer
 				//
-				buf.WriteString(string(c))
+				buf.WriteRune(c)
 			} else {
 				//
 				// append to buffer
 				//
-				buf.WriteString(string(c))
+				buf.WriteRune(c)
 
 				last := len(brackets) - 1
 
@@ -202,7 +201,7 @@ func (scanner *Scanner) NextToken() (s string, delim int, err error) {
 						// start quoted token
 						//
 						quote = c
-						rawq = c == RAW_QUOTE
+						rawq = strings.ContainsRune(QUOTE_CHARS, c)
 					} else if b, ok := BRACKETS[c]; ok {
 						brackets = append(brackets, b)
 					}
@@ -279,9 +278,9 @@ func (scanner *Scanner) getTokens(max int) ([]string, string, error) {
 
 		tokens = append(tokens, tok)
 
-                if strings.ContainsRune(scanner.UserTokens, rune(delim)) {
-                    tokens = append(tokens, string(delim))
-                }
+		if strings.ContainsRune(scanner.UserTokens, rune(delim)) {
+			tokens = append(tokens, string(delim))
+		}
 
 	}
 
@@ -305,8 +304,8 @@ func InfieldBrackets() GetArgsOption {
 // UserTokens allows a client to define a list of tokens (runes) that can be used as additional separators
 func UserTokens(t string) GetArgsOption {
 	return func(s *Scanner) {
-                s.UserTokens = t
-        }
+		s.UserTokens = t
+	}
 }
 
 func getScanner(line string, options ...GetArgsOption) *Scanner {
@@ -367,9 +366,9 @@ func (a Args) GetIntOption(name string, def int) int {
 
 func (a Args) GetBoolOption(name string, def bool) bool {
 	if val, ok := a.Options[name]; ok {
-                if val == "" { // --boolopt is the same as --boolopt=true
-                    return true
-                }
+		if val == "" { // --boolopt is the same as --boolopt=true
+			return true
+		}
 
 		b, _ := strconv.ParseBool(val)
 		return b

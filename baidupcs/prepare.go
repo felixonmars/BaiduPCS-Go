@@ -140,7 +140,9 @@ func (pcs *BaiduPCS) prepareCpMvOp(op string, cpmvJSON ...*CpMvJSON) (dataReadCl
 		panic("Unknown opreation: " + op)
 	}
 
-	sendData, err := (&CpMvListJSON{}).JSON(cpmvJSON...)
+	sendData, err := (&CpMvListJSON{
+		List: cpmvJSON,
+	}).JSON()
 	if err != nil {
 		return nil, err
 	}

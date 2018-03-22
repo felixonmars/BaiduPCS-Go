@@ -35,7 +35,7 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/gobs/args"
+  name = "github.com/iikira/args"
 
 [[constraint]]
   branch = "master"
