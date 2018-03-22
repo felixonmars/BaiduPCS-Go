@@ -7,6 +7,8 @@ import (
 const (
 	// StrRemoteError 远端服务器返回错误
 	StrRemoteError = "远端服务器返回错误"
+	// StrJSONParseError json 数据解析失败
+	StrJSONParseError = "json 数据解析失败"
 )
 
 // ErrInfo 远端服务器返回的错误信息

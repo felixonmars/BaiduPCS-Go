@@ -97,7 +97,7 @@ Build $name-$version"-linux-arm64" linux arm64
 # Others
 # Build $name-$version"-solaris-amd64" solaris amd64
 Build $name-$version"-freebsd-386" freebsd 386
-# Build $name-$version"-freebsd-amd64" freebsd amd64
+Build $name-$version"-freebsd-amd64" freebsd amd64
 # Build $name-$version"-freebsd-arm" freebsd arm
 # Build $name-$version"-netbsd-386" netbsd	386
 # Build $name-$version"-netbsd-amd64" netbsd amd64

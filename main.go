@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/gobs/args"
-	"github.com/iikira/BaiduPCS-Go/downloader"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcscommand"
 	"github.com/iikira/BaiduPCS-Go/pcsconfig"
@@ -40,8 +39,6 @@ var (
 func init() {
 	pcsconfig.Init()
 	pcscommand.ReloadInfo()
-
-	downloader.Verbose = pcsverbose.IsVerbose
 
 	// 启动缓存回收
 	pcscache.DirCache.GC()
@@ -118,7 +115,6 @@ func main() {
 		})
 
 		for {
-			downloader.Verbose = pcsverbose.IsVerbose
 			var (
 				prompt          string
 				activeBaiduUser = pcsconfig.Config.MustGetActive()
@@ -719,7 +715,7 @@ func main() {
 						return nil
 					},
 					Flags: []cli.Flag{
-						cli.UintFlag{
+						cli.IntFlag{
 							Name:        "appid",
 							Usage:       "百度 PCS 应用ID",
 							Value:       pcsconfig.Config.AppID,

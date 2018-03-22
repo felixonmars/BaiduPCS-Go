@@ -6,12 +6,11 @@ import (
 	"github.com/GeertJohan/go.rice"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/pcsconfig"
-	"html/template"
 	"net/http"
 )
 
 var (
-	activeAPI    *baidupcs.PCSApi
+	activeAPI    *baidupcs.BaiduPCS
 	staticBox    *rice.Box // go.rice 文件盒子
 	templatesBox *rice.Box // go.rice 文件盒子
 )
@@ -61,25 +60,13 @@ func StartServer(port uint) error {
 }
 
 func aboutPage(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.New("index").Parse(templatesBox.MustString("index.html"))
-	checkErr(err)
-
-	_, err = tmpl.Parse(templatesBox.MustString("about.html"))
-	checkErr(err)
-
-	err = tmpl.Execute(w, nil)
-	checkErr(err)
+	tmpl := boxTmplParse("index", "index.html", "about.html")
+	checkErr(tmpl.Execute(w, nil))
 }
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
-	tmpl, err := template.New("index").Parse(templatesBox.MustString("index.html"))
-	checkErr(err)
-
-	_, err = tmpl.Parse(templatesBox.MustString("baidu/userinfo.html"))
-	checkErr(err)
-
-	err = tmpl.Execute(w, r.Form.Get("path"))
-	checkErr(err)
+	tmpl := boxTmplParse("index", "index.html", "baidu/userinfo.html")
+	checkErr(tmpl.Execute(w, r.Form.Get("path")))
 }

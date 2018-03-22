@@ -5,11 +5,14 @@ import (
 	"net/http/cookiejar"
 )
 
-// FileDownload 下载网盘内文件
-func (p *PCSApi) FileDownload(path string, downloadFunc func(downloadURL string, jar *cookiejar.Jar, savePath string) error) (err error) {
-	p.setAPI("file", "download", map[string]string{
+// DownloadFunc 下载文件处理函数
+type DownloadFunc func(downloadURL string, jar *cookiejar.Jar, savePath string) error
+
+// DownloadFile 下载单个文件
+func (pcs *BaiduPCS) DownloadFile(path string, downloadFunc DownloadFunc) (err error) {
+	pcs.setPCSURL("file", "download", map[string]string{
 		"path": path,
 	})
 
-	return downloadFunc(p.url.String(), p.client.Jar.(*cookiejar.Jar), pcsconfig.GetSavePath(path))
+	return downloadFunc(pcs.url.String(), pcs.client.Jar.(*cookiejar.Jar), pcsconfig.GetSavePath(path))
 }

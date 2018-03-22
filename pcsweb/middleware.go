@@ -1,7 +1,6 @@
 package pcsweb
 
 import (
-	"html/template"
 	"net/http"
 )
 
@@ -33,13 +32,7 @@ func rootMiddleware(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.WriteHeader(404)
 
-		tmpl, err := template.New("index").Parse(templatesBox.MustString("index.html"))
-		checkErr(err)
-
-		_, err = tmpl.Parse(templatesBox.MustString("404.html"))
-		checkErr(err)
-
-		err = tmpl.Execute(w, nil)
-		checkErr(err)
+		tmpl := boxTmplParse("index", "index.html", "404.html")
+		checkErr(tmpl.Execute(w, nil))
 	}
 }

@@ -94,7 +94,7 @@ func runCpMvOp(op string, paths ...string) {
 		return
 	}
 
-	cj := new(baidupcs.CpMvJSONList)
+	cj := new(baidupcs.CpMvListJSON)
 	cj.List = make([]*baidupcs.CpMvJSON, len(froms))
 	for k := range froms {
 		cj.List[k] = &baidupcs.CpMvJSON{

@@ -10,8 +10,19 @@ import (
 )
 
 const (
+	operationQuotaInfo                 = "获取当前用户空间配额信息"
 	operationFilesDirectoriesBatchMeta = "获取文件/目录的元信息"
 	operationFilesDirectoriesList      = "获取目录下的文件列表"
+	operationRemove                    = "删除文件/目录"
+	operationMkdir                     = "创建目录"
+	operationRename                    = "重命名文件/目录"
+	operationCopy                      = "拷贝文件/目录"
+	operationMove                      = "移动文件/目录"
+	operationRapidUpload               = "秒传文件"
+	operationUpload                    = "上传单个文件"
+	operationUploadTmpFile             = "分片上传—文件分片及上传"
+	operationUploadCreateSuperFile     = "分片上传—合并分片文件"
+	operationFileDownload              = "下载单个文件"
 )
 
 var (
@@ -19,15 +30,14 @@ var (
 	AppID int
 )
 
-// PCSApi 百度 PCS API 详情
-type PCSApi struct {
+// BaiduPCS 百度 PCS API 详情
+type BaiduPCS struct {
 	url    *url.URL
-	writed bool                  // 是否已写入
 	client *requester.HTTPClient // http 客户端
 }
 
 // NewPCS 提供 百度BDUSS, 返回 PCSApi 指针对象
-func NewPCS(bduss string) *PCSApi {
+func NewPCS(bduss string) *BaiduPCS {
 	client := requester.NewHTTPClient()
 	client.UserAgent = pcsconfig.Config.UserAgent
 
@@ -45,20 +55,20 @@ func NewPCS(bduss string) *PCSApi {
 	})
 	client.SetCookiejar(jar)
 
-	return &PCSApi{
+	return &BaiduPCS{
 		url:    pcsURL,
 		client: client,
 	}
 }
 
-func (p *PCSApi) setAPI(subPath, method string, param ...map[string]string) {
-	p.url = &url.URL{
+func (pcs *BaiduPCS) setPCSURL(subPath, method string, param ...map[string]string) {
+	pcs.url = &url.URL{
 		Scheme: "http",
 		Host:   "pcs.baidu.com",
 		Path:   "/rest/2.0/pcs/" + subPath,
 	}
 
-	uv := p.url.Query()
+	uv := pcs.url.Query()
 	uv.Set("app_id", fmt.Sprint(pcsconfig.Config.AppID))
 	uv.Set("method", method)
 	for k := range param {
@@ -67,6 +77,5 @@ func (p *PCSApi) setAPI(subPath, method string, param ...map[string]string) {
 		}
 	}
 
-	p.url.RawQuery = uv.Encode()
-	p.writed = true
+	pcs.url.RawQuery = uv.Encode()
 }

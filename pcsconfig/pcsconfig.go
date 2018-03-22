@@ -2,9 +2,9 @@
 package pcsconfig
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/json-iterator/go"
 	"io/ioutil"
 )
 
@@ -14,7 +14,7 @@ var (
 
 	configFileName = pcsutil.ExecutablePathJoin("pcs_config.json")
 
-	defaultAppID uint = 260149
+	defaultAppID = 260149
 )
 
 // PCSConfig 配置详情
@@ -22,7 +22,7 @@ type PCSConfig struct {
 	BaiduActiveUID uint64        `json:"baidu_active_uid"`
 	BaiduUserList  BaiduUserList `json:"baidu_user_list"`
 
-	AppID uint `json:"appid"` // appid
+	AppID int `json:"appid"` // appid
 
 	CacheSize   int `json:"cache_size"`   // 下载缓存
 	MaxParallel int `json:"max_parallel"` // 最大下载并发量
@@ -72,7 +72,7 @@ func loadConfig() error {
 		return err
 	}
 
-	err = json.Unmarshal(data, Config)
+	err = jsoniter.Unmarshal(data, Config)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (c *PCSConfig) Save() error {
 		return err
 	}
 
-	data, err := json.MarshalIndent(c, "", "\t")
+	data, err := jsoniter.MarshalIndent(c, "", " ")
 	if err != nil {
 		panic(err)
 	}

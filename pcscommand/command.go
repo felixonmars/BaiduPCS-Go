@@ -8,11 +8,11 @@ import (
 )
 
 var (
-	info = new(baidupcs.PCSApi)
+	info = new(baidupcs.BaiduPCS)
 )
 
 // GetPCSInfo 重载并返回 PCS 配置信息
-func GetPCSInfo() *baidupcs.PCSApi {
+func GetPCSInfo() *baidupcs.BaiduPCS {
 	ReloadInfo()
 	return info
 }

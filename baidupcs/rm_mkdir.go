@@ -6,45 +6,20 @@ import (
 )
 
 // Remove 批量删除文件/目录
-func (p *PCSApi) Remove(paths ...string) (err error) {
-	operation := "删除文件/目录"
-
-	pathsData := struct {
-		List []struct {
-			Path string `json:"path"`
-		} `json:"list"`
-	}{}
-
-	for k := range paths {
-		pathsData.List = append(pathsData.List, struct {
-			Path string `json:"path"`
-		}{
-			Path: paths[k],
-		})
-	}
-
-	ej, err := jsoniter.Marshal(&pathsData)
+func (pcs *BaiduPCS) Remove(paths ...string) (err error) {
+	dataReadCloser, err := pcs.PrepareRemove(paths...)
 	if err != nil {
 		return
 	}
 
-	p.setAPI("file", "delete", map[string]string{
-		"param": string(ej[:]),
-	})
+	defer dataReadCloser.Close()
 
-	resp, err := p.client.Req("POST", p.url.String(), nil, nil)
-	if err != nil {
-		return
-	}
+	errInfo := NewErrorInfo(operationRemove)
 
-	defer resp.Body.Close()
-
-	errInfo := NewErrorInfo(operation)
-
-	d := jsoniter.NewDecoder(resp.Body)
+	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
+		return fmt.Errorf("%s, json 数据解析失败, %s", operationRemove, err)
 	}
 
 	if errInfo.ErrCode != 0 {
@@ -55,26 +30,20 @@ func (p *PCSApi) Remove(paths ...string) (err error) {
 }
 
 // Mkdir 创建目录
-func (p *PCSApi) Mkdir(path string) (err error) {
-	operation := "创建目录"
-
-	p.setAPI("file", "mkdir", map[string]string{
-		"path": path,
-	})
-
-	resp, err := p.client.Req("POST", p.url.String(), nil, nil)
+func (pcs *BaiduPCS) Mkdir(pcspath string) (err error) {
+	dataReadCloser, err := pcs.PrepareMkdir(pcspath)
 	if err != nil {
-		return err
+		return
 	}
 
-	defer resp.Body.Close()
+	defer dataReadCloser.Close()
 
-	errInfo := NewErrorInfo(operation)
+	errInfo := NewErrorInfo(operationMkdir)
 
-	d := jsoniter.NewDecoder(resp.Body)
+	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
+		return fmt.Errorf("%s, json 数据解析失败, %s", operationMkdir, err)
 	}
 
 	if errInfo.ErrCode != 0 {

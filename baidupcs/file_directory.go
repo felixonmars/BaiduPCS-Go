@@ -64,14 +64,14 @@ type fdData struct {
 }
 
 // FilesDirectoriesMeta 获取单个文件/目录的元信息
-func (p *PCSApi) FilesDirectoriesMeta(path string) (data *FileDirectory, err error) {
+func (pcs *BaiduPCS) FilesDirectoriesMeta(path string) (data *FileDirectory, err error) {
 	operation := "获取单个文件/目录的元信息"
 
 	if path == "" {
 		path = "/"
 	}
 
-	fds, err := p.FilesDirectoriesBatchMeta(path)
+	fds, err := pcs.FilesDirectoriesBatchMeta(path)
 	if err != nil {
 		return nil, fmt.Errorf("%s, 路径: %s", err, path)
 	}
@@ -84,8 +84,8 @@ func (p *PCSApi) FilesDirectoriesMeta(path string) (data *FileDirectory, err err
 }
 
 // FilesDirectoriesBatchMeta 获取多个文件/目录的元信息
-func (p *PCSApi) FilesDirectoriesBatchMeta(paths ...string) (data FileDirectoryList, err error) {
-	dataReadCloser, err := p.PrepareFilesDirectoriesBatchMeta(paths...)
+func (pcs *BaiduPCS) FilesDirectoriesBatchMeta(paths ...string) (data FileDirectoryList, err error) {
+	dataReadCloser, err := pcs.PrepareFilesDirectoriesBatchMeta(paths...)
 	if err != nil {
 		return nil, err
 	}
@@ -119,8 +119,8 @@ func (p *PCSApi) FilesDirectoriesBatchMeta(paths ...string) (data FileDirectoryL
 }
 
 // FilesDirectoriesList 获取目录下的文件和目录列表, 可选是否递归
-func (p *PCSApi) FilesDirectoriesList(path string, recurse bool) (data FileDirectoryList, err error) {
-	dataReadCloser, err := p.PrepareFilesDirectoriesList(path, recurse)
+func (pcs *BaiduPCS) FilesDirectoriesList(path string, recurse bool) (data FileDirectoryList, err error) {
+	dataReadCloser, err := pcs.PrepareFilesDirectoriesList(path, recurse)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (p *PCSApi) FilesDirectoriesList(path string, recurse bool) (data FileDirec
 
 		// 递归获取子目录信息
 		if recurse && data[k].Isdir {
-			data[k].Children, err = p.FilesDirectoriesList(data[k].Path, recurse)
+			data[k].Children, err = pcs.FilesDirectoriesList(data[k].Path, recurse)
 			if err != nil {
 				pcsverbose.Verboseln(err)
 			}

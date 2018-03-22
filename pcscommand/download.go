@@ -21,10 +21,7 @@ type dtask struct {
 	downloadInfo *baidupcs.FileDirectory // 文件或目录详情
 }
 
-// downloadFunc 用于下载文件的函数
-type downloadFunc func(downloadURL string, jar *cookiejar.Jar, savePath string) error
-
-func getDownloadFunc(id int, cfg *downloader.Config) downloadFunc {
+func getDownloadFunc(id int, cfg *downloader.Config) baidupcs.DownloadFunc {
 	if cfg == nil {
 		cfg = downloader.NewConfig()
 	}
@@ -212,7 +209,7 @@ func RunDownload(testing bool, parallel int, paths []string) {
 
 		fmt.Printf("[%d] 准备下载: %s\n\n", task.id, task.path)
 
-		err = info.FileDownload(task.path, getDownloadFunc(task.id, cfg))
+		err = info.DownloadFile(task.path, getDownloadFunc(task.id, cfg))
 		if err != nil {
 			handleTaskErr(task, "下载文件错误", err)
 			continue

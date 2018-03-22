@@ -15,9 +15,9 @@ func fileList(w http.ResponseWriter, r *http.Request) {
 			ErrroCode: 1,
 			ErrorMsg:  err.Error(),
 		}).JSON())
+		return
 	}
 
+	defer dataReadCloser.Close()
 	io.Copy(w, dataReadCloser)
-
-	dataReadCloser.Close()
 }

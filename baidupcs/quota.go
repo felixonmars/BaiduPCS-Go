@@ -13,26 +13,22 @@ type quotaInfo struct {
 }
 
 // QuotaInfo 获取当前用户空间配额信息
-func (p *PCSApi) QuotaInfo() (quota, used int64, err error) {
-	operation := "获取当前用户空间配额信息"
-
-	p.setAPI("quota", "info")
-
-	resp, err := p.client.Req("GET", p.url.String(), nil, nil)
+func (pcs *BaiduPCS) QuotaInfo() (quota, used int64, err error) {
+	dataReadCloser, err := pcs.PrepareQuotaInfo()
 	if err != nil {
 		return
 	}
 
-	defer resp.Body.Close()
+	defer dataReadCloser.Close()
 
 	quotaInfo := &quotaInfo{
-		ErrInfo: NewErrorInfo(operation),
+		ErrInfo: NewErrorInfo(operationQuotaInfo),
 	}
 
-	d := jsoniter.NewDecoder(resp.Body)
+	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(quotaInfo)
 	if err != nil {
-		return 0, 0, fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
+		return 0, 0, fmt.Errorf("%s, json 数据解析失败, %s", operationQuotaInfo, err)
 	}
 
 	if quotaInfo.ErrCode != 0 {

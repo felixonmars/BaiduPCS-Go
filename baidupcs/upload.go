@@ -3,39 +3,28 @@ package baidupcs
 import (
 	"fmt"
 	"github.com/json-iterator/go"
+	"net/http"
 	"net/http/cookiejar"
 )
 
+// UploadFunc 上传文件处理函数
+type UploadFunc func(uploadURL string, jar *cookiejar.Jar) (resp *http.Response, err error)
+
 // RapidUpload 秒传文件
-func (p *PCSApi) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) (err error) {
-	operation := "秒传文件"
-
-	if targetPath == "/" || p.Isdir(targetPath) {
-		return fmt.Errorf("%s 遇到错误, 保存路径不可以覆盖目录", operation)
-	}
-
-	p.setAPI("file", "rapidupload", map[string]string{
-		"path":           targetPath,         // 上传文件的全路径名
-		"content-length": fmt.Sprint(length), // 待秒传的文件长度
-		"content-md5":    contentMD5,         // 待秒传的文件的MD5
-		"slice-md5":      sliceMD5,           // 待秒传的文件的MD5
-		"content-crc32":  crc32,              // 待秒传文件CRC32
-		"ondup":          "overwrite",        // overwrite: 表示覆盖同名文件; newcopy: 表示生成文件副本并进行重命名，命名规则为“文件名_日期.后缀”
-	})
-
-	resp, err := p.client.Req("POST", p.url.String(), nil, nil)
+func (pcs *BaiduPCS) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) (err error) {
+	dataReadCloser, err := pcs.PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32, length)
 	if err != nil {
 		return
 	}
 
-	defer resp.Body.Close()
+	defer dataReadCloser.Close()
 
-	errInfo := NewErrorInfo(operation)
+	errInfo := NewErrorInfo(operationRapidUpload)
 
-	d := jsoniter.NewDecoder(resp.Body)
+	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
+		return fmt.Errorf("%s, %s, %s", operationRapidUpload, StrJSONParseError, err)
 	}
 
 	switch errInfo.ErrCode {
@@ -51,66 +40,91 @@ func (p *PCSApi) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, len
 }
 
 // Upload 上传单个文件
-func (p *PCSApi) Upload(targetPath string, uploadFunc func(uploadURL string, jar *cookiejar.Jar) error) (err error) {
-	if targetPath == "/" || p.Isdir(targetPath) {
-		return fmt.Errorf("上传文件 遇到错误, 保存路径不可以覆盖目录")
+func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (err error) {
+	dataReadCloser, err := pcs.PrepareUpload(targetPath, uploadFunc)
+	if err != nil {
+		return
 	}
 
-	p.setAPI("file", "upload", map[string]string{
-		"path":  targetPath,
-		"ondup": "overwrite",
-	})
+	defer dataReadCloser.Close()
 
-	return uploadFunc(p.url.String(), p.client.Jar.(*cookiejar.Jar))
+	// 数据处理
+	jsonData := &struct {
+		*PathJSON
+		*ErrInfo
+	}{
+		ErrInfo: NewErrorInfo(operationUpload),
+	}
+
+	d := jsoniter.NewDecoder(dataReadCloser)
+
+	err = d.Decode(jsonData)
+	if err != nil {
+		return fmt.Errorf("%s, %s, %s", operationUpload, StrJSONParseError, err)
+	}
+
+	if jsonData.ErrCode != 0 {
+		return jsonData.ErrInfo
+	}
+
+	if jsonData.Path == "" {
+		return fmt.Errorf("%s, unknown response data, file saved path not found", operationUpload)
+	}
+
+	return nil
 }
 
 // UploadTmpFile 分片上传—文件分片及上传
-func (p *PCSApi) UploadTmpFile(targetPath string, uploadFunc func(uploadURL string, jar *cookiejar.Jar) error) (err error) {
-	p.setAPI("file", "upload", map[string]string{
-		"type": "tmpfile",
-	})
+func (pcs *BaiduPCS) UploadTmpFile(uploadFunc UploadFunc) (md5 string, err error) {
+	dataReadCloser, err := pcs.PrepareUploadTmpFile(uploadFunc)
+	if err != nil {
+		return
+	}
 
-	return uploadFunc(p.url.String(), p.client.Jar.(*cookiejar.Jar))
+	defer dataReadCloser.Close()
+
+	// 数据处理
+	jsonData := &struct {
+		MD5 string `json:"md5"`
+		*ErrInfo
+	}{
+		ErrInfo: NewErrorInfo(operationUploadTmpFile),
+	}
+
+	d := jsoniter.NewDecoder(dataReadCloser)
+
+	err = d.Decode(jsonData)
+	if err != nil {
+		return "", fmt.Errorf("%s, %s, %s", operationUpload, StrJSONParseError, err)
+	}
+
+	if jsonData.ErrCode != 0 {
+		return "", jsonData.ErrInfo
+	}
+
+	// 未找到md5
+	if jsonData.MD5 == "" {
+		return "", fmt.Errorf("%s, unknown response data, md5 not found", operationUpload)
+	}
+
+	return jsonData.MD5, nil
 }
 
 // UploadCreateSuperFile 分片上传—合并分片文件
-func (p *PCSApi) UploadCreateSuperFile(targetPath string, blockList ...string) (err error) {
-	operation := "分片上传—合并分片文件"
-
-	if targetPath == "/" || p.Isdir(targetPath) {
-		return fmt.Errorf("%s 遇到错误, 保存路径不可以覆盖目录", operation)
-	}
-
-	bl := struct {
-		BlockList []string `json:"block_list"`
-	}{
-		BlockList: blockList,
-	}
-
-	data, err := jsoniter.Marshal(&bl)
+func (pcs *BaiduPCS) UploadCreateSuperFile(targetPath string, blockList ...string) (err error) {
+	dataReadCloser, err := pcs.PrepareUploadCreateSuperFile(targetPath, blockList...)
 	if err != nil {
-		panic(operation + " 发生错误, " + err.Error())
+		return
 	}
 
-	p.setAPI("file", "createsuperfile", map[string]string{
-		"path":  targetPath,
-		"param": string(data),
-		"ondup": "overwrite",
-	})
+	defer dataReadCloser.Close()
 
-	resp, err := p.client.Req("POST", p.url.String(), nil, nil)
-	if err != nil {
-		return err
-	}
+	errInfo := NewErrorInfo(operationUploadCreateSuperFile)
 
-	defer resp.Body.Close()
-
-	errInfo := NewErrorInfo(operation)
-
-	d := jsoniter.NewDecoder(resp.Body)
+	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, json 数据解析失败, %s", operation, err)
+		return fmt.Errorf("%s, %s, %s", operationUploadCreateSuperFile, StrJSONParseError, err)
 	}
 
 	if errInfo.ErrCode != 0 {
