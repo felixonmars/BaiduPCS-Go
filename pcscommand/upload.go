@@ -124,10 +124,15 @@ func (lp *LocalPathInfo) SliceMD5Sum() {
 	n, err := lp.file.ReadAt(lp.buf, requiredSliceLen)
 	if err != nil {
 		if err == io.EOF {
-			m.Write(lp.buf[:n])
+			goto md5sum
+		} else {
+			fmt.Printf("SliceMD5Sum: %s\n", err)
+			return
 		}
 	}
 
+md5sum:
+	m.Write(lp.buf[:n])
 	lp.SliceMD5 = m.Sum(nil)
 }
 
