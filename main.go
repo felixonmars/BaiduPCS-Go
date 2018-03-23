@@ -254,24 +254,29 @@ func main() {
 			Usage:   "切换已登录的百度帐号",
 			Description: fmt.Sprintf("%s\n   示例:\n\n      %s\n      %s\n",
 				"如果运行该条命令没有提供参数, 程序将会列出所有的百度帐号, 供选择切换",
-				app.Name+" su --uid=123456789",
+				app.Name+" su <uid>",
 				app.Name+" su",
 			),
 			Category: "百度帐号",
 			Before:   reloadFn,
 			After:    reloadFn,
 			Action: func(c *cli.Context) error {
+				if c.NArg() >= 2 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+
 				if len(pcsconfig.Config.BaiduUserList) == 0 {
-					fmt.Println("未设置任何百度帐号, 不能切换")
+					fmt.Printf("未设置任何百度帐号, 不能切换\n")
 					return nil
 				}
 
 				var uid uint64
-				if c.IsSet("uid") {
-					if pcsconfig.Config.CheckUIDExist(c.Uint64("uid")) {
-						uid = c.Uint64("uid")
-					} else {
-						fmt.Println("切换用户失败, uid 不存在")
+				if c.NArg() == 1 {
+					uid, _ = strconv.ParseUint(c.Args().Get(0), 10, 64)
+					if !pcsconfig.Config.CheckUIDExist(uid) {
+						fmt.Printf("切换用户失败, uid 不存在\n")
+						return nil
 					}
 				} else if c.NArg() == 0 {
 					cli.HandleAction(app.Command("loglist").Action, c)
@@ -287,31 +292,21 @@ func main() {
 					if n, err := strconv.Atoi(index); err == nil && n >= 0 && n < len(pcsconfig.Config.BaiduUserList) {
 						uid = pcsconfig.Config.BaiduUserList[n].UID
 					} else {
-						fmt.Println("切换用户失败, 请检查 # 值是否正确")
+						fmt.Printf("切换用户失败, 请检查 # 值是否正确\n")
+						return nil
 					}
 				} else {
 					cli.ShowCommandHelp(c, c.Command.Name)
 				}
 
-				if uid == 0 {
-					return nil
-				}
-
 				pcsconfig.Config.BaiduActiveUID = uid
 				if err := pcsconfig.Config.Save(); err != nil {
-					fmt.Println(err)
+					fmt.Printf("%s\n", err)
 					return nil
 				}
 
-				fmt.Printf("切换用户成功, %v\n", pcsconfig.Config.MustGetActive().Name)
+				fmt.Printf("切换用户成功, %s\n", pcsconfig.Config.MustGetActive().Name)
 				return nil
-
-			},
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "uid",
-					Usage: "百度帐号 uid 值",
-				},
 			},
 		},
 		{
@@ -666,19 +661,22 @@ func main() {
 					Aliases: []string{"at", "a"},
 					Usage:   "添加任务",
 					Action: func(c *cli.Context) error {
-						if c.NArg() <= 1 {
+						if c.NArg() < 1 {
 							cli.ShowCommandHelp(c, c.Command.Name)
 							return nil
 						}
 
-						sourceURL, savePath := c.Args().Get(0), c.Args().Get(1)
-						pcscommand.RunCloudDlAddTask(sourceURL, savePath)
+						pcscommand.RunCloudDlAddTask(c.Args(), c.String("path"))
 						return nil
+					},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:  "path",
+							Usage: "离线下载文件保存的路径",
+						},
 					},
 				},
 			},
-			Hidden:   true,
-			HideHelp: true,
 		},
 		{
 			// 兼容旧版本
