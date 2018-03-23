@@ -16,3 +16,12 @@ func (pcs *BaiduPCS) DownloadFile(path string, downloadFunc DownloadFunc) (err e
 
 	return downloadFunc(pcs.url.String(), pcs.client.Jar.(*cookiejar.Jar), pcsconfig.GetSavePath(path))
 }
+
+// DownloadStreamFile 下载流式文件
+func (pcs *BaiduPCS) DownloadStreamFile(path string, downloadFunc DownloadFunc) (err error) {
+	pcs.setPCSURL("stream", "download", map[string]string{
+		"path": path,
+	})
+
+	return downloadFunc(pcs.url.String(), pcs.client.Jar.(*cookiejar.Jar), pcsconfig.GetSavePath(path))
+}

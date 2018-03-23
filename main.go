@@ -649,6 +649,38 @@ func main() {
 			},
 		},
 		{
+			Name:     "offlinedl",
+			Aliases:  []string{"clouddl", "od"},
+			Usage:    "离线下载",
+			Category: "百度网盘",
+			Before:   reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NumFlags() <= 0 || c.NArg() <= 0 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+				}
+				return nil
+			},
+			Subcommands: []cli.Command{
+				{
+					Name:    "addtask",
+					Aliases: []string{"at", "a"},
+					Usage:   "添加任务",
+					Action: func(c *cli.Context) error {
+						if c.NArg() <= 1 {
+							cli.ShowCommandHelp(c, c.Command.Name)
+							return nil
+						}
+
+						sourceURL, savePath := c.Args().Get(0), c.Args().Get(1)
+						pcscommand.RunCloudDlAddTask(sourceURL, savePath)
+						return nil
+					},
+				},
+			},
+			Hidden:   true,
+			HideHelp: true,
+		},
+		{
 			// 兼容旧版本
 			Name:     "set",
 			Usage:    "修改程序配置项",

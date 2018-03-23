@@ -23,6 +23,8 @@ const (
 	operationUploadTmpFile             = "分片上传—文件分片及上传"
 	operationUploadCreateSuperFile     = "分片上传—合并分片文件"
 	operationFileDownload              = "下载单个文件"
+	operationStreamFileDownload        = "下载流式文件"
+	operationCloudDlAddTask            = "添加离线下载任务"
 )
 
 var (
@@ -46,12 +48,20 @@ func NewPCS(bduss string) *BaiduPCS {
 		Host:   "pcs.baidu.com",
 	}
 
+	cookie := &http.Cookie{
+		Name:  "BDUSS",
+		Value: bduss,
+	}
+
 	jar, _ := cookiejar.New(nil)
 	jar.SetCookies(pcsURL, []*http.Cookie{
-		&http.Cookie{
-			Name:  "BDUSS",
-			Value: bduss,
-		},
+		cookie,
+	})
+	jar.SetCookies((&url.URL{
+		Scheme: "http",
+		Host:   "pan.baidu.com",
+	}), []*http.Cookie{
+		cookie,
 	})
 	client.SetCookiejar(jar)
 
@@ -70,6 +80,25 @@ func (pcs *BaiduPCS) setPCSURL(subPath, method string, param ...map[string]strin
 
 	uv := pcs.url.Query()
 	uv.Set("app_id", fmt.Sprint(pcsconfig.Config.AppID))
+	uv.Set("method", method)
+	for k := range param {
+		for k2 := range param[k] {
+			uv.Set(k2, param[k][k2])
+		}
+	}
+
+	pcs.url.RawQuery = uv.Encode()
+}
+
+func (pcs *BaiduPCS) setPCSURL2(subPath, method string, param ...map[string]string) {
+	pcs.url = &url.URL{
+		Scheme: "http",
+		Host:   "pan.baidu.com",
+		Path:   "/rest/2.0/" + subPath,
+	}
+
+	uv := pcs.url.Query()
+	uv.Set("app_id", "250528")
 	uv.Set("method", method)
 	for k := range param {
 		for k2 := range param[k] {

@@ -283,3 +283,20 @@ func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(targetPath string, blockList .
 
 	return resp.Body, nil
 }
+
+// PrepareCloudDlAddTask 添加离线下载任务, 只返回服务器响应数据和错误信息
+func (pcs *BaiduPCS) PrepareCloudDlAddTask(sourceURL, savePath string) (dataReadCloser io.ReadCloser, err error) {
+	pcs.setPCSURL2("services/cloud_dl", "add_task", map[string]string{
+		"save_path":  savePath,
+		"source_url": sourceURL,
+		"timeout":    "86400",
+	})
+
+	resp, err := pcs.client.Req("POST", pcs.url.String(), nil, nil)
+	if err != nil {
+		handleRespClose(resp)
+		return nil, fmt.Errorf("%s, 网络错误, %s", operationCloudDlAddTask, err)
+	}
+
+	return resp.Body, nil
+}
