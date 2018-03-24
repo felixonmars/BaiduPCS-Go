@@ -10,21 +10,44 @@ import (
 )
 
 const (
-	operationQuotaInfo                 = "获取当前用户空间配额信息"
-	operationFilesDirectoriesBatchMeta = "获取文件/目录的元信息"
-	operationFilesDirectoriesList      = "获取目录下的文件列表"
-	operationRemove                    = "删除文件/目录"
-	operationMkdir                     = "创建目录"
-	operationRename                    = "重命名文件/目录"
-	operationCopy                      = "拷贝文件/目录"
-	operationMove                      = "移动文件/目录"
-	operationRapidUpload               = "秒传文件"
-	operationUpload                    = "上传单个文件"
-	operationUploadTmpFile             = "分片上传—文件分片及上传"
-	operationUploadCreateSuperFile     = "分片上传—合并分片文件"
-	operationFileDownload              = "下载单个文件"
-	operationStreamFileDownload        = "下载流式文件"
-	operationCloudDlAddTask            = "添加离线下载任务"
+	// OperationQuotaInfo 获取当前用户空间配额信息
+	OperationQuotaInfo = "获取当前用户空间配额信息"
+	// OperationFilesDirectoriesBatchMeta 获取文件/目录的元信息
+	OperationFilesDirectoriesBatchMeta = "获取文件/目录的元信息"
+	// OperationFilesDirectoriesList 获取目录下的文件列表
+	OperationFilesDirectoriesList = "获取目录下的文件列表"
+	// OperationRemove 删除文件/目录
+	OperationRemove = "删除文件/目录"
+	// OperationMkdir 创建目录
+	OperationMkdir = "创建目录"
+	// OperationRename 重命名文件/目录
+	OperationRename = "重命名文件/目录"
+	// OperationCopy 拷贝文件/目录
+	OperationCopy = "拷贝文件/目录"
+	// OperationMove 移动文件/目录
+	OperationMove = "移动文件/目录"
+	// OperationRapidUpload 秒传文件
+	OperationRapidUpload = "秒传文件"
+	// OperationUpload 上传单个文件
+	OperationUpload = "上传单个文件"
+	// OperationUploadTmpFile 分片上传—文件分片及上传
+	OperationUploadTmpFile = "分片上传—文件分片及上传"
+	// OperationUploadCreateSuperFile 分片上传—合并分片文件
+	OperationUploadCreateSuperFile = "分片上传—合并分片文件"
+	// OperationFileDownload 下载单个文件
+	OperationFileDownload = "下载单个文件"
+	// OperationStreamFileDownload 下载流式文件
+	OperationStreamFileDownload = "下载流式文件"
+	// OperationCloudDlAddTask 添加离线下载任务
+	OperationCloudDlAddTask = "添加离线下载任务"
+	// OperationCloudDlQueryTask 精确查询离线下载任务
+	OperationCloudDlQueryTask = "精确查询离线下载任务"
+	// OperationCloudDlListTask 查询离线下载任务列表
+	OperationCloudDlListTask = "查询离线下载任务列表"
+	// OperationCloudDlCancelTask 取消离线下载任务
+	OperationCloudDlCancelTask = "取消离线下载任务"
+	// OperationCloudDlDeleteTask 删除离线下载任务
+	OperationCloudDlDeleteTask = "删除离线下载任务"
 )
 
 var (

@@ -36,7 +36,7 @@ func (e *ErrInfo) Error() string {
 	}
 
 	code, msg := e.FindErr()
-	return fmt.Sprintf("%s 遇到错误, %s, 代码: %d, 消息: %s", e.Operation, StrRemoteError, code, msg)
+	return fmt.Sprintf("%s遇到错误, %s, 代码: %d, 消息: %s", e.Operation, StrRemoteError, code, msg)
 }
 
 // findErr 检查 PCS 错误, 查找已知错误

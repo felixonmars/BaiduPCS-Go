@@ -19,12 +19,12 @@ func (pcs *BaiduPCS) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string,
 
 	defer dataReadCloser.Close()
 
-	errInfo := NewErrorInfo(operationRapidUpload)
+	errInfo := NewErrorInfo(OperationRapidUpload)
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, %s, %s", operationRapidUpload, StrJSONParseError, err)
+		return fmt.Errorf("%s, %s, %s", OperationRapidUpload, StrJSONParseError, err)
 	}
 
 	switch errInfo.ErrCode {
@@ -53,14 +53,14 @@ func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (err error
 		*PathJSON
 		*ErrInfo
 	}{
-		ErrInfo: NewErrorInfo(operationUpload),
+		ErrInfo: NewErrorInfo(OperationUpload),
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 
 	err = d.Decode(jsonData)
 	if err != nil {
-		return fmt.Errorf("%s, %s, %s", operationUpload, StrJSONParseError, err)
+		return fmt.Errorf("%s, %s, %s", OperationUpload, StrJSONParseError, err)
 	}
 
 	if jsonData.ErrCode != 0 {
@@ -68,7 +68,7 @@ func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (err error
 	}
 
 	if jsonData.Path == "" {
-		return fmt.Errorf("%s, unknown response data, file saved path not found", operationUpload)
+		return fmt.Errorf("%s, unknown response data, file saved path not found", OperationUpload)
 	}
 
 	return nil
@@ -88,14 +88,14 @@ func (pcs *BaiduPCS) UploadTmpFile(uploadFunc UploadFunc) (md5 string, err error
 		MD5 string `json:"md5"`
 		*ErrInfo
 	}{
-		ErrInfo: NewErrorInfo(operationUploadTmpFile),
+		ErrInfo: NewErrorInfo(OperationUploadTmpFile),
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 
 	err = d.Decode(jsonData)
 	if err != nil {
-		return "", fmt.Errorf("%s, %s, %s", operationUpload, StrJSONParseError, err)
+		return "", fmt.Errorf("%s, %s, %s", OperationUpload, StrJSONParseError, err)
 	}
 
 	if jsonData.ErrCode != 0 {
@@ -104,7 +104,7 @@ func (pcs *BaiduPCS) UploadTmpFile(uploadFunc UploadFunc) (md5 string, err error
 
 	// 未找到md5
 	if jsonData.MD5 == "" {
-		return "", fmt.Errorf("%s, unknown response data, md5 not found", operationUpload)
+		return "", fmt.Errorf("%s, unknown response data, md5 not found", OperationUpload)
 	}
 
 	return jsonData.MD5, nil
@@ -119,12 +119,12 @@ func (pcs *BaiduPCS) UploadCreateSuperFile(targetPath string, blockList ...strin
 
 	defer dataReadCloser.Close()
 
-	errInfo := NewErrorInfo(operationUploadCreateSuperFile)
+	errInfo := NewErrorInfo(OperationUploadCreateSuperFile)
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, %s, %s", operationUploadCreateSuperFile, StrJSONParseError, err)
+		return fmt.Errorf("%s, %s, %s", OperationUploadCreateSuperFile, StrJSONParseError, err)
 	}
 
 	if errInfo.ErrCode != 0 {

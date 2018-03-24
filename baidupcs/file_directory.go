@@ -94,13 +94,13 @@ func (pcs *BaiduPCS) FilesDirectoriesBatchMeta(paths ...string) (data FileDirect
 
 	// 服务器返回数据进行处理
 	jsonData := &fdData{
-		ErrInfo: NewErrorInfo(operationFilesDirectoriesBatchMeta),
+		ErrInfo: NewErrorInfo(OperationFilesDirectoriesBatchMeta),
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(jsonData)
 	if err != nil {
-		return nil, fmt.Errorf("%s, json 数据解析失败, %s", operationFilesDirectoriesBatchMeta, err)
+		return nil, fmt.Errorf("%s, json 数据解析失败, %s", OperationFilesDirectoriesBatchMeta, err)
 	}
 
 	// 错误处理
@@ -128,13 +128,13 @@ func (pcs *BaiduPCS) FilesDirectoriesList(path string, recurse bool) (data FileD
 	defer dataReadCloser.Close()
 
 	jsonData := &fdData{
-		ErrInfo: NewErrorInfo(operationFilesDirectoriesList),
+		ErrInfo: NewErrorInfo(OperationFilesDirectoriesList),
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(jsonData)
 	if err != nil {
-		return nil, fmt.Errorf("%s, json 数据解析失败, %s", operationFilesDirectoriesList, err)
+		return nil, fmt.Errorf("%s, json 数据解析失败, %s", OperationFilesDirectoriesList, err)
 	}
 
 	// 错误处理

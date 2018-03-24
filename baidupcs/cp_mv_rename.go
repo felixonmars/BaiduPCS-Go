@@ -7,7 +7,7 @@ import (
 
 // Rename 重命名文件/目录
 func (pcs *BaiduPCS) Rename(from, to string) (err error) {
-	return pcs.cpmvOp(operationRename, &CpMvJSON{
+	return pcs.cpmvOp(OperationRename, &CpMvJSON{
 		From: from,
 		To:   to,
 	})
@@ -15,12 +15,12 @@ func (pcs *BaiduPCS) Rename(from, to string) (err error) {
 
 // Copy 批量拷贝文件/目录
 func (pcs *BaiduPCS) Copy(cpmvJSON ...*CpMvJSON) (err error) {
-	return pcs.cpmvOp(operationCopy, cpmvJSON...)
+	return pcs.cpmvOp(OperationCopy, cpmvJSON...)
 }
 
 // Move 批量移动文件/目录
 func (pcs *BaiduPCS) Move(cpmvJSON ...*CpMvJSON) (err error) {
-	return pcs.cpmvOp(operationMove, cpmvJSON...)
+	return pcs.cpmvOp(OperationMove, cpmvJSON...)
 }
 
 func (pcs *BaiduPCS) cpmvOp(op string, cpmvJSON ...*CpMvJSON) (err error) {

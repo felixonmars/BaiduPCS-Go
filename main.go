@@ -657,9 +657,10 @@ func main() {
 			},
 			Subcommands: []cli.Command{
 				{
-					Name:    "addtask",
-					Aliases: []string{"at", "a"},
-					Usage:   "添加任务",
+					Name:      "addtask",
+					Aliases:   []string{"at", "a"},
+					Usage:     "添加离线下载任务",
+					UsageText: app.Name + " offlinedl addtask -path=<离线下载文件保存的路径> 资源地址1 地址2 ...",
 					Action: func(c *cli.Context) error {
 						if c.NArg() < 1 {
 							cli.ShowCommandHelp(c, c.Command.Name)
@@ -672,8 +673,84 @@ func main() {
 					Flags: []cli.Flag{
 						cli.StringFlag{
 							Name:  "path",
-							Usage: "离线下载文件保存的路径",
+							Usage: "离线下载文件保存的路径, 默认为工作目录",
 						},
+					},
+				},
+				{
+					Name:      "querytask",
+					Aliases:   []string{"qt", "q"},
+					Usage:     "精确查询离线下载任务",
+					UsageText: app.Name + " offlinedl querytask 任务ID1 任务ID2 ...",
+					Action: func(c *cli.Context) error {
+						if c.NArg() < 1 {
+							cli.ShowCommandHelp(c, c.Command.Name)
+							return nil
+						}
+
+						taskIDs := pcsutil.SliceStringToInt64(c.Args())
+
+						if len(taskIDs) == 0 {
+							fmt.Printf("未找到合法的任务ID, task_id\n")
+							return nil
+						}
+
+						pcscommand.RunCloudDlQueryTask(taskIDs)
+						return nil
+					},
+				},
+				{
+					Name:      "listtask",
+					Aliases:   []string{"lt", "l"},
+					Usage:     "查询离线下载任务列表",
+					UsageText: app.Name + " offlinedl listtask",
+					Action: func(c *cli.Context) error {
+						pcscommand.RunCloudDlListTask()
+						return nil
+					},
+				},
+				{
+					Name:      "canceltask",
+					Aliases:   []string{"ct", "c"},
+					Usage:     "取消离线下载任务",
+					UsageText: app.Name + " offlinedl listtask 任务ID1 任务ID2 ...",
+					Action: func(c *cli.Context) error {
+						if c.NArg() < 1 {
+							cli.ShowCommandHelp(c, c.Command.Name)
+							return nil
+						}
+
+						taskIDs := pcsutil.SliceStringToInt64(c.Args())
+
+						if len(taskIDs) == 0 {
+							fmt.Printf("未找到合法的任务ID, task_id\n")
+							return nil
+						}
+
+						pcscommand.RunCloudDlCancelTask(taskIDs)
+						return nil
+					},
+				},
+				{
+					Name:      "deletetask",
+					Aliases:   []string{"dt", "d"},
+					Usage:     "删除离线下载任务",
+					UsageText: app.Name + " offlinedl deletetask 任务ID1 任务ID2 ...",
+					Action: func(c *cli.Context) error {
+						if c.NArg() < 1 {
+							cli.ShowCommandHelp(c, c.Command.Name)
+							return nil
+						}
+
+						taskIDs := pcsutil.SliceStringToInt64(c.Args())
+
+						if len(taskIDs) == 0 {
+							fmt.Printf("未找到合法的任务ID, task_id\n")
+							return nil
+						}
+
+						pcscommand.RunCloudDlDeleteTask(taskIDs)
+						return nil
 					},
 				},
 			},

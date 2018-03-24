@@ -14,12 +14,12 @@ func (pcs *BaiduPCS) Remove(paths ...string) (err error) {
 
 	defer dataReadCloser.Close()
 
-	errInfo := NewErrorInfo(operationRemove)
+	errInfo := NewErrorInfo(OperationRemove)
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, json 数据解析失败, %s", operationRemove, err)
+		return fmt.Errorf("%s, json 数据解析失败, %s", OperationRemove, err)
 	}
 
 	if errInfo.ErrCode != 0 {
@@ -38,12 +38,12 @@ func (pcs *BaiduPCS) Mkdir(pcspath string) (err error) {
 
 	defer dataReadCloser.Close()
 
-	errInfo := NewErrorInfo(operationMkdir)
+	errInfo := NewErrorInfo(OperationMkdir)
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, json 数据解析失败, %s", operationMkdir, err)
+		return fmt.Errorf("%s, json 数据解析失败, %s", OperationMkdir, err)
 	}
 
 	if errInfo.ErrCode != 0 {

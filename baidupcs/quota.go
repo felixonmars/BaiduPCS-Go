@@ -22,13 +22,13 @@ func (pcs *BaiduPCS) QuotaInfo() (quota, used int64, err error) {
 	defer dataReadCloser.Close()
 
 	quotaInfo := &quotaInfo{
-		ErrInfo: NewErrorInfo(operationQuotaInfo),
+		ErrInfo: NewErrorInfo(OperationQuotaInfo),
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(quotaInfo)
 	if err != nil {
-		return 0, 0, fmt.Errorf("%s, json 数据解析失败, %s", operationQuotaInfo, err)
+		return 0, 0, fmt.Errorf("%s, json 数据解析失败, %s", OperationQuotaInfo, err)
 	}
 
 	if quotaInfo.ErrCode != 0 {

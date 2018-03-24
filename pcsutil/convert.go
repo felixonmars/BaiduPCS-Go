@@ -2,6 +2,7 @@ package pcsutil
 
 import (
 	"fmt"
+	"strconv"
 	"unsafe"
 )
 
@@ -60,6 +61,35 @@ func ToBytes(str string) []byte {
 // IntToBool int 类型转换为 bool
 func IntToBool(i int) bool {
 	return i != 0
+}
+
+// SliceStringToInt64 []string 转换为 []int64
+func SliceStringToInt64(ss []string) (si []int64) {
+	si = make([]int64, 0, len(ss))
+	var (
+		i   int64
+		err error
+	)
+	for k := range ss {
+		i, err = strconv.ParseInt(ss[k], 10, 64)
+		if err != nil {
+			continue
+		}
+		si = append(si, i)
+	}
+	return
+}
+
+// MustInt 将string转换为int, 忽略错误
+func MustInt(s string) (n int) {
+	n, _ = strconv.Atoi(s)
+	return
+}
+
+// MustInt64 将string转换为int64, 忽略错误
+func MustInt64(s string) (i int64) {
+	i, _ = strconv.ParseInt(s, 10, 64)
+	return
 }
 
 // ShortDisplay 缩略显示字符串s, 显示长度为num, 缩略的内容用"..."填充
