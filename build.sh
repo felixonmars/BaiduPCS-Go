@@ -2,7 +2,7 @@ name="BaiduPCS-Go"
 version=$1
 
 if [ "$1" = "" ];then
-    version=v3.3.1
+    version=v3.3.2
 fi
 
 output="out/"

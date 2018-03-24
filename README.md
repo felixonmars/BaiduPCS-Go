@@ -98,7 +98,7 @@ BaiduPCS-Go loglist
 
 ## 切换已登录的百度帐号
 ```
-BaiduPCS-Go su -uid=12345678
+BaiduPCS-Go su <uid>
 ```
 ```
 BaiduPCS-Go su
@@ -324,6 +324,57 @@ BaiduPCS-Go mv /我的资源/1.mp4 /
 
 # 将 /我的资源/1.mp4 重命名为 /我的资源/3.mp4
 BaiduPCS-Go mv /我的资源/1.mp4 /我的资源/3.mp4
+```
+
+## 离线下载
+```
+BaiduPCS-Go offlinedl
+BaiduPCS-Go clouddl
+BaiduPCS-Go od
+```
+
+离线下载支持http/https/ftp/电驴/磁力链协议
+
+### 添加离线下载任务
+```
+BaiduPCS-Go offlinedl add -path=<离线下载文件保存的路径> 资源地址1 地址2 ...
+```
+
+添加任务成功之后, 返回离线下载的任务ID.
+
+### 精确查询离线下载任务
+```
+BaiduPCS-Go offlinedl query 任务ID1 任务ID2 ...
+```
+
+### 查询离线下载任务列表
+```
+BaiduPCS-Go offlinedl list
+```
+
+### 取消离线下载任务
+```
+BaiduPCS-Go offlinedl cancel 任务ID1 任务ID2 ...
+```
+
+### 删除离线下载任务
+```
+BaiduPCS-Go offlinedl delete 任务ID1 任务ID2 ...
+```
+
+#### 例子
+```
+# 将百度和腾讯主页, 离线下载到根目录 /
+BaiduPCS-Go offlinedl add -path=/ http://baidu.com http://qq.com
+
+# 添加磁力链接任务
+BaiduPCS-Go offlinedl add magnet:?xt=urn:btih:xxx
+
+# 查询任务ID为 12345 的离线下载任务状态
+BaiduPCS-Go offlinedl query 
+
+# 取消任务ID为 12345 的离线下载任务
+BaiduPCS-Go offlinedl cancel 12345
 ```
 
 ## 显示和修改程序配置项

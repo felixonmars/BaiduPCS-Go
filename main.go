@@ -27,7 +27,7 @@ import (
 
 var (
 	// Version 版本号
-	Version = "v3.3.1"
+	Version = "v3.3.2"
 
 	historyFilePath = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
@@ -644,11 +644,12 @@ func main() {
 			},
 		},
 		{
-			Name:     "offlinedl",
-			Aliases:  []string{"clouddl", "od"},
-			Usage:    "离线下载",
-			Category: "百度网盘",
-			Before:   reloadFn,
+			Name:        "offlinedl",
+			Aliases:     []string{"clouddl", "od"},
+			Usage:       "离线下载",
+			Description: `支持http/https/ftp/电驴/磁力链协议`,
+			Category:    "百度网盘",
+			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NumFlags() <= 0 || c.NArg() <= 0 {
 					cli.ShowCommandHelp(c, c.Command.Name)
@@ -657,10 +658,10 @@ func main() {
 			},
 			Subcommands: []cli.Command{
 				{
-					Name:      "addtask",
-					Aliases:   []string{"at", "a"},
+					Name:      "add",
+					Aliases:   []string{"a"},
 					Usage:     "添加离线下载任务",
-					UsageText: app.Name + " offlinedl addtask -path=<离线下载文件保存的路径> 资源地址1 地址2 ...",
+					UsageText: app.Name + " offlinedl add -path=<离线下载文件保存的路径> 资源地址1 地址2 ...",
 					Action: func(c *cli.Context) error {
 						if c.NArg() < 1 {
 							cli.ShowCommandHelp(c, c.Command.Name)
@@ -678,10 +679,10 @@ func main() {
 					},
 				},
 				{
-					Name:      "querytask",
-					Aliases:   []string{"qt", "q"},
+					Name:      "query",
+					Aliases:   []string{"q"},
 					Usage:     "精确查询离线下载任务",
-					UsageText: app.Name + " offlinedl querytask 任务ID1 任务ID2 ...",
+					UsageText: app.Name + " offlinedl query 任务ID1 任务ID2 ...",
 					Action: func(c *cli.Context) error {
 						if c.NArg() < 1 {
 							cli.ShowCommandHelp(c, c.Command.Name)
@@ -700,20 +701,20 @@ func main() {
 					},
 				},
 				{
-					Name:      "listtask",
-					Aliases:   []string{"lt", "l"},
+					Name:      "list",
+					Aliases:   []string{"ls", "l"},
 					Usage:     "查询离线下载任务列表",
-					UsageText: app.Name + " offlinedl listtask",
+					UsageText: app.Name + " offlinedl list",
 					Action: func(c *cli.Context) error {
 						pcscommand.RunCloudDlListTask()
 						return nil
 					},
 				},
 				{
-					Name:      "canceltask",
-					Aliases:   []string{"ct", "c"},
+					Name:      "cancel",
+					Aliases:   []string{"c"},
 					Usage:     "取消离线下载任务",
-					UsageText: app.Name + " offlinedl listtask 任务ID1 任务ID2 ...",
+					UsageText: app.Name + " offlinedl cancel 任务ID1 任务ID2 ...",
 					Action: func(c *cli.Context) error {
 						if c.NArg() < 1 {
 							cli.ShowCommandHelp(c, c.Command.Name)
@@ -732,10 +733,10 @@ func main() {
 					},
 				},
 				{
-					Name:      "deletetask",
-					Aliases:   []string{"dt", "d"},
+					Name:      "delete",
+					Aliases:   []string{"del", "d"},
 					Usage:     "删除离线下载任务",
-					UsageText: app.Name + " offlinedl deletetask 任务ID1 任务ID2 ...",
+					UsageText: app.Name + " offlinedl delete 任务ID1 任务ID2 ...",
 					Action: func(c *cli.Context) error {
 						if c.NArg() < 1 {
 							cli.ShowCommandHelp(c, c.Command.Name)
