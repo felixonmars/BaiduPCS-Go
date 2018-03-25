@@ -106,7 +106,7 @@ func RunDownload(testing bool, parallel int, paths []string) {
 	}
 
 	fmt.Printf("\n")
-	fmt.Printf("[0] 提示: 当前下载最大并发量为: %d\n", cfg.Parallel)
+	fmt.Printf("[0] 提示: 当前下载最大并发量为: %d, 下载缓存为: %d\n", cfg.Parallel, cfg.CacheSize)
 
 	dlist := list.New()
 	lastID := 0

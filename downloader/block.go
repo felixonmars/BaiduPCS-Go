@@ -18,8 +18,9 @@ type Block struct {
 	speedsStat SpeedsStat
 	IsFinal    bool `json:"isfinal"` // 最后线程, 因为最后的下载线程, 需要另外做处理
 
-	resp    *http.Response
-	running int // 线程的载入量
+	resp        *http.Response
+	running     int  // 线程的载入量
+	waitToWrite bool // 是否正在写入硬盘
 }
 
 // BlockList 下载区块列表
@@ -147,6 +148,9 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 	block.resp, err = der.Config.Client.Req("GET", der.URL, nil, map[string]string{
 		"Range": fmt.Sprintf("bytes=%d-%d", atomic.LoadInt64(&block.Begin), atomic.LoadInt64(&block.End)),
 	})
+	if block.resp != nil {
+		defer block.resp.Body.Close()
+	}
 	if err != nil {
 		return 2, err
 	}
@@ -179,8 +183,6 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 		return 2, errors.New(block.resp.Status)
 	}
 
-	defer block.resp.Body.Close()
-
 	var (
 		buf        = cachepool.SetIfNotExist(int32(id), der.Config.CacheSize)
 		n          int
@@ -212,6 +214,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 		}
 
 		if !der.Config.Testing {
+			block.waitToWrite = true
 			der.writeMu.Lock()                                    // 加锁, 减轻硬盘的压力
 			_, writeErr = der.status.file.WriteAt(buf[:n], begin) // 写入数据
 			if writeErr != nil {
@@ -222,6 +225,7 @@ func (der *Downloader) execBlock(id int) (code int, err error) {
 			}
 
 			der.writeMu.Unlock() //解锁
+			block.waitToWrite = false
 		}
 
 		// 两次 begin 不相等, 可能已有新的空闲线程参与

@@ -103,7 +103,7 @@ BaiduPCS-Go su <uid>
 ```
 BaiduPCS-Go su
 
-请输入要切换帐号的 index 值 > 
+请输入要切换帐号的 # 值 > 
 ```
 
 ## 退出当前登录的百度帐号
@@ -230,16 +230,19 @@ BaiduPCS-Go upload C:/Users/Administrator/Desktop /视频
 
 ## 手动秒传文件
 ```
-BaiduPCS-Go rapidupload -length=<文件的大小> -md5=<文件的 md5 值> -slicemd5=<文件前 256KB 切片的 md5 值> -crc32=<文件的 crc32 值 (可选)> <保存的网盘路径, 需包含文件名>
-BaiduPCS-Go ru -length=<文件的大小> -md5=<文件的 md5 值> -slicemd5=<文件前 256KB 切片的 md5 值> -crc32=<文件的 crc32 值 (可选)> <保存的网盘路径, 需包含文件名>
+BaiduPCS-Go rapidupload -length=<文件的大小> -md5=<文件的md5值> -slicemd5=<文件前256KB切片的md5值(可选)> -crc32=<文件的crc32值(可选)> <保存的网盘路径, 需包含文件名>
+BaiduPCS-Go ru -length=<文件的大小> -md5=<文件的md5值> -slicemd5=<文件前256KB切片的md5值(可选)> -crc32=<文件的crc32值(可选)> <保存的网盘路径, 需包含文件名>
 ```
 
-注意: 使用此功能秒传文件, 前提是知道文件的大小, md5, 前256KB切片的 md5, crc32 (可选), 且百度网盘中存在一模一样的文件.
+注意: 使用此功能秒传文件, 前提是知道文件的大小, md5, 前256KB切片的 md5 (可选), crc32 (可选), 且百度网盘中存在一模一样的文件.
 
 #### 例子:
 ```
 # 如果秒传成功, 则保存到网盘路径 /test
 BaiduPCS-Go rapidupload -length=56276137 -md5=fbe082d80e90f90f0fb1f94adbbcfa7f -slicemd5=38c6a75b0ec4499271d4ea38a667ab61 -crc32=314332359 /test
+
+# 精简一下, 如果秒传成功, 则保存到网盘路径 /test
+BaiduPCS-Go rapidupload -length=56276137 -md5=fbe082d80e90f90f0fb1f94adbbcfa7f /test
 ```
 
 ## 获取文件的秒传信息
@@ -371,7 +374,7 @@ BaiduPCS-Go offlinedl add -path=/ http://baidu.com http://qq.com
 BaiduPCS-Go offlinedl add magnet:?xt=urn:btih:xxx
 
 # 查询任务ID为 12345 的离线下载任务状态
-BaiduPCS-Go offlinedl query 
+BaiduPCS-Go offlinedl query 12345
 
 # 取消任务ID为 12345 的离线下载任务
 BaiduPCS-Go offlinedl cancel 12345

@@ -56,9 +56,9 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 				atomic.StoreInt64(&der.status.StatusStat.maxSpeeds, 0)
 				for k := range der.status.BlockList {
 					go func(k int) {
-						// 重设长时间无响应, 和下载速度为 0 的线程
+						// 重设长时间无响应, 和下载速度为 0 的线程, 忽略正在写入数据到硬盘的
 						// 过滤速度有变化的线程
-						if atomic.LoadInt64(&der.status.BlockList[k].speed) != 0 {
+						if der.status.BlockList[k].waitToWrite || atomic.LoadInt64(&der.status.BlockList[k].speed) != 0 {
 							return
 						}
 
