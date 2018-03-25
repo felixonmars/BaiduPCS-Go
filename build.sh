@@ -86,10 +86,10 @@ Build $name-$version"-linux-amd64" linux amd64
 Build $name-$version"-linux-armv5" linux arm 5
 Build $name-$version"-linux-armv7" linux arm 7
 Build $name-$version"-linux-arm64" linux arm64
-# Build $name-$version"-linux-mips" linux mips
-# Build $name-$version"-linux-mips64" linux mips64
-# Build $name-$version"-linux-mipsel" linux mipsle
-# Build $name-$version"-linux-mips64el" linux mips64le
+Build $name-$version"-linux-mips" linux mips
+Build $name-$version"-linux-mips64" linux mips64
+Build $name-$version"-linux-mipsel" linux mipsle
+Build $name-$version"-linux-mips64el" linux mips64le
 # Build $name-$version"-linux-ppc64" linux ppc64
 # Build $name-$version"-linux-ppc64le" linux ppc64le
 # Build $name-$version"-linux-s390x" linux s390x
