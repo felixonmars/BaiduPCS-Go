@@ -366,7 +366,7 @@ func main() {
 		},
 		{
 			Name:     "quota",
-			Usage:    "获取配额, 即获取网盘总空间, 和已使用空间",
+			Usage:    "获取配额, 即获取网盘的总储存空间, 和已使用的储存空间",
 			Category: "百度网盘",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
@@ -509,13 +509,17 @@ func main() {
 			},
 		},
 		{
-			Name:        "download",
-			Aliases:     []string{"d"},
-			Usage:       "下载文件或目录",
-			UsageText:   fmt.Sprintf("%s download <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", app.Name),
-			Description: "下载的文件将会保存到, 程序所在目录的 download/ 目录 (文件夹).\n   已支持目录下载.\n   已支持多个文件或目录下载.\n   自动跳过下载重名的文件! \n",
-			Category:    "百度网盘",
-			Before:      reloadFn,
+			Name:      "download",
+			Aliases:   []string{"d"},
+			Usage:     "下载文件或目录",
+			UsageText: fmt.Sprintf("%s download <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", app.Name),
+			Description: `下载的文件默认保存到, 程序所在目录的 download/ 目录.
+	通过 BaiduPCS-Go config set -savedir <savedir>, 自定义保存的目录.
+	已支持目录下载.
+	已支持多个文件或目录下载.
+	自动跳过下载重名的文件!`,
+			Category: "百度网盘",
+			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() == 0 {
 					cli.ShowCommandHelp(c, c.Command.Name)
@@ -537,13 +541,16 @@ func main() {
 			},
 		},
 		{
-			Name:        "upload",
-			Aliases:     []string{"u"},
-			Usage:       "上传文件或目录",
-			UsageText:   fmt.Sprintf("%s upload <本地文件或目录的路径1> <文件或目录2> <文件或目录3> ... <网盘的目标目录>", app.Name),
-			Description: "上传的文件将会保存到 网盘的目标目录.\n   遇到同名文件将会自动覆盖! \n",
-			Category:    "百度网盘",
-			Before:      reloadFn,
+			Name:      "upload",
+			Aliases:   []string{"u"},
+			Usage:     "上传文件或目录",
+			UsageText: fmt.Sprintf("%s upload <本地文件或目录的路径1> <文件或目录2> <文件或目录3> ... <网盘的目标目录>", app.Name),
+			Description: `上传的文件将会保存到, 网盘的目标目录.
+	遇到同名文件将会自动覆盖!!
+	当上传的文件名和网盘的目录名称相同时, 不会覆盖目录, 防止丢失数据.
+`,
+			Category: "百度网盘",
+			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() <= 1 {
 					cli.ShowCommandHelp(c, c.Command.Name)
