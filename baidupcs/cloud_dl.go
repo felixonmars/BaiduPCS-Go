@@ -199,6 +199,11 @@ func (pcs *BaiduPCS) CloudDlListTask() (cl CloudDlTaskList, err error) {
 		return nil, taskInfo.ErrInfo
 	}
 
+	// 没有任务
+	if len(taskInfo.TaskInfo) <= 0 {
+		return CloudDlTaskList{}, nil
+	}
+
 	var (
 		taskID  int64
 		taskIDs = make([]int64, 0, len(taskInfo.TaskInfo))
