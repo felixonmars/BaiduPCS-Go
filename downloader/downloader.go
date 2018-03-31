@@ -47,10 +47,13 @@ func NewDownloader(durl string, cfg Config) (der *Downloader, err error) {
 }
 
 // Execute 开始执行下载
-func (der *Downloader) Execute() (err error) {
+func (der *Downloader) Execute() (done <-chan struct{}, err error) {
+	d := make(chan struct{}, 0)
+
 	if !der.checked {
 		err = der.Check()
 		if err != nil {
+			d <- struct{}{}
 			return
 		}
 	}
@@ -90,7 +93,13 @@ func (der *Downloader) Execute() (err error) {
 		}
 	}
 
+	verbosef("DEBUG: download start\n")
+
 	go func() {
+		defer func() {
+			d <- struct{}{}
+		}()
+
 		trigger(der.OnExecute)
 
 		// 开始下载
@@ -116,9 +125,10 @@ func (der *Downloader) Execute() (err error) {
 		der.status.done = true
 		der.status.file.Close()
 		trigger(der.OnFinish)
+		verbosef("DEBUG: download finish\n")
 	}()
 
-	return err
+	return d, nil
 }
 
 // Pause 暂停下载, 不支持单线程暂停下载

@@ -182,7 +182,9 @@ func (pcs *BaiduPCS) PrepareMove(cpmvJSON ...*CpMvJSON) (dataReadCloser io.ReadC
 
 // PrepareRapidUpload 秒传文件, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) (dataReadCloser io.ReadCloser, err error) {
-	if targetPath == "/" || pcs.Isdir(targetPath) {
+	// 检测文件是否存在于网盘路径
+	// 很重要, 如果文件存在会直接覆盖!!! 即使是根目录!
+	if !pcs.IsFile(targetPath) {
 		return nil, fmt.Errorf("%s 遇到错误, 保存路径不可以覆盖目录", OperationRapidUpload)
 	}
 
@@ -206,7 +208,7 @@ func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 
 
 // PrepareUpload 上传单个文件, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareUpload(targetPath string, uploadFunc UploadFunc) (dataReadCloser io.ReadCloser, err error) {
-	if targetPath == "/" || pcs.Isdir(targetPath) {
+	if !pcs.IsFile(targetPath) {
 		return nil, fmt.Errorf("%s, 遇到错误, 保存路径不可以覆盖目录", OperationUpload)
 	}
 
@@ -251,7 +253,7 @@ func (pcs *BaiduPCS) PrepareUploadTmpFile(uploadFunc UploadFunc) (dataReadCloser
 
 // PrepareUploadCreateSuperFile 分片上传—合并分片文件, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(targetPath string, blockList ...string) (dataReadCloser io.ReadCloser, err error) {
-	if targetPath == "/" || pcs.Isdir(targetPath) {
+	if !pcs.IsFile(targetPath) {
 		return nil, fmt.Errorf("%s 遇到错误, 保存路径不可以覆盖目录", OperationUploadCreateSuperFile)
 	}
 

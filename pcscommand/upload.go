@@ -195,13 +195,6 @@ func RunRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64
 		fmt.Printf("警告: 尝试秒传文件, 获取网盘路径 %s 错误, %s\n", targetPath, err)
 	}
 
-	// 检测文件是否存在于网盘路径
-	// 很重要, 如果文件存在会直接覆盖!!! 即使是根目录!
-	if info.Isdir(targetPath) {
-		fmt.Printf("错误: 路径 %s 是一个目录, 不可覆盖\n", targetPath)
-		return
-	}
-
 	if sliceMD5 == "" {
 		sliceMD5 = "ec87a838931d4d5d2e94a04644788a55" // 长度为32
 	}
@@ -264,8 +257,8 @@ func RunUpload(localPaths []string, savePath string) {
 				lastID++
 				ulist.PushBack(&utask{
 					ListTask: ListTask{
-						id:       lastID,
-						maxRetry: 3,
+						ID:       lastID,
+						MaxRetry: 3,
 					},
 					uploadInfo: &LocalPathInfo{
 						Path: walkedFiles[k3],
@@ -298,14 +291,14 @@ func RunUpload(localPaths []string, savePath string) {
 			// 不重试的情况
 			switch {
 			case strings.Contains(err.Error(), baidupcs.StrRemoteError):
-				fmt.Printf("[%d] %s, %s\n", task.id, errManifest, err)
+				fmt.Printf("[%d] %s, %s\n", task.ID, errManifest, err)
 				return
 			}
 
-			fmt.Printf("[%d] %s, %s, 重试 %d/%d\n", task.id, errManifest, err, task.retry, task.maxRetry)
+			fmt.Printf("[%d] %s, %s, 重试 %d/%d\n", task.ID, errManifest, err, task.retry, task.MaxRetry)
 
 			// 未达到失败重试最大次数, 将任务推送到队列末尾
-			if task.retry < task.maxRetry {
+			if task.retry < task.MaxRetry {
 				task.retry++
 				ulist.PushBack(task)
 				time.Sleep(3 * time.Duration(task.retry) * time.Second)
@@ -329,10 +322,10 @@ func RunUpload(localPaths []string, savePath string) {
 			continue
 		}
 
-		fmt.Printf("[%d] 准备上传: %s\n", task.id, task.uploadInfo.Path)
+		fmt.Printf("[%d] 准备上传: %s\n", task.ID, task.uploadInfo.Path)
 
 		if !task.uploadInfo.OpenPath() {
-			fmt.Printf("[%d] 文件不可读, 跳过...\n", task.id)
+			fmt.Printf("[%d] 文件不可读, 跳过...\n", task.ID)
 			task.uploadInfo.Close()
 			continue
 		}
@@ -348,7 +341,7 @@ func RunUpload(localPaths []string, savePath string) {
 		}
 
 		if task.uploadInfo.Length >= 128*pcsutil.MB {
-			fmt.Printf("[%d] 检测秒传中, 请稍候...\n", task.id)
+			fmt.Printf("[%d] 检测秒传中, 请稍候...\n", task.ID)
 		}
 
 		task.uploadInfo.Md5Sum()
@@ -358,7 +351,7 @@ func RunUpload(localPaths []string, savePath string) {
 		if fd != nil {
 			decodedMD5, _ := hex.DecodeString(fd.MD5)
 			if bytes.Compare(decodedMD5, task.uploadInfo.MD5) == 0 {
-				fmt.Printf("[%d] 目标文件, %s, 已存在, 跳过...\n", task.id, task.savePath)
+				fmt.Printf("[%d] 目标文件, %s, 已存在, 跳过...\n", task.ID, task.savePath)
 				continue
 			}
 		}
@@ -377,14 +370,14 @@ func RunUpload(localPaths []string, savePath string) {
 
 		err := info.RapidUpload(task.savePath, hex.EncodeToString(task.uploadInfo.MD5), hex.EncodeToString(task.uploadInfo.SliceMD5), fmt.Sprint(task.uploadInfo.CRC32), task.uploadInfo.Length)
 		if err == nil {
-			fmt.Printf("[%d] 秒传成功, 保存到网盘路径: %s\n\n", task.id, task.savePath)
+			fmt.Printf("[%d] 秒传成功, 保存到网盘路径: %s\n\n", task.ID, task.savePath)
 
 			task.uploadInfo.Close() // 关闭文件
 			totalSize += task.uploadInfo.Length
 			continue
 		}
 
-		fmt.Printf("[%d] 秒传失败, 开始上传文件...\n\n", task.id)
+		fmt.Printf("[%d] 秒传失败, 开始上传文件...\n\n", task.ID)
 
 		// 秒传失败, 开始上传文件
 		err = info.Upload(task.savePath, func(uploadURL string, jar *cookiejar.Jar) (resp *http.Response, uperr error) {
@@ -407,11 +400,11 @@ func RunUpload(localPaths []string, savePath string) {
 						}
 
 						if v.Length == 0 {
-							fmt.Printf("\r[%d] Prepareing upload...", task.id)
+							fmt.Printf("\r[%d] Prepareing upload...", task.ID)
 							continue
 						}
 
-						fmt.Printf("\r[%d] ↑ %s/%s %s/s in %s ............", task.id,
+						fmt.Printf("\r[%d] ↑ %s/%s %s/s in %s ............", task.ID,
 							pcsutil.ConvertFileSize(v.Uploaded, 2),
 							pcsutil.ConvertFileSize(v.Length, 2),
 							pcsutil.ConvertFileSize(v.Speed, 2),
@@ -442,7 +435,7 @@ func RunUpload(localPaths []string, savePath string) {
 			continue
 		}
 
-		fmt.Printf("[%d] 上传文件成功, 保存到网盘路径: %s\n", task.id, task.savePath)
+		fmt.Printf("[%d] 上传文件成功, 保存到网盘路径: %s\n", task.ID, task.savePath)
 		task.uploadInfo.Close() // 关闭文件
 		totalSize += task.uploadInfo.Length
 	}
@@ -457,6 +450,8 @@ func GetFileSum(localPath string, opt *SumOption) (lp *LocalPathInfo, err error)
 	if err != nil {
 		return nil, err
 	}
+
+	defer file.Close()
 
 	fileStat, err := file.Stat()
 	if err != nil {
@@ -474,5 +469,5 @@ func GetFileSum(localPath string, opt *SumOption) (lp *LocalPathInfo, err error)
 
 	lp.Sum(*opt)
 
-	return lp, lp.Close() // 这个才有用
+	return lp, nil
 }

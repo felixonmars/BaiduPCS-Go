@@ -23,7 +23,7 @@ func RunLs(path string) {
 		return
 	}
 
-	fmt.Printf("\n当前工作目录: %s\n----\n", path)
+	fmt.Printf("\n当前目录: %s\n----\n", path)
 
 	tb := pcstable.NewTable(os.Stdout)
 	tb.SetHeader([]string{"#", "文件大小", "创建日期", "文件(目录)"})
@@ -45,7 +45,7 @@ func RunLs(path string) {
 	tb.Render()
 
 	if fN+dN >= 50 {
-		fmt.Printf("\n当前工作目录: %s\n", path)
+		fmt.Printf("\n当前目录: %s\n", path)
 	}
 
 	fmt.Printf("----\n")

@@ -52,6 +52,9 @@ func getDownloadFunc(id int, cfg *downloader.Config) baidupcs.DownloadFunc {
 			ds := download.GetStatusChan()
 			for {
 				select {
+				case <-exitDownloadFunc:
+					fmt.Println()
+					return
 				case v, ok := <-ds:
 					if !ok { // channel 已经关闭
 						return
@@ -71,8 +74,11 @@ func getDownloadFunc(id int, cfg *downloader.Config) baidupcs.DownloadFunc {
 			exitDownloadFunc <- struct{}{}
 		}
 
-		download.Execute()
-		<-exitDownloadFunc
+		done, err := download.Execute()
+		if err != nil {
+			return fmt.Errorf("[%d] 下载发生错误, %s", id, err)
+		}
+		<-done
 
 		if !cfg.Testing {
 			fmt.Printf("\n\n[%d] 下载完成, 保存位置: %s\n\n", id, savePath)
@@ -115,8 +121,8 @@ func RunDownload(testing bool, parallel int, paths []string) {
 		lastID++
 		dlist.PushBack(&dtask{
 			ListTask: ListTask{
-				id:       lastID,
-				maxRetry: 3,
+				ID:       lastID,
+				MaxRetry: 3,
 			},
 			path: paths[k],
 		})
@@ -138,14 +144,14 @@ func RunDownload(testing bool, parallel int, paths []string) {
 			// 不重试的情况
 			switch {
 			case strings.Compare(errManifest, "下载文件错误") == 0 && strings.Contains(err.Error(), "文件已存在"):
-				fmt.Printf("[%d] %s, %s\n", task.id, errManifest, err)
+				fmt.Printf("[%d] %s, %s\n", task.ID, errManifest, err)
 				return
 			}
 
-			fmt.Printf("[%d] %s, %s, 重试 %d/%d\n", task.id, errManifest, err, task.retry, task.maxRetry)
+			fmt.Printf("[%d] %s, %s, 重试 %d/%d\n", task.ID, errManifest, err, task.retry, task.MaxRetry)
 
 			// 未达到失败重试最大次数, 将任务推送到队列末尾
-			if task.retry < task.maxRetry {
+			if task.retry < task.MaxRetry {
 				task.retry++
 				dlist.PushBack(task)
 			}
@@ -171,13 +177,13 @@ func RunDownload(testing bool, parallel int, paths []string) {
 			task.downloadInfo, err = info.FilesDirectoriesMeta(task.path)
 			if err != nil {
 				// 不重试
-				fmt.Printf("[%d] 获取路径信息错误, %s\n", task.id, err)
+				fmt.Printf("[%d] 获取路径信息错误, %s\n", task.ID, err)
 				continue
 			}
 		}
 
 		fmt.Printf("\n")
-		fmt.Printf("[%d] ----\n%s\n", task.id, task.downloadInfo.String())
+		fmt.Printf("[%d] ----\n%s\n", task.ID, task.downloadInfo.String())
 
 		// 如果是一个目录, 将子文件和子目录加入队列
 		if task.downloadInfo.Isdir {
@@ -188,7 +194,7 @@ func RunDownload(testing bool, parallel int, paths []string) {
 			fileList, err := info.FilesDirectoriesList(task.path, false)
 			if err != nil {
 				// 不重试
-				fmt.Printf("[%d] 获取目录信息错误, %s\n", task.id, err)
+				fmt.Printf("[%d] 获取目录信息错误, %s\n", task.ID, err)
 				continue
 			}
 
@@ -196,8 +202,8 @@ func RunDownload(testing bool, parallel int, paths []string) {
 				lastID++
 				dlist.PushBack(&dtask{
 					ListTask: ListTask{
-						id:       lastID,
-						maxRetry: 3,
+						ID:       lastID,
+						MaxRetry: 3,
 					},
 					path:         fileList[k].Path,
 					downloadInfo: fileList[k],
@@ -207,9 +213,9 @@ func RunDownload(testing bool, parallel int, paths []string) {
 			continue
 		}
 
-		fmt.Printf("[%d] 准备下载: %s\n\n", task.id, task.path)
+		fmt.Printf("[%d] 准备下载: %s\n\n", task.ID, task.path)
 
-		err = info.DownloadFile(task.path, getDownloadFunc(task.id, cfg))
+		err = info.DownloadFile(task.path, getDownloadFunc(task.ID, cfg))
 		if err != nil {
 			handleTaskErr(task, "下载文件错误", err)
 			continue
