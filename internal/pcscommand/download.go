@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/downloader"
-	"github.com/iikira/BaiduPCS-Go/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"net/http/cookiejar"

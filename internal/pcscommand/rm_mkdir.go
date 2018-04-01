@@ -2,7 +2,7 @@ package pcscommand
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcspath"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"os"

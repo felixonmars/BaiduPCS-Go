@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/GeertJohan/go.rice"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"net/http"
 )
 
