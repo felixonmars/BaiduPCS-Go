@@ -23,13 +23,18 @@ func handleRespStatusError(opreation string, resp *http.Response) (err error) {
 		return fmt.Errorf("resp is nil")
 	}
 
+	errInfo := &ErrInfo{
+		Operation: opreation,
+		ErrType:   ErrTypeNetError,
+	}
+
 	// http 响应错误处理
 	switch resp.StatusCode {
 	case 413: // Request Entity Too Large
 		// 上传的文件太大了
 		resp.Body.Close()
-		err = fmt.Errorf("%s, http 响应错误, %s", opreation, resp.Status)
-		return
+		errInfo.Err = fmt.Errorf("http 响应错误, %s", resp.Status)
+		return errInfo
 	}
 
 	return nil
@@ -42,7 +47,11 @@ func (pcs *BaiduPCS) PrepareQuotaInfo() (dataReadCloser io.ReadCloser, err error
 	resp, err := pcs.client.Req("GET", pcs.url.String(), nil, nil)
 	if err != nil {
 		handleRespClose(resp)
-		return nil, fmt.Errorf("%s, 网络错误, %s", OperationQuotaInfo, err)
+		return nil, &ErrInfo{
+			Operation: OperationQuotaInfo,
+			ErrType:   ErrTypeNetError,
+			Err:       err,
+		}
 	}
 
 	return resp.Body, nil
@@ -52,7 +61,7 @@ func (pcs *BaiduPCS) PrepareQuotaInfo() (dataReadCloser io.ReadCloser, err error
 func (pcs *BaiduPCS) PrepareFilesDirectoriesBatchMeta(paths ...string) (dataReadCloser io.ReadCloser, err error) {
 	sendData, err := (&PathsListJSON{}).JSON(paths...)
 	if err != nil {
-		panic(OperationFilesDirectoriesBatchMeta + ", json 数据构造失败, " + err.Error())
+		panic(OperationFilesDirectoriesMeta + ", json 数据构造失败, " + err.Error())
 	}
 
 	pcs.setPCSURL("file", "meta")
@@ -64,7 +73,11 @@ func (pcs *BaiduPCS) PrepareFilesDirectoriesBatchMeta(paths ...string) (dataRead
 	resp, err := pcs.client.Req("POST", pcs.url.String(), mr, nil)
 	if err != nil {
 		handleRespClose(resp)
-		return nil, fmt.Errorf("%s, 网络错误, %s", OperationFilesDirectoriesBatchMeta, err)
+		return nil, &ErrInfo{
+			Operation: OperationFilesDirectoriesMeta,
+			ErrType:   ErrTypeNetError,
+			Err:       err,
+		}
 	}
 
 	return resp.Body, nil
@@ -86,7 +99,11 @@ func (pcs *BaiduPCS) PrepareFilesDirectoriesList(path string, recurse bool) (dat
 	resp, err := pcs.client.Req("GET", pcs.url.String(), nil, nil)
 	if err != nil {
 		handleRespClose(resp)
-		return nil, fmt.Errorf("%s, 网络错误, %s", OperationFilesDirectoriesList, err)
+		return nil, &ErrInfo{
+			Operation: OperationFilesDirectoriesList,
+			ErrType:   ErrTypeNetError,
+			Err:       err,
+		}
 	}
 
 	return resp.Body, nil
@@ -108,7 +125,11 @@ func (pcs *BaiduPCS) PrepareRemove(paths ...string) (dataReadCloser io.ReadClose
 	resp, err := pcs.client.Req("POST", pcs.url.String(), mr, nil)
 	if err != nil {
 		handleRespClose(resp)
-		return nil, fmt.Errorf("%s, 网络错误, %s", OperationRemove, err)
+		return nil, &ErrInfo{
+			Operation: OperationRemove,
+			ErrType:   ErrTypeNetError,
+			Err:       err,
+		}
 	}
 
 	return resp.Body, nil
@@ -123,7 +144,11 @@ func (pcs *BaiduPCS) PrepareMkdir(pcspath string) (dataReadCloser io.ReadCloser,
 	resp, err := pcs.client.Req("POST", pcs.url.String(), nil, nil)
 	if err != nil {
 		handleRespClose(resp)
-		return nil, fmt.Errorf("%s, 网络错误, %s", OperationMkdir, err)
+		return nil, &ErrInfo{
+			Operation: OperationMkdir,
+			ErrType:   ErrTypeNetError,
+			Err:       err,
+		}
 	}
 
 	return resp.Body, nil
@@ -140,11 +165,15 @@ func (pcs *BaiduPCS) prepareCpMvOp(op string, cpmvJSON ...*CpMvJSON) (dataReadCl
 		panic("Unknown opreation: " + op)
 	}
 
+	errInfo := NewErrorInfo(op)
+
 	sendData, err := (&CpMvListJSON{
 		List: cpmvJSON,
 	}).JSON()
 	if err != nil {
-		return nil, err
+		errInfo.ErrType = ErrTypeJSONEncodeError
+		errInfo.Err = err
+		return nil, errInfo
 	}
 
 	pcs.setPCSURL("file", method)
@@ -156,7 +185,9 @@ func (pcs *BaiduPCS) prepareCpMvOp(op string, cpmvJSON ...*CpMvJSON) (dataReadCl
 	resp, err := pcs.client.Req("POST", pcs.url.String(), mr, nil)
 	if err != nil {
 		handleRespClose(resp)
-		return nil, fmt.Errorf("%s, 网络错误, %s", op, err)
+		errInfo.ErrType = ErrTypeNetError
+		errInfo.Err = err
+		return nil, errInfo
 	}
 
 	return resp.Body, nil
@@ -182,10 +213,9 @@ func (pcs *BaiduPCS) PrepareMove(cpmvJSON ...*CpMvJSON) (dataReadCloser io.ReadC
 
 // PrepareRapidUpload 秒传文件, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) (dataReadCloser io.ReadCloser, err error) {
-	// 检测文件是否存在于网盘路径
-	// 很重要, 如果文件存在会直接覆盖!!! 即使是根目录!
-	if !pcs.IsFile(targetPath) {
-		return nil, fmt.Errorf("%s 遇到错误, 保存路径不可以覆盖目录", OperationRapidUpload)
+	err = pcs.checkIsdir(OperationRapidUpload, targetPath)
+	if err != nil {
+		return nil, err
 	}
 
 	pcs.setPCSURL("file", "rapidupload", map[string]string{
@@ -200,7 +230,11 @@ func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 
 	resp, err := pcs.client.Req("POST", pcs.url.String(), nil, nil)
 	if err != nil {
 		handleRespClose(resp)
-		return
+		return nil, &ErrInfo{
+			Operation: OperationRapidUpload,
+			ErrType:   ErrTypeNetError,
+			Err:       err,
+		}
 	}
 
 	return resp.Body, nil
@@ -208,8 +242,9 @@ func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 
 
 // PrepareUpload 上传单个文件, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareUpload(targetPath string, uploadFunc UploadFunc) (dataReadCloser io.ReadCloser, err error) {
-	if !pcs.IsFile(targetPath) {
-		return nil, fmt.Errorf("%s, 遇到错误, 保存路径不可以覆盖目录", OperationUpload)
+	err = pcs.checkIsdir(OperationUpload, targetPath)
+	if err != nil {
+		return nil, err
 	}
 
 	pcs.setPCSURL("file", "upload", map[string]string{
@@ -220,7 +255,11 @@ func (pcs *BaiduPCS) PrepareUpload(targetPath string, uploadFunc UploadFunc) (da
 	resp, err := uploadFunc(pcs.url.String(), pcs.client.Jar.(*cookiejar.Jar))
 	if err != nil {
 		handleRespClose(resp)
-		return nil, fmt.Errorf("%s, 发生错误, %s", OperationUpload, err)
+		return nil, &ErrInfo{
+			Operation: OperationUpload,
+			ErrType:   ErrTypeNetError,
+			Err:       err,
+		}
 	}
 
 	err = handleRespStatusError(OperationUpload, resp)
@@ -240,7 +279,11 @@ func (pcs *BaiduPCS) PrepareUploadTmpFile(uploadFunc UploadFunc) (dataReadCloser
 	resp, err := uploadFunc(pcs.url.String(), pcs.client.Jar.(*cookiejar.Jar))
 	if err != nil {
 		handleRespClose(resp)
-		return nil, fmt.Errorf("%s, 发生错误, %s", OperationUploadTmpFile, err)
+		return nil, &ErrInfo{
+			Operation: OperationUploadTmpFile,
+			ErrType:   ErrTypeNetError,
+			Err:       err,
+		}
 	}
 
 	err = handleRespStatusError(OperationUpload, resp)
@@ -253,8 +296,9 @@ func (pcs *BaiduPCS) PrepareUploadTmpFile(uploadFunc UploadFunc) (dataReadCloser
 
 // PrepareUploadCreateSuperFile 分片上传—合并分片文件, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(targetPath string, blockList ...string) (dataReadCloser io.ReadCloser, err error) {
-	if !pcs.IsFile(targetPath) {
-		return nil, fmt.Errorf("%s 遇到错误, 保存路径不可以覆盖目录", OperationUploadCreateSuperFile)
+	err = pcs.checkIsdir(OperationUploadCreateSuperFile, targetPath)
+	if err != nil {
+		return nil, err
 	}
 
 	bl := &struct {
@@ -280,7 +324,11 @@ func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(targetPath string, blockList .
 	resp, err := pcs.client.Req("POST", pcs.url.String(), mr, nil)
 	if err != nil {
 		handleRespClose(resp)
-		return nil, fmt.Errorf("%s, 网络错误, %s", OperationUploadCreateSuperFile, err)
+		return nil, &ErrInfo{
+			Operation: OperationUploadCreateSuperFile,
+			ErrType:   ErrTypeNetError,
+			Err:       err,
+		}
 	}
 
 	return resp.Body, nil
@@ -297,7 +345,11 @@ func (pcs *BaiduPCS) PrepareCloudDlAddTask(sourceURL, savePath string) (dataRead
 	resp, err := pcs.client.Req("POST", pcs.url.String(), nil, nil)
 	if err != nil {
 		handleRespClose(resp)
-		return nil, fmt.Errorf("%s, 网络错误, %s", OperationCloudDlAddTask, err)
+		return nil, &ErrInfo{
+			Operation: OperationCloudDlAddTask,
+			ErrType:   ErrTypeNetError,
+			Err:       err,
+		}
 	}
 
 	return resp.Body, nil
@@ -314,7 +366,11 @@ func (pcs *BaiduPCS) PrepareCloudDlQueryTask(taskIDs string) (dataReadCloser io.
 	resp, err := pcs.client.Req("POST", pcs.url.String(), nil, nil)
 	if err != nil {
 		handleRespClose(resp)
-		return nil, fmt.Errorf("%s, 网络错误, %s", OperationCloudDlQueryTask, err)
+		return nil, &ErrInfo{
+			Operation: OperationCloudDlQueryTask,
+			ErrType:   ErrTypeNetError,
+			Err:       err,
+		}
 	}
 
 	return resp.Body, nil
@@ -332,7 +388,11 @@ func (pcs *BaiduPCS) PrepareCloudDlListTask() (dataReadCloser io.ReadCloser, err
 	resp, err := pcs.client.Req("POST", pcs.url.String(), nil, nil)
 	if err != nil {
 		handleRespClose(resp)
-		return nil, fmt.Errorf("%s, 网络错误, %s", OperationCloudDlListTask, err)
+		return nil, &ErrInfo{
+			Operation: OperationCloudDlListTask,
+			ErrType:   ErrTypeNetError,
+			Err:       err,
+		}
 	}
 
 	return resp.Body, nil
@@ -346,7 +406,11 @@ func (pcs *BaiduPCS) prepareCloudDlCDTask(opreation, method string, taskID int64
 	resp, err := pcs.client.Req("POST", pcs.url.String(), nil, nil)
 	if err != nil {
 		handleRespClose(resp)
-		return nil, fmt.Errorf("%s, 网络错误, %s", opreation, err)
+		return nil, &ErrInfo{
+			Operation: opreation,
+			ErrType:   ErrTypeNetError,
+			Err:       err,
+		}
 	}
 
 	return resp.Body, nil

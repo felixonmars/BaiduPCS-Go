@@ -1,7 +1,6 @@
 package baidupcs
 
 import (
-	"fmt"
 	"github.com/json-iterator/go"
 )
 
@@ -19,7 +18,8 @@ func (pcs *BaiduPCS) Remove(paths ...string) (err error) {
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, json 数据解析失败, %s", OperationRemove, err)
+		errInfo.jsonError(err)
+		return errInfo
 	}
 
 	if errInfo.ErrCode != 0 {
@@ -43,7 +43,8 @@ func (pcs *BaiduPCS) Mkdir(pcspath string) (err error) {
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, json 数据解析失败, %s", OperationMkdir, err)
+		errInfo.jsonError(err)
+		return errInfo
 	}
 
 	if errInfo.ErrCode != 0 {

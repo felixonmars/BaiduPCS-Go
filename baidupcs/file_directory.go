@@ -65,19 +65,22 @@ type fdData struct {
 
 // FilesDirectoriesMeta 获取单个文件/目录的元信息
 func (pcs *BaiduPCS) FilesDirectoriesMeta(path string) (data *FileDirectory, err error) {
-	operation := "获取单个文件/目录的元信息"
-
 	if path == "" {
 		path = "/"
 	}
 
 	fds, err := pcs.FilesDirectoriesBatchMeta(path)
 	if err != nil {
-		return nil, fmt.Errorf("%s, 路径: %s", err, path)
+		return nil, err
 	}
 
+	// 返回了多条元信息
 	if len(fds) != 1 {
-		return nil, fmt.Errorf("%s发生错误, 未知返回数据, 路径: %s", operation, path)
+		return nil, &ErrInfo{
+			Operation: OperationFilesDirectoriesMeta,
+			ErrType:   ErrTypeOthers,
+			Err:       fmt.Errorf("未知返回数据"),
+		}
 	}
 
 	return fds[0], nil
@@ -92,15 +95,17 @@ func (pcs *BaiduPCS) FilesDirectoriesBatchMeta(paths ...string) (data FileDirect
 
 	defer dataReadCloser.Close()
 
+	errInfo := NewErrorInfo(OperationFilesDirectoriesMeta)
 	// 服务器返回数据进行处理
 	jsonData := &fdData{
-		ErrInfo: NewErrorInfo(OperationFilesDirectoriesBatchMeta),
+		ErrInfo: errInfo,
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(jsonData)
 	if err != nil {
-		return nil, fmt.Errorf("%s, json 数据解析失败, %s", OperationFilesDirectoriesBatchMeta, err)
+		errInfo.jsonError(err)
+		return nil, errInfo
 	}
 
 	// 错误处理
@@ -134,7 +139,8 @@ func (pcs *BaiduPCS) FilesDirectoriesList(path string, recurse bool) (data FileD
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(jsonData)
 	if err != nil {
-		return nil, fmt.Errorf("%s, json 数据解析失败, %s", OperationFilesDirectoriesList, err)
+		jsonData.ErrInfo.jsonError(err)
+		return nil, jsonData.ErrInfo
 	}
 
 	// 错误处理

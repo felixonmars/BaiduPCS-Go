@@ -12,8 +12,8 @@ import (
 const (
 	// OperationQuotaInfo 获取当前用户空间配额信息
 	OperationQuotaInfo = "获取当前用户空间配额信息"
-	// OperationFilesDirectoriesBatchMeta 获取文件/目录的元信息
-	OperationFilesDirectoriesBatchMeta = "获取文件/目录的元信息"
+	// OperationFilesDirectoriesMeta 获取文件/目录的元信息
+	OperationFilesDirectoriesMeta = "获取文件/目录的元信息"
 	// OperationFilesDirectoriesList 获取目录下的文件列表
 	OperationFilesDirectoriesList = "获取目录下的文件列表"
 	// OperationRemove 删除文件/目录

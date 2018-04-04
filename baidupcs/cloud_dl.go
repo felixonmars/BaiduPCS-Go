@@ -94,17 +94,19 @@ func (pcs *BaiduPCS) CloudDlAddTask(sourceURL, savePath string) (taskID int64, e
 
 	defer dataReadCloser.Close()
 
+	errInfo := NewErrorInfo(OperationCloudDlAddTask)
 	taskInfo := &struct {
 		TaskID int64 `json:"task_id"`
 		*ErrInfo
 	}{
-		ErrInfo: NewErrorInfo(OperationCloudDlAddTask),
+		ErrInfo: errInfo,
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(taskInfo)
 	if err != nil {
-		return 0, fmt.Errorf("%s, %s, %s", OperationCloudDlAddTask, StrJSONParseError, err)
+		errInfo.jsonError(err)
+		return 0, errInfo
 	}
 
 	if taskInfo.ErrCode != 0 {
@@ -132,17 +134,19 @@ func (pcs *BaiduPCS) CloudDlQueryTask(taskIDs []int64) (cl CloudDlTaskList, err 
 
 	defer dataReadCloser.Close()
 
+	errInfo := NewErrorInfo(OperationCloudDlQueryTask)
 	taskInfo := &struct {
 		TaskInfo map[string]*cloudDlTaskInfo `json:"task_info"`
 		*ErrInfo
 	}{
-		ErrInfo: NewErrorInfo(OperationCloudDlQueryTask),
+		ErrInfo: errInfo,
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(taskInfo)
 	if err != nil {
-		return nil, fmt.Errorf("%s, %s, %s", OperationCloudDlQueryTask, StrJSONParseError, err)
+		errInfo.jsonError(err)
+		return nil, errInfo
 	}
 
 	if taskInfo.ErrCode != 0 {
@@ -180,19 +184,21 @@ func (pcs *BaiduPCS) CloudDlListTask() (cl CloudDlTaskList, err error) {
 
 	defer dataReadCloser.Close()
 
+	errInfo := NewErrorInfo(OperationCloudDlListTask)
 	taskInfo := &struct {
 		TaskInfo []*struct {
 			TaskID string `json:"task_id"`
 		} `json:"task_info"`
 		*ErrInfo
 	}{
-		ErrInfo: NewErrorInfo(OperationCloudDlListTask),
+		ErrInfo: errInfo,
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(taskInfo)
 	if err != nil {
-		return nil, fmt.Errorf("%s, %s, %s", OperationCloudDlListTask, StrJSONParseError, err)
+		errInfo.jsonError(err)
+		return nil, errInfo
 	}
 
 	if taskInfo.ErrCode != 0 {
@@ -235,7 +241,8 @@ func (pcs *BaiduPCS) CloudDlCancelTask(taskID int64) (err error) {
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, %s, %s", OperationCloudDlCancelTask, StrJSONParseError, err)
+		errInfo.jsonError(err)
+		return errInfo
 	}
 
 	if errInfo.ErrCode != 0 {
@@ -259,7 +266,8 @@ func (pcs *BaiduPCS) CloudDlDeleteTask(taskID int64) (err error) {
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, %s, %s", OperationCloudDlDeleteTask, StrJSONParseError, err)
+		errInfo.jsonError(err)
+		return errInfo
 	}
 
 	if errInfo.ErrCode != 0 {

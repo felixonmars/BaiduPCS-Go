@@ -1,7 +1,6 @@
 package baidupcs
 
 import (
-	"fmt"
 	"github.com/json-iterator/go"
 )
 
@@ -28,7 +27,8 @@ func (pcs *BaiduPCS) QuotaInfo() (quota, used int64, err error) {
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(quotaInfo)
 	if err != nil {
-		return 0, 0, fmt.Errorf("%s, json 数据解析失败, %s", OperationQuotaInfo, err)
+		quotaInfo.ErrInfo.jsonError(err)
+		return 0, 0, quotaInfo.ErrInfo
 	}
 
 	if quotaInfo.ErrCode != 0 {

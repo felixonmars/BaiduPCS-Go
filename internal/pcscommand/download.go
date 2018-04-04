@@ -86,7 +86,6 @@ func getDownloadFunc(id int, cfg *downloader.Config) baidupcs.DownloadFunc {
 			fmt.Printf("\n\n[%d] 测试下载结束\n\n", id)
 		}
 
-		close(exitDownloadFunc)
 		return nil
 	}
 }

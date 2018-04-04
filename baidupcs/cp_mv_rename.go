@@ -1,7 +1,6 @@
 package baidupcs
 
 import (
-	"fmt"
 	"github.com/json-iterator/go"
 )
 
@@ -36,7 +35,8 @@ func (pcs *BaiduPCS) cpmvOp(op string, cpmvJSON ...*CpMvJSON) (err error) {
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, %s, %s", op, StrJSONParseError, err)
+		errInfo.jsonError(err)
+		return errInfo
 	}
 
 	if errInfo.ErrCode != 0 {

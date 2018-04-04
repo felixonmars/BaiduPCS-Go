@@ -24,7 +24,8 @@ func (pcs *BaiduPCS) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string,
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, %s, %s", OperationRapidUpload, StrJSONParseError, err)
+		errInfo.jsonError(err)
+		return errInfo
 	}
 
 	switch errInfo.ErrCode {
@@ -60,7 +61,8 @@ func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (err error
 
 	err = d.Decode(jsonData)
 	if err != nil {
-		return fmt.Errorf("%s, %s, %s", OperationUpload, StrJSONParseError, err)
+		jsonData.ErrInfo.jsonError(err)
+		return jsonData.ErrInfo
 	}
 
 	if jsonData.ErrCode != 0 {
@@ -95,7 +97,8 @@ func (pcs *BaiduPCS) UploadTmpFile(uploadFunc UploadFunc) (md5 string, err error
 
 	err = d.Decode(jsonData)
 	if err != nil {
-		return "", fmt.Errorf("%s, %s, %s", OperationUpload, StrJSONParseError, err)
+		jsonData.ErrInfo.jsonError(err)
+		return "", jsonData.ErrInfo
 	}
 
 	if jsonData.ErrCode != 0 {
@@ -124,7 +127,8 @@ func (pcs *BaiduPCS) UploadCreateSuperFile(targetPath string, blockList ...strin
 	d := jsoniter.NewDecoder(dataReadCloser)
 	err = d.Decode(errInfo)
 	if err != nil {
-		return fmt.Errorf("%s, %s, %s", OperationUploadCreateSuperFile, StrJSONParseError, err)
+		errInfo.jsonError(err)
+		return errInfo
 	}
 
 	if errInfo.ErrCode != 0 {
