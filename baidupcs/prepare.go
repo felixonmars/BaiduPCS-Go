@@ -339,7 +339,7 @@ func (pcs *BaiduPCS) PrepareCloudDlAddTask(sourceURL, savePath string) (dataRead
 	pcs.setPCSURL2("services/cloud_dl", "add_task", map[string]string{
 		"save_path":  savePath,
 		"source_url": sourceURL,
-		"timeout":    "86400",
+		"timeout":    "2147483647",
 	})
 
 	resp, err := pcs.client.Req("POST", pcs.url.String(), nil, nil)

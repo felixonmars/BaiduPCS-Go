@@ -53,7 +53,6 @@ func getDownloadFunc(id int, cfg *downloader.Config) baidupcs.DownloadFunc {
 			for {
 				select {
 				case <-exitDownloadFunc:
-					fmt.Println()
 					return
 				case v, ok := <-ds:
 					if !ok { // channel 已经关闭
