@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"strconv"
+	"strings"
 )
 
 func handleRespClose(resp *http.Response) error {
@@ -359,11 +360,14 @@ func (pcs *BaiduPCS) PrepareCloudDlAddTask(sourceURL, savePath string) (dataRead
 // taskids 例子: 12123,234234,2344, 用逗号隔开多个 task_id
 func (pcs *BaiduPCS) PrepareCloudDlQueryTask(taskIDs string) (dataReadCloser io.ReadCloser, err error) {
 	pcs.setPCSURL2("services/cloud_dl", "query_task", map[string]string{
-		"task_ids": taskIDs,
-		"op_type":  "1",
+		"op_type": "1",
 	})
 
-	resp, err := pcs.client.Req("POST", pcs.url.String(), nil, nil)
+	// 表单上传
+	mr := multipartreader.NewMultipartReader()
+	mr.AddFormFeild("task_ids", strings.NewReader(taskIDs))
+
+	resp, err := pcs.client.Req("POST", pcs.url.String(), mr, nil)
 	if err != nil {
 		handleRespClose(resp)
 		return nil, &ErrInfo{

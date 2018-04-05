@@ -56,7 +56,7 @@ Pack() {
 
 # rice 打包静态资源
 RicePack() {
-    rice -i github.com/iikira/BaiduPCS-Go/pcsweb append --exec "$output/$1/$2"
+    rice -i github.com/iikira/BaiduPCS-Go/internal/pcsweb append --exec "$output/$1/$2"
 }
 
 # Android
