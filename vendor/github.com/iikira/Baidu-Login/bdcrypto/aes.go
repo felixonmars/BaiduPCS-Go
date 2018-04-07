@@ -267,13 +267,10 @@ func aesCBCDec(key []byte, ciphertext []byte) (plaintext []byte, err error) {
 	}
 
 	blockModel := cipher.NewCBCDecrypter(block, iv)
-	cl := len(ciphertext)
 	plaintext = ciphertext
 	blockModel.CryptBlocks(plaintext, ciphertext)
-	fmt.Println(cl, len(plaintext))
 
 	plaintext = PKCS5UnPadding(plaintext)
-
 	return plaintext, nil
 }
 

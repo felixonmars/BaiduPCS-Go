@@ -45,7 +45,7 @@
     "bdcrypto",
     "bdcrypto/ecb"
   ]
-  revision = "4e24e45b248a56e064275c9579bf1001f07a0ec6"
+  revision = "f5c8d12829457ea894c6e10980519d058620d26d"
 
 [[projects]]
   branch = "master"
@@ -58,10 +58,11 @@
   name = "github.com/iikira/baidu-tools"
   packages = [
     ".",
+    "ramdominfo",
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "06db8d3549b0a7d34b21e10e3d24ade59430b905"
+  revision = "1df497706795e6d2dfacdd3b798366b19d56b62c"
 
 [[projects]]
   branch = "master"
