@@ -1,7 +1,7 @@
 package bdcrypto
 
 import (
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"unsafe"
 )
 
 // BytesReverse 反转字节数组, 此操作会修改原值
@@ -17,5 +17,6 @@ func BytesReverse(b []byte) []byte {
 func StringReverse(s string) string {
 	newBytes := make([]byte, len(s))
 	copy(newBytes, s)
-	return pcsutil.ToString(BytesReverse(newBytes))
+	b := BytesReverse(newBytes)
+	return *(*string)(unsafe.Pointer(&b))
 }
