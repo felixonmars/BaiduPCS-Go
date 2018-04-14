@@ -252,6 +252,11 @@ func RunUpload(localPaths []string, savePath string) {
 					globedPathDir = filepath.Dir(globedPaths[k2])
 				}
 
+				// 避免去除文件名开头的"."
+				if globedPathDir == "." {
+					globedPathDir = ""
+				}
+
 				subSavePath = strings.TrimPrefix(walkedFiles[k3], globedPathDir)
 
 				lastID++
