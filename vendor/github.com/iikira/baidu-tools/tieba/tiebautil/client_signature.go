@@ -24,7 +24,8 @@ func TiebaClientSignature(post map[string]string) {
 
 	var (
 		bduss        = post["BDUSS"]
-		phoneIMEIStr = strconv.FormatUint(ramdominfo.SumIMEI(bduss), 10)
+		model        = ramdominfo.GetPhoneModel(bduss)
+		phoneIMEIStr = strconv.FormatUint(ramdominfo.SumIMEI(model+"_"+bduss), 10)
 		m            = md5.New()
 	)
 
@@ -33,7 +34,7 @@ func TiebaClientSignature(post map[string]string) {
 	post["_client_version"] = "7.0.0.0"
 	post["_phone_imei"] = phoneIMEIStr
 	post["from"] = "mini_ad_wandoujia"
-	post["model"] = ramdominfo.GetPhoneModel(bduss)
+	post["model"] = model
 	m.Write([]byte(bduss + "_" + post["_client_version"] + "_" + post["_phone_imei"] + "_" + post["from"]))
 	post["cuid"] = strings.ToUpper(hex.EncodeToString(m.Sum(nil))) + "|" + StringReverse(phoneIMEIStr)
 

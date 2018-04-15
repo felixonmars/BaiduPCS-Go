@@ -55,10 +55,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/mars9/passwd"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/olekukonko/tablewriter"
 
 [[constraint]]

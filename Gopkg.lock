@@ -62,7 +62,7 @@
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "a8bd1cf8475f7135b83c93d5f6dbf042c10185e2"
+  revision = "6c45d17733f14c0f2043d794558ffd61dcd3c975"
 
 [[projects]]
   branch = "master"
@@ -81,12 +81,6 @@
   name = "github.com/kardianos/osext"
   packages = ["."]
   revision = "ae77be60afb1dcacde03767a8c37337fad28ac14"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/mars9/passwd"
-  packages = ["."]
-  revision = "0f6332435c864c4f415d566d2e5c747e51c7c24f"
 
 [[projects]]
   name = "github.com/mattn/go-runewidth"
@@ -133,6 +127,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ce2c6e6dc00a94139e7f3262bef86ce0dc7146b0a7e654f451b563bbea5c07ee"
+  inputs-digest = "1c4e9e21b2080f065ef8cd3d42caccbb7eb14bb7882367f960f878e7e56496d4"
   solver-name = "gps-cdcl"
   solver-version = 1

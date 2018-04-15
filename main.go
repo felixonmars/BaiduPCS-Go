@@ -27,7 +27,7 @@ import (
 
 var (
 	// Version 版本号
-	Version = "v3.3.2"
+	Version = "v3.3.3"
 
 	historyFilePath = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {

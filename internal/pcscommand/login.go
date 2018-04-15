@@ -7,7 +7,6 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/mars9/passwd"
 	"image/png"
 	"io/ioutil"
 )
@@ -43,22 +42,14 @@ func RunLogin(username, password string) (bduss, ptoken, stoken string, err erro
 		}
 	}
 
-	line.Pause()
-
 	if password == "" {
-		var bp []byte
-
 		// liner 的 PasswordPrompt 不安全, 拆行之后密码就会显示出来了
-		bp, err = passwd.Get("请输入密码(输入的密码无回显, 确认输入完成, 回车提交即可) > ")
+		fmt.Printf("请输入密码(输入的密码无回显, 确认输入完成, 回车提交即可) > ")
+		password, err = line.State.PasswordPrompt("")
 		if err != nil {
 			return
 		}
-
-		// 去掉回车键
-		password = string(bytes.TrimRight(bp, "\r"))
 	}
-
-	line.Resume()
 
 	var vcode, vcodestr string
 

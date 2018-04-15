@@ -2,7 +2,7 @@ name="BaiduPCS-Go"
 version=$1
 
 if [ "$1" = "" ];then
-    version=v3.3.2
+    version=v3.3.3
 fi
 
 output="out/"
@@ -88,8 +88,8 @@ Build $name-$version"-linux-armv7" linux arm 7
 Build $name-$version"-linux-arm64" linux arm64
 Build $name-$version"-linux-mips" linux mips
 Build $name-$version"-linux-mips64" linux mips64
-Build $name-$version"-linux-mipsel" linux mipsle
-Build $name-$version"-linux-mips64el" linux mips64le
+Build $name-$version"-linux-mipsle" linux mipsle
+Build $name-$version"-linux-mips64le" linux mips64le
 # Build $name-$version"-linux-ppc64" linux ppc64
 # Build $name-$version"-linux-ppc64le" linux ppc64le
 # Build $name-$version"-linux-s390x" linux s390x
