@@ -57,7 +57,7 @@ func main() {
 	特色:
 		网盘内列出文件和目录, 支持通配符匹配路径;
 		下载网盘内文件, 支持网盘内目录 (文件夹) 下载, 支持多个文件或目录下载, 支持断点续传和高并发高速下载.
-	
+
 	---------------------------------------------------
 	前往 https://github.com/iikira/BaiduPCS-Go 以获取更多帮助信息!
 	前往 https://github.com/iikira/BaiduPCS-Go/releases 以获取程序更新信息!
@@ -407,6 +407,18 @@ func main() {
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
 				pcscommand.RunLs(c.Args().Get(0))
+				return nil
+			},
+		},
+		{
+			Name:      "tree",
+			Aliases:   []string{"t"},
+			Usage:     "列出文件树",
+			UsageText: fmt.Sprintf("%s tree <目录 绝对路径或相对路径>", app.Name),
+			Category:  "百度网盘",
+			Before:    reloadFn,
+			Action: func(c *cli.Context) error {
+				pcscommand.RunTree(c.Args().Get(0), 0, []string{})
 				return nil
 			},
 		},
