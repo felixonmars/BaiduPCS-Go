@@ -564,13 +564,17 @@ func main() {
 			},
 		},
 		{
-			Name:        "rapidupload",
-			Aliases:     []string{"ru"},
-			Usage:       "手动秒传文件",
-			UsageText:   fmt.Sprintf("%s rapidupload -length=<文件的大小> -md5=<文件的md5值> -slicemd5=<文件前256KB切片的md5值(可选)> -crc32=<文件的crc32值(可选)> <保存的网盘路径, 需包含文件名>", app.Name),
-			Description: "上传的文件将会保存到 网盘的目标目录.\n   遇到同名文件将会自动覆盖! \n",
-			Category:    "百度网盘",
-			Before:      reloadFn,
+			Name:      "rapidupload",
+			Aliases:   []string{"ru"},
+			Usage:     "手动秒传文件",
+			UsageText: fmt.Sprintf("%s rapidupload -length=<文件的大小> -md5=<文件的md5值> -slicemd5=<文件前256KB切片的md5值(可选)> -crc32=<文件的crc32值(可选)> <保存的网盘路径, 需包含文件名>", app.Name),
+			Description: `
+	使用此功能秒传文件, 前提是知道文件的大小, md5, 前256KB切片的 md5 (可选), crc32 (可选), 且百度网盘中存在一模一样的文件.
+	上传的文件将会保存到网盘的目标目录.
+	遇到同名文件将会自动覆盖! 
+`,
+			Category: "百度网盘",
+			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() <= 0 || !c.IsSet("md5") || !c.IsSet("length") {
 					cli.ShowCommandHelp(c, c.Command.Name)

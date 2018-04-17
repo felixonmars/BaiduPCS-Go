@@ -223,7 +223,7 @@ func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 
 		"path":           targetPath,                    // 上传文件的全路径名
 		"content-length": strconv.FormatInt(length, 10), // 待秒传的文件长度
 		"content-md5":    contentMD5,                    // 待秒传的文件的MD5
-		"slice-md5":      sliceMD5,                      // 待秒传的文件的MD5
+		"slice-md5":      sliceMD5,                      // 待秒传的文件前256kb的MD5
 		"content-crc32":  crc32,                         // 待秒传文件CRC32
 		"ondup":          "overwrite",                   // overwrite: 表示覆盖同名文件; newcopy: 表示生成文件副本并进行重命名，命名规则为“文件名_日期.后缀”
 	})
