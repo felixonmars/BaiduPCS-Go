@@ -5,6 +5,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/json-iterator/go"
+	"io"
 	"strconv"
 	"strings"
 )
@@ -86,9 +87,9 @@ func (ci *cloudDlTaskInfo) convert() *CloudDlTaskInfo {
 }
 
 // CloudDlAddTask 添加离线下载任务
-func (pcs *BaiduPCS) CloudDlAddTask(sourceURL, savePath string) (taskID int64, err error) {
-	dataReadCloser, err := pcs.PrepareCloudDlAddTask(sourceURL, savePath)
-	if err != nil {
+func (pcs *BaiduPCS) CloudDlAddTask(sourceURL, savePath string) (taskID int64, pcsError Error) {
+	dataReadCloser, pcsError := pcs.PrepareCloudDlAddTask(sourceURL, savePath)
+	if pcsError != nil {
 		return
 	}
 
@@ -103,7 +104,7 @@ func (pcs *BaiduPCS) CloudDlAddTask(sourceURL, savePath string) (taskID int64, e
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
-	err = d.Decode(taskInfo)
+	err := d.Decode(taskInfo)
 	if err != nil {
 		errInfo.jsonError(err)
 		return 0, errInfo
@@ -116,10 +117,12 @@ func (pcs *BaiduPCS) CloudDlAddTask(sourceURL, savePath string) (taskID int64, e
 	return taskInfo.TaskID, nil
 }
 
-// CloudDlQueryTask 精确查询离线下载任务
-func (pcs *BaiduPCS) CloudDlQueryTask(taskIDs []int64) (cl CloudDlTaskList, err error) {
+func (pcs *BaiduPCS) cloudDlQueryTask(op string, taskIDs []int64) (cl CloudDlTaskList, pcsError Error) {
+	errInfo := NewErrorInfo(op)
 	if len(taskIDs) == 0 {
-		return nil, fmt.Errorf("%s, no input any task_ids", OperationCloudDlQueryTask)
+		errInfo.errType = ErrTypeOthers
+		errInfo.err = fmt.Errorf("no input any task_ids")
+		return nil, errInfo
 	}
 
 	taskStrIDs := make([]string, len(taskIDs))
@@ -127,14 +130,13 @@ func (pcs *BaiduPCS) CloudDlQueryTask(taskIDs []int64) (cl CloudDlTaskList, err 
 		taskStrIDs[k] = strconv.FormatInt(taskIDs[k], 10)
 	}
 
-	dataReadCloser, err := pcs.PrepareCloudDlQueryTask(strings.Join(taskStrIDs, ","))
-	if err != nil {
+	dataReadCloser, pcsError := pcs.PrepareCloudDlQueryTask(strings.Join(taskStrIDs, ","))
+	if pcsError != nil {
 		return
 	}
 
 	defer dataReadCloser.Close()
 
-	errInfo := NewErrorInfo(OperationCloudDlQueryTask)
 	taskInfo := &struct {
 		TaskInfo map[string]*cloudDlTaskInfo `json:"task_info"`
 		*ErrInfo
@@ -143,7 +145,7 @@ func (pcs *BaiduPCS) CloudDlQueryTask(taskIDs []int64) (cl CloudDlTaskList, err 
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
-	err = d.Decode(taskInfo)
+	err := d.Decode(taskInfo)
 	if err != nil {
 		errInfo.jsonError(err)
 		return nil, errInfo
@@ -175,10 +177,15 @@ func (pcs *BaiduPCS) CloudDlQueryTask(taskIDs []int64) (cl CloudDlTaskList, err 
 	return cl, nil
 }
 
+// CloudDlQueryTask 精确查询离线下载任务
+func (pcs *BaiduPCS) CloudDlQueryTask(taskIDs []int64) (cl CloudDlTaskList, pcsError Error) {
+	return pcs.cloudDlQueryTask(OperationCloudDlQueryTask, taskIDs)
+}
+
 // CloudDlListTask 查询离线下载任务列表
-func (pcs *BaiduPCS) CloudDlListTask() (cl CloudDlTaskList, err error) {
-	dataReadCloser, err := pcs.PrepareCloudDlListTask()
-	if err != nil {
+func (pcs *BaiduPCS) CloudDlListTask() (cl CloudDlTaskList, pcsError Error) {
+	dataReadCloser, pcsError := pcs.PrepareCloudDlListTask()
+	if pcsError != nil {
 		return
 	}
 
@@ -195,7 +202,7 @@ func (pcs *BaiduPCS) CloudDlListTask() (cl CloudDlTaskList, err error) {
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
-	err = d.Decode(taskInfo)
+	err := d.Decode(taskInfo)
 	if err != nil {
 		errInfo.jsonError(err)
 		return nil, errInfo
@@ -224,57 +231,38 @@ func (pcs *BaiduPCS) CloudDlListTask() (cl CloudDlTaskList, err error) {
 		}
 	}
 
-	return pcs.CloudDlQueryTask(taskIDs)
+	return pcs.cloudDlQueryTask(OperationCloudDlListTask, taskIDs)
+}
+
+func (pcs *BaiduPCS) cloudDlManipTask(op string, taskID int64) (pcsError Error) {
+	var dataReadCloser io.ReadCloser
+
+	switch op {
+	case OperationCloudDlCancelTask:
+		dataReadCloser, pcsError = pcs.PrepareCloudDlCancelTask(taskID)
+	case OperationCloudDlDeleteTask:
+		dataReadCloser, pcsError = pcs.PrepareCloudDlDeleteTask(taskID)
+	default:
+		panic("unknown op, " + op)
+	}
+	if pcsError != nil {
+		return
+	}
+
+	defer dataReadCloser.Close()
+
+	errInfo := decodeJSONError(op, dataReadCloser)
+	return errInfo
 }
 
 // CloudDlCancelTask 取消离线下载任务
-func (pcs *BaiduPCS) CloudDlCancelTask(taskID int64) (err error) {
-	dataReadCloser, err := pcs.PrepareCloudDlCancelTask(taskID)
-	if err != nil {
-		return
-	}
-
-	defer dataReadCloser.Close()
-
-	errInfo := NewErrorInfo(OperationCloudDlCancelTask)
-
-	d := jsoniter.NewDecoder(dataReadCloser)
-	err = d.Decode(errInfo)
-	if err != nil {
-		errInfo.jsonError(err)
-		return errInfo
-	}
-
-	if errInfo.ErrCode != 0 {
-		return errInfo
-	}
-
-	return nil
+func (pcs *BaiduPCS) CloudDlCancelTask(taskID int64) (pcsError Error) {
+	return pcs.cloudDlManipTask(OperationCloudDlCancelTask, taskID)
 }
 
 // CloudDlDeleteTask 删除离线下载任务
-func (pcs *BaiduPCS) CloudDlDeleteTask(taskID int64) (err error) {
-	dataReadCloser, err := pcs.PrepareCloudDlDeleteTask(taskID)
-	if err != nil {
-		return
-	}
-
-	defer dataReadCloser.Close()
-
-	errInfo := NewErrorInfo(OperationCloudDlDeleteTask)
-
-	d := jsoniter.NewDecoder(dataReadCloser)
-	err = d.Decode(errInfo)
-	if err != nil {
-		errInfo.jsonError(err)
-		return errInfo
-	}
-
-	if errInfo.ErrCode != 0 {
-		return errInfo
-	}
-
-	return nil
+func (pcs *BaiduPCS) CloudDlDeleteTask(taskID int64) (pcsError Error) {
+	return pcs.cloudDlManipTask(OperationCloudDlDeleteTask, taskID)
 }
 
 // ParseText 解析状态码

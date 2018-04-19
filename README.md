@@ -157,20 +157,20 @@ BaiduPCS-Go ls
 BaiduPCS-Go ls <目录>
 ```
 
-## 列出当前工作目录的文件和目录或指定目录树形图
-```
-BaiduPCS-Go tree
-```
-```
-BaiduPCS-Go tree <目录>
-```
-
 #### 例子
 ```
 BaiduPCS-Go ls 我的资源
 
 # 使用通配符
 BaiduPCS-Go ls /我的*
+```
+
+## 列出当前工作目录的文件和目录或指定目录树形图
+```
+BaiduPCS-Go tree <目录>
+
+# 默认获取工作目录元信息
+BaiduPCS-Go tree
 ```
 
 ## 获取单个文件/目录的元信息 (详细信息)

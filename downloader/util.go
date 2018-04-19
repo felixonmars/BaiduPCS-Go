@@ -2,7 +2,6 @@ package downloader
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"os"
 )
 
@@ -32,10 +31,4 @@ func triggerOnError(f func(code int, err error), code int, err error) {
 	}
 
 	go f(code, err)
-}
-
-func verbosef(format string, a ...interface{}) {
-	if pcsverbose.IsVerbose {
-		fmt.Printf(format, a...)
-	}
 }

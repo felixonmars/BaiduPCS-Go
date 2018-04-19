@@ -4,6 +4,16 @@ import (
 	"fmt"
 )
 
+// Error 错误详情接口
+type Error interface {
+	error
+	Operation() string    // 操作
+	ErrorType() ErrType   // 错误类型
+	ErrorCode() int       // 远端服务器错误代码
+	ErrorMsg() string     // 远端服务器错误信息
+	OriginalError() error // 原始错误
+}
+
 // ErrType 错误类型
 type ErrType int
 
@@ -17,8 +27,10 @@ const (
 	// StrJSONParseError json 数据解析失败
 	StrJSONParseError = "json 数据解析失败"
 
+	// ErrTypeInternalError 内部错误
+	ErrTypeInternalError ErrType = iota
 	// ErrTypeRemoteError 远端服务器返回错误
-	ErrTypeRemoteError ErrType = iota
+	ErrTypeRemoteError
 	// ErrTypeNetError 网络错误
 	ErrTypeNetError
 	// ErrTypeJSONEncodeError json 数据生成失败
@@ -31,24 +43,24 @@ const (
 
 // ErrInfo 错误信息
 type ErrInfo struct {
-	Operation string  `json:"-"` // 正在进行的操作
-	ErrType   ErrType `json:"-"`
-	Err       error   `json:"-"`
-	ErrCode   int     `json:"error_code"` // 错误代码
-	ErrMsg    string  `json:"error_msg"`  // 错误消息
+	operation string // 正在进行的操作
+	errType   ErrType
+	err       error
+	ErrCode   int    `json:"error_code"` // 错误代码
+	ErrMsg    string `json:"error_msg"`  // 错误消息
 }
 
 // NewErrorInfo 提供operation操作名称, 返回 *ErrInfo
 func NewErrorInfo(operation string) *ErrInfo {
 	return &ErrInfo{
-		Operation: operation,
-		ErrType:   ErrTypeRemoteError,
+		operation: operation,
+		errType:   ErrTypeRemoteError,
 	}
 }
 
 func (e *ErrInfo) jsonError(err error) {
-	e.ErrType = ErrTypeJSONParseError
-	e.Err = err
+	e.errType = ErrTypeJSONParseError
+	e.err = err
 }
 
 // FindErr 查找已知错误
@@ -57,34 +69,69 @@ func (e *ErrInfo) FindErr() (errCode int, errMsg string) {
 }
 
 func (e *ErrInfo) Error() string {
-	switch e.ErrType {
+	if e.operation == "" {
+		if e.err != nil {
+			return e.err.Error()
+		}
+		return StrSuccess
+	}
+
+	switch e.errType {
+	case ErrTypeInternalError:
+		return fmt.Sprintf("%s, %s, %s", e.operation, "内部错误", e.err)
 	case ErrTypeJSONEncodeError:
-		return fmt.Sprintf("%s, %s, %s", e.Operation, StrJSONEncodeError, e.Err)
+		return fmt.Sprintf("%s, %s, %s", e.operation, StrJSONEncodeError, e.err)
 	case ErrTypeJSONParseError:
-		return fmt.Sprintf("%s, %s, %s", e.Operation, StrJSONParseError, e.Err)
+		return fmt.Sprintf("%s, %s, %s", e.operation, StrJSONParseError, e.err)
 	case ErrTypeNetError:
-		return fmt.Sprintf("%s, %s, %s", e.Operation, "网络错误", e.Err)
+		return fmt.Sprintf("%s, %s, %s", e.operation, "网络错误", e.err)
 	case ErrTypeRemoteError:
 		if e.ErrCode == 0 {
-			if e.Operation != "" {
-				return e.Operation + ", " + StrSuccess
+			if e.operation != "" {
+				return e.operation + ", " + StrSuccess
 			}
 			return StrSuccess
 		}
 
 		code, msg := e.FindErr()
-		return fmt.Sprintf("%s, 遇到错误, %s, 代码: %d, 消息: %s", e.Operation, StrRemoteError, code, msg)
+		return fmt.Sprintf("%s, 遇到错误, %s, 代码: %d, 消息: %s", e.operation, StrRemoteError, code, msg)
 	case ErrTypeOthers:
-		if e.Err == nil {
-			if e.Operation != "" {
-				return e.Operation + ", " + StrSuccess
+		if e.err == nil {
+			if e.operation != "" {
+				return e.operation + ", " + StrSuccess
 			}
 			return StrSuccess
 		}
-		return fmt.Sprintf("%s, 遇到错误, %s", e.Operation, e.Err)
+
+		return fmt.Sprintf("%s, 遇到错误, %s", e.operation, e.err)
 	default:
 		panic("unknown ErrType")
 	}
+}
+
+// Operation return operation
+func (e *ErrInfo) Operation() string {
+	return e.operation
+}
+
+// ErrorType return error type "ErrType"
+func (e *ErrInfo) ErrorType() ErrType {
+	return e.errType
+}
+
+// ErrorCode 返回远端服务器错误代码
+func (e *ErrInfo) ErrorCode() int {
+	return e.ErrCode
+}
+
+// ErrorMsg 返回远端服务器错误信息
+func (e *ErrInfo) ErrorMsg() string {
+	return e.ErrMsg
+}
+
+// OriginalError 返回原始错误
+func (e *ErrInfo) OriginalError() error {
+	return e.err
 }
 
 // findErr 检查 PCS 错误, 查找已知错误

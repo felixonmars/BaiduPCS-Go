@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/downloader/cachepool"
+	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"io"
 	"net/http"
 	"sync/atomic"
@@ -116,7 +117,7 @@ for_2: // code 为 1 时, 不重试
 		}
 
 		// 未成功(有错误), 继续
-		verbosef("DEBUG: thread failed, thread id: %d, code: %d, error: %s\n", id, code, err)
+		pcsverbose.Verbosef("DEBUG: thread failed, thread id: %d, code: %d, error: %s\n", id, code, err)
 		switch code {
 		case 1: // 不重试
 			break for_2

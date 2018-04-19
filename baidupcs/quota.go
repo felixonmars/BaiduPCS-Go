@@ -12,9 +12,9 @@ type quotaInfo struct {
 }
 
 // QuotaInfo 获取当前用户空间配额信息
-func (pcs *BaiduPCS) QuotaInfo() (quota, used int64, err error) {
-	dataReadCloser, err := pcs.PrepareQuotaInfo()
-	if err != nil {
+func (pcs *BaiduPCS) QuotaInfo() (quota, used int64, pcsError Error) {
+	dataReadCloser, pcsError := pcs.PrepareQuotaInfo()
+	if pcsError != nil {
 		return
 	}
 
@@ -25,7 +25,7 @@ func (pcs *BaiduPCS) QuotaInfo() (quota, used int64, err error) {
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
-	err = d.Decode(quotaInfo)
+	err := d.Decode(quotaInfo)
 	if err != nil {
 		quotaInfo.ErrInfo.jsonError(err)
 		return 0, 0, quotaInfo.ErrInfo

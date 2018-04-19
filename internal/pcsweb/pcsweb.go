@@ -36,7 +36,7 @@ func activeAPIInit() (err error) {
 		return err
 	}
 
-	activeAPI = baidupcs.NewPCS(activeUser.BDUSS)
+	activeAPI = baidupcs.NewPCS(pcsconfig.Config.AppID, activeUser.BDUSS)
 	return nil
 }
 

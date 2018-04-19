@@ -2,41 +2,51 @@ package pcscommand
 
 import (
 	"fmt"
-	libpath "path"
 	"strings"
 )
 
-// RunTree 列出树形图
-func RunTree(path string, depth int, pprefix []string) {
+const (
+	indentPrefix   = "│   "
+	pathPrefix     = "├──"
+	lastFilePrefix = "└──"
+)
+
+func getTree(path string, depth int) {
 	path, err := getAbsPath(path)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	files, err := info.FilesDirectoriesList(path, false)
+	files, err := info.FilesDirectoriesList(path)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
+	var (
+		prefix          = pathPrefix
+		fN              = len(files)
+		indentPrefixStr = strings.Repeat(indentPrefix, depth)
+	)
 	for i, file := range files {
-		var prefix string
-		if i+1 == len(files) {
-			prefix = "└──"
-			pprefix = pprefix[0:len(pprefix)]
-		} else {
-			prefix = "├──"
-		}
-
 		if file.Isdir {
-			fmt.Printf("%v%v %v/\n", strings.Join(pprefix, ""), prefix, file.Filename)
-			RunTree(libpath.Join(path, file.Filename), depth+1, append(pprefix, "│   "))
+			fmt.Printf("%v%v %v/\n", indentPrefixStr, pathPrefix, file.Filename)
+			getTree(file.Path, depth+1)
 			continue
 		}
 
-		fmt.Printf("%v%v %v\n", strings.Join(pprefix, ""), prefix, file.Filename)
+		if i+1 == fN {
+			prefix = lastFilePrefix
+		}
+
+		fmt.Printf("%v%v %v\n", indentPrefixStr, prefix, file.Filename)
 	}
 
 	return
+}
+
+// RunTree 列出树形图
+func RunTree(path string) {
+	getTree(path, 0)
 }

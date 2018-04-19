@@ -1,12 +1,11 @@
 package baidupcs
 
 import (
-	"fmt"
-	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"strconv"
 )
 
 const (
@@ -50,59 +49,94 @@ const (
 	OperationCloudDlDeleteTask = "删除离线下载任务"
 )
 
-var (
-	// AppID 百度 PCS 应用 ID
-	AppID int
-)
-
 // BaiduPCS 百度 PCS API 详情
 type BaiduPCS struct {
-	url    *url.URL
-	client *requester.HTTPClient // http 客户端
+	appid   int                   // app_id
+	isHTTPS bool                  // 是否启用https
+	client  *requester.HTTPClient // http 客户端
 }
 
-// NewPCS 提供 百度BDUSS, 返回 PCSApi 指针对象
-func NewPCS(bduss string) *BaiduPCS {
+// NewPCS 提供app_id, 百度BDUSS, 返回 BaiduPCS 对象
+func NewPCS(appid int, bduss string) *BaiduPCS {
 	client := requester.NewHTTPClient()
-	client.UserAgent = pcsconfig.Config.UserAgent
 
 	pcsURL := &url.URL{
 		Scheme: "http",
 		Host:   "pcs.baidu.com",
 	}
 
-	cookie := &http.Cookie{
-		Name:  "BDUSS",
-		Value: bduss,
+	cookies := []*http.Cookie{
+		&http.Cookie{
+			Name:  "BDUSS",
+			Value: bduss,
+		},
 	}
 
 	jar, _ := cookiejar.New(nil)
-	jar.SetCookies(pcsURL, []*http.Cookie{
-		cookie,
-	})
+	jar.SetCookies(pcsURL, cookies)
 	jar.SetCookies((&url.URL{
 		Scheme: "http",
 		Host:   "pan.baidu.com",
-	}), []*http.Cookie{
-		cookie,
-	})
+	}), cookies)
 	client.SetCookiejar(jar)
 
 	return &BaiduPCS{
-		url:    pcsURL,
+		appid:  appid,
 		client: client,
 	}
 }
 
-func (pcs *BaiduPCS) setPCSURL(subPath, method string, param ...map[string]string) {
-	pcs.url = &url.URL{
+// NewPCSWithClient 提供app_id, 自定义客户端, 返回 BaiduPCS 对象
+func NewPCSWithClient(appid int, client *requester.HTTPClient) *BaiduPCS {
+	pcs := &BaiduPCS{
+		appid:  appid,
+		client: client,
+	}
+	pcs.MustCheck()
+	return pcs
+}
+
+// MustCheck 遇到错误则panic
+func (pcs *BaiduPCS) MustCheck() {
+	if pcs.appid == 0 {
+		panic("appid is zero")
+	}
+	if pcs.client == nil {
+		panic("client is nil")
+	}
+}
+
+// SetAPPID 设置app_id
+func (pcs *BaiduPCS) SetAPPID(appid int) {
+	pcs.appid = appid
+}
+
+// SetUserAgent 设置 User-Agent
+func (pcs *BaiduPCS) SetUserAgent(ua string) {
+	pcs.MustCheck()
+	pcs.client.UserAgent = ua
+}
+
+// SetHTTPS 是否启用https连接
+func (pcs *BaiduPCS) SetHTTPS(https bool) {
+	pcs.MustCheck()
+	pcs.isHTTPS = https
+	pcs.client.SetHTTPSecure(https)
+}
+
+func (pcs *BaiduPCS) generatePCSURL(subPath, method string, param ...map[string]string) *url.URL {
+	pcsURL := &url.URL{
 		Scheme: "http",
 		Host:   "pcs.baidu.com",
 		Path:   "/rest/2.0/pcs/" + subPath,
 	}
 
-	uv := pcs.url.Query()
-	uv.Set("app_id", fmt.Sprint(pcsconfig.Config.AppID))
+	if pcs.isHTTPS {
+		pcsURL.Scheme = "https"
+	}
+
+	uv := pcsURL.Query()
+	uv.Set("app_id", strconv.Itoa(pcs.appid))
 	uv.Set("method", method)
 	for k := range param {
 		for k2 := range param[k] {
@@ -110,17 +144,18 @@ func (pcs *BaiduPCS) setPCSURL(subPath, method string, param ...map[string]strin
 		}
 	}
 
-	pcs.url.RawQuery = uv.Encode()
+	pcsURL.RawQuery = uv.Encode()
+	return pcsURL
 }
 
-func (pcs *BaiduPCS) setPCSURL2(subPath, method string, param ...map[string]string) {
-	pcs.url = &url.URL{
+func (pcs *BaiduPCS) generatePCSURL2(subPath, method string, param ...map[string]string) *url.URL {
+	pcsURL2 := &url.URL{
 		Scheme: "http",
 		Host:   "pan.baidu.com",
 		Path:   "/rest/2.0/" + subPath,
 	}
 
-	uv := pcs.url.Query()
+	uv := pcsURL2.Query()
 	uv.Set("app_id", "250528")
 	uv.Set("method", method)
 	for k := range param {
@@ -129,5 +164,6 @@ func (pcs *BaiduPCS) setPCSURL2(subPath, method string, param ...map[string]stri
 		}
 	}
 
-	pcs.url.RawQuery = uv.Encode()
+	pcsURL2.RawQuery = uv.Encode()
+	return pcsURL2
 }

@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+type HandlePathFunc func(depth int, fd *FileDirectory)
+
 // FileDirectory 文件或目录的详细信息
 type FileDirectory struct {
 	FsID        int64  // fs_id
@@ -64,7 +66,7 @@ type fdData struct {
 }
 
 // FilesDirectoriesMeta 获取单个文件/目录的元信息
-func (pcs *BaiduPCS) FilesDirectoriesMeta(path string) (data *FileDirectory, err error) {
+func (pcs *BaiduPCS) FilesDirectoriesMeta(path string) (data *FileDirectory, pcsError Error) {
 	if path == "" {
 		path = "/"
 	}
@@ -77,9 +79,9 @@ func (pcs *BaiduPCS) FilesDirectoriesMeta(path string) (data *FileDirectory, err
 	// 返回了多条元信息
 	if len(fds) != 1 {
 		return nil, &ErrInfo{
-			Operation: OperationFilesDirectoriesMeta,
-			ErrType:   ErrTypeOthers,
-			Err:       fmt.Errorf("未知返回数据"),
+			operation: OperationFilesDirectoriesMeta,
+			errType:   ErrTypeOthers,
+			err:       fmt.Errorf("未知返回数据"),
 		}
 	}
 
@@ -87,10 +89,10 @@ func (pcs *BaiduPCS) FilesDirectoriesMeta(path string) (data *FileDirectory, err
 }
 
 // FilesDirectoriesBatchMeta 获取多个文件/目录的元信息
-func (pcs *BaiduPCS) FilesDirectoriesBatchMeta(paths ...string) (data FileDirectoryList, err error) {
-	dataReadCloser, err := pcs.PrepareFilesDirectoriesBatchMeta(paths...)
-	if err != nil {
-		return nil, err
+func (pcs *BaiduPCS) FilesDirectoriesBatchMeta(paths ...string) (data FileDirectoryList, pcsError Error) {
+	dataReadCloser, pcsError := pcs.PrepareFilesDirectoriesBatchMeta(paths...)
+	if pcsError != nil {
+		return nil, pcsError
 	}
 
 	defer dataReadCloser.Close()
@@ -102,7 +104,7 @@ func (pcs *BaiduPCS) FilesDirectoriesBatchMeta(paths ...string) (data FileDirect
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
-	err = d.Decode(jsonData)
+	err := d.Decode(jsonData)
 	if err != nil {
 		errInfo.jsonError(err)
 		return nil, errInfo
@@ -123,11 +125,11 @@ func (pcs *BaiduPCS) FilesDirectoriesBatchMeta(paths ...string) (data FileDirect
 	return
 }
 
-// FilesDirectoriesList 获取目录下的文件和目录列表, 可选是否递归
-func (pcs *BaiduPCS) FilesDirectoriesList(path string, recurse bool) (data FileDirectoryList, err error) {
-	dataReadCloser, err := pcs.PrepareFilesDirectoriesList(path, recurse)
-	if err != nil {
-		return nil, err
+// FilesDirectoriesList 获取目录下的文件和目录列表
+func (pcs *BaiduPCS) FilesDirectoriesList(path string) (data FileDirectoryList, pcsError Error) {
+	dataReadCloser, pcsError := pcs.PrepareFilesDirectoriesList(path)
+	if pcsError != nil {
+		return nil, pcsError
 	}
 
 	defer dataReadCloser.Close()
@@ -137,7 +139,7 @@ func (pcs *BaiduPCS) FilesDirectoriesList(path string, recurse bool) (data FileD
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
-	err = d.Decode(jsonData)
+	err := d.Decode(jsonData)
 	if err != nil {
 		jsonData.ErrInfo.jsonError(err)
 		return nil, jsonData.ErrInfo
@@ -146,23 +148,40 @@ func (pcs *BaiduPCS) FilesDirectoriesList(path string, recurse bool) (data FileD
 	// 错误处理
 	errCode, _ := jsonData.ErrInfo.FindErr()
 	if errCode != 0 {
-		return nil, fmt.Errorf("%s, 路径: %s", jsonData.ErrInfo, path)
+		return nil, jsonData.ErrInfo
 	}
 
 	data = make(FileDirectoryList, len(jsonData.List))
 	for k := range jsonData.List {
 		data[k] = jsonData.List[k].convert()
+	}
+	return
+}
 
-		// 递归获取子目录信息
-		if recurse && data[k].Isdir {
-			data[k].Children, err = pcs.FilesDirectoriesList(data[k].Path, recurse)
-			if err != nil {
-				pcsverbose.Verboseln(err)
-			}
+func (pcs *BaiduPCS) recurseList(path string, depth int, handlePathFunc HandlePathFunc) (data FileDirectoryList, pcsError Error) {
+	fdl, pcsError := pcs.FilesDirectoriesList(path)
+	if pcsError != nil {
+		return nil, pcsError
+	}
+
+	for k := range fdl {
+		handlePathFunc(depth+1, fdl[k])
+		if !fdl[k].Isdir {
+			continue
+		}
+
+		fdl[k].Children, pcsError = pcs.recurseList(fdl[k].Path, depth+1, handlePathFunc)
+		if pcsError != nil {
+			pcsverbose.Verboseln(pcsError)
 		}
 	}
 
-	return
+	return fdl, nil
+}
+
+// FilesDirectoriesRecurseList 递归获取目录下的文件和目录列表
+func (pcs *BaiduPCS) FilesDirectoriesRecurseList(path string, handlePathFunc HandlePathFunc) (data FileDirectoryList, pcsError Error) {
+	return pcs.recurseList(path, 0, handlePathFunc)
 }
 
 func (f *FileDirectory) String() string {

@@ -1,6 +1,7 @@
 package downloader
 
 import (
+	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"os"
 	"sync/atomic"
 	"time"
@@ -65,7 +66,7 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 						// 重设连接
 						if r := der.status.BlockList[k].resp; r != nil {
 							r.Body.Close()
-							verbosef("MONITER: thread reload, thread id: %d\n", k)
+							pcsverbose.Verbosef("MONITER: thread reload, thread id: %d\n", k)
 						}
 
 					}(k)
@@ -101,7 +102,7 @@ func (der *Downloader) blockMonitor() <-chan struct{} {
 
 						der.monitorMu.Unlock()
 
-						verbosef("MONITER: thread copied: %d -> %d\n", k, index)
+						pcsverbose.Verbosef("MONITER: thread copied: %d -> %d\n", k, index)
 						go der.addExecBlock(index)
 					}(k)
 				}

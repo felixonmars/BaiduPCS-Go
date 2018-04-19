@@ -77,7 +77,7 @@ func main() {
 			return
 		}
 		cli.ShowAppHelp(c)
-		pcsverbose.Verbosef("这是一条调试信息\n\n")
+		pcsverbose.Verbosef("VERBOSE: 这是一条调试信息\n\n")
 
 		line := pcsliner.NewLiner()
 
@@ -418,7 +418,7 @@ func main() {
 			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
-				pcscommand.RunTree(c.Args().Get(0), 0, []string{})
+				pcscommand.RunTree(c.Args().Get(0))
 				return nil
 			},
 		},

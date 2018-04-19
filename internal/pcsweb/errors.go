@@ -3,7 +3,6 @@ package pcsweb
 import (
 	"fmt"
 	"github.com/json-iterator/go"
-	"log"
 )
 
 // ErrInfo web 错误详情
@@ -20,9 +19,7 @@ func (ei *ErrInfo) Error() string {
 func (ei *ErrInfo) JSON() (data []byte) {
 	var err error
 	data, err = jsoniter.MarshalIndent(ei, "", " ")
-	if err != nil {
-		panic(err)
-	}
+	checkErr(err)
 
 	return
 }
@@ -30,6 +27,6 @@ func (ei *ErrInfo) JSON() (data []byte) {
 // checkErr 遇到错误就退出
 func checkErr(err error) {
 	if err != nil {
-		log.Fatalln(err)
+		panic(err)
 	}
 }

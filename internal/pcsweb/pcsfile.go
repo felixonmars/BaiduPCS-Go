@@ -9,7 +9,7 @@ func fileList(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 
 	fpath := r.Form.Get("path")
-	dataReadCloser, err := activeAPI.PrepareFilesDirectoriesList(fpath, false)
+	dataReadCloser, err := activeAPI.PrepareFilesDirectoriesList(fpath)
 	if err != nil {
 		w.Write((&ErrInfo{
 			ErrroCode: 1,

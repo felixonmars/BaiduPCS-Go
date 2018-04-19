@@ -26,7 +26,7 @@ func getDownloadFunc(id int, cfg *downloader.Config) baidupcs.DownloadFunc {
 		cfg = downloader.NewConfig()
 	}
 
-	return func(downloadURL string, jar *cookiejar.Jar, savePath string) error {
+	return func(downloadURL string, jar *cookiejar.Jar) error {
 		h := requester.NewHTTPClient()
 		h.UserAgent = pcsconfig.Config.UserAgent
 
@@ -35,7 +35,6 @@ func getDownloadFunc(id int, cfg *downloader.Config) baidupcs.DownloadFunc {
 		h.SetTimeout(10 * time.Minute)
 
 		cfg.Client = h
-		cfg.SavePath = savePath
 
 		download, err := downloader.NewDownloader(downloadURL, *cfg)
 		if err != nil {
@@ -80,7 +79,7 @@ func getDownloadFunc(id int, cfg *downloader.Config) baidupcs.DownloadFunc {
 		<-done
 
 		if !cfg.Testing {
-			fmt.Printf("\n\n[%d] 下载完成, 保存位置: %s\n\n", id, savePath)
+			fmt.Printf("\n\n[%d] 下载完成, 保存位置: %s\n\n", id, cfg.SavePath)
 		} else {
 			fmt.Printf("\n\n[%d] 测试下载结束\n\n", id)
 		}
@@ -189,7 +188,7 @@ func RunDownload(testing bool, parallel int, paths []string) {
 				os.MkdirAll(pcsconfig.GetSavePath(task.path), 0777) // 首先在本地创建目录
 			}
 
-			fileList, err := info.FilesDirectoriesList(task.path, false)
+			fileList, err := info.FilesDirectoriesList(task.path)
 			if err != nil {
 				// 不重试
 				fmt.Printf("[%d] 获取目录信息错误, %s\n", task.ID, err)
@@ -213,6 +212,7 @@ func RunDownload(testing bool, parallel int, paths []string) {
 
 		fmt.Printf("[%d] 准备下载: %s\n\n", task.ID, task.path)
 
+		cfg.SavePath = pcsconfig.GetSavePath(task.path)
 		err = info.DownloadFile(task.path, getDownloadFunc(task.ID, cfg))
 		if err != nil {
 			handleTaskErr(task, "下载文件错误", err)

@@ -284,7 +284,7 @@ func RunUpload(localPaths []string, savePath string) {
 	var (
 		e             *list.Element
 		task          *utask
-		handleTaskErr = func(task *utask, errManifest string, err error) {
+		handleTaskErr = func(task *utask, errManifest string, pcsError baidupcs.Error) {
 			if task == nil {
 				panic("task is nil")
 			}
@@ -295,7 +295,8 @@ func RunUpload(localPaths []string, savePath string) {
 
 			// 不重试的情况
 			switch {
-			case strings.Contains(err.Error(), baidupcs.StrRemoteError):
+			// 远程服务器错误
+			case pcsError.ErrorType() == baidupcs.ErrTypeRemoteError:
 				fmt.Printf("[%d] %s, %s\n", task.ID, errManifest, err)
 				return
 			}
@@ -339,7 +340,7 @@ func RunUpload(localPaths []string, savePath string) {
 
 		// 设置缓存
 		if !pcscache.DirCache.Existed(panDir) {
-			fdl, err := info.FilesDirectoriesList(panDir, false)
+			fdl, err := info.FilesDirectoriesList(panDir)
 			if err == nil {
 				pcscache.DirCache.Set(panDir, &fdl)
 			}
@@ -385,7 +386,7 @@ func RunUpload(localPaths []string, savePath string) {
 		fmt.Printf("[%d] 秒传失败, 开始上传文件...\n\n", task.ID)
 
 		// 秒传失败, 开始上传文件
-		err = info.Upload(task.savePath, func(uploadURL string, jar *cookiejar.Jar) (resp *http.Response, uperr error) {
+		pcsError := info.Upload(task.savePath, func(uploadURL string, jar *cookiejar.Jar) (resp *http.Response, uperr error) {
 			h := requester.NewHTTPClient()
 			h.SetCookiejar(jar)
 
@@ -435,8 +436,8 @@ func RunUpload(localPaths []string, savePath string) {
 
 		fmt.Printf("\n")
 
-		if err != nil {
-			handleTaskErr(task, "上传文件失败", err)
+		if pcsError != nil {
+			handleTaskErr(task, "上传文件失败", pcsError)
 			continue
 		}
 

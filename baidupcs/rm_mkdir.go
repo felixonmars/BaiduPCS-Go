@@ -1,54 +1,27 @@
 package baidupcs
 
-import (
-	"github.com/json-iterator/go"
-)
-
 // Remove 批量删除文件/目录
-func (pcs *BaiduPCS) Remove(paths ...string) (err error) {
-	dataReadCloser, err := pcs.PrepareRemove(paths...)
-	if err != nil {
+func (pcs *BaiduPCS) Remove(paths ...string) (pcsError Error) {
+	dataReadCloser, pcsError := pcs.PrepareRemove(paths...)
+	if pcsError != nil {
 		return
 	}
 
 	defer dataReadCloser.Close()
 
-	errInfo := NewErrorInfo(OperationRemove)
-
-	d := jsoniter.NewDecoder(dataReadCloser)
-	err = d.Decode(errInfo)
-	if err != nil {
-		errInfo.jsonError(err)
-		return errInfo
-	}
-
-	if errInfo.ErrCode != 0 {
-		return errInfo
-	}
-
-	return nil
+	errInfo := decodeJSONError(OperationRemove, dataReadCloser)
+	return errInfo
 }
 
 // Mkdir 创建目录
-func (pcs *BaiduPCS) Mkdir(pcspath string) (err error) {
-	dataReadCloser, err := pcs.PrepareMkdir(pcspath)
-	if err != nil {
+func (pcs *BaiduPCS) Mkdir(pcspath string) (pcsError Error) {
+	dataReadCloser, pcsError := pcs.PrepareMkdir(pcspath)
+	if pcsError != nil {
 		return
 	}
 
 	defer dataReadCloser.Close()
 
-	errInfo := NewErrorInfo(OperationMkdir)
-
-	d := jsoniter.NewDecoder(dataReadCloser)
-	err = d.Decode(errInfo)
-	if err != nil {
-		errInfo.jsonError(err)
-		return errInfo
-	}
-
-	if errInfo.ErrCode != 0 {
-		return errInfo
-	}
-	return
+	errInfo := decodeJSONError(OperationMkdir, dataReadCloser)
+	return errInfo
 }

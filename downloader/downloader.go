@@ -4,6 +4,7 @@ package downloader
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/downloader/cachepool"
+	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"io"
 	"sync"
 	"time"
@@ -73,7 +74,7 @@ func (der *Downloader) Execute() (done <-chan struct{}, err error) {
 				der.Config.CacheSize = int(blockSize)
 			}
 
-			verbosef("CREATED: parallel: %d, cache size: %d\n", der.Config.Parallel, der.Config.CacheSize)
+			pcsverbose.Verbosef("CREATED: parallel: %d, cache size: %d\n", der.Config.Parallel, der.Config.CacheSize)
 
 			// 数据平均分配给各个线程
 			var begin, end int64
@@ -93,7 +94,7 @@ func (der *Downloader) Execute() (done <-chan struct{}, err error) {
 		}
 	}
 
-	verbosef("DEBUG: download start\n")
+	pcsverbose.Verbosef("DEBUG: download start\n")
 
 	go func() {
 		defer func() {
@@ -125,7 +126,7 @@ func (der *Downloader) Execute() (done <-chan struct{}, err error) {
 		der.status.done = true
 		der.status.file.Close()
 		trigger(der.OnFinish)
-		verbosef("DEBUG: download finish\n")
+		pcsverbose.Verbosef("DEBUG: download finish\n")
 	}()
 
 	return d, nil

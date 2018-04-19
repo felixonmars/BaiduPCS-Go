@@ -11,39 +11,31 @@ import (
 type UploadFunc func(uploadURL string, jar *cookiejar.Jar) (resp *http.Response, err error)
 
 // RapidUpload 秒传文件
-func (pcs *BaiduPCS) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) (err error) {
-	dataReadCloser, err := pcs.PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32, length)
-	if err != nil {
+func (pcs *BaiduPCS) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) (pcsError Error) {
+	dataReadCloser, pcsError := pcs.PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32, length)
+	if pcsError != nil {
 		return
 	}
 
 	defer dataReadCloser.Close()
 
-	errInfo := NewErrorInfo(OperationRapidUpload)
-
-	d := jsoniter.NewDecoder(dataReadCloser)
-	err = d.Decode(errInfo)
-	if err != nil {
-		errInfo.jsonError(err)
-		return errInfo
+	errInfo := decodeJSONError(OperationUpload, dataReadCloser)
+	if errInfo == nil {
+		return nil
 	}
 
-	switch errInfo.ErrCode {
+	switch errInfo.ErrorCode() {
 	case 31079:
 		// file md5 not found, you should use upload api to upload the whole file.
 	}
 
-	if errInfo.ErrCode != 0 {
-		return errInfo
-	}
-
-	return nil
+	return errInfo
 }
 
 // Upload 上传单个文件
-func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (err error) {
-	dataReadCloser, err := pcs.PrepareUpload(targetPath, uploadFunc)
-	if err != nil {
+func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (pcsError Error) {
+	dataReadCloser, pcsError := pcs.PrepareUpload(targetPath, uploadFunc)
+	if pcsError != nil {
 		return
 	}
 
@@ -59,7 +51,7 @@ func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (err error
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 
-	err = d.Decode(jsonData)
+	err := d.Decode(jsonData)
 	if err != nil {
 		jsonData.ErrInfo.jsonError(err)
 		return jsonData.ErrInfo
@@ -70,7 +62,9 @@ func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (err error
 	}
 
 	if jsonData.Path == "" {
-		return fmt.Errorf("%s, unknown response data, file saved path not found", OperationUpload)
+		jsonData.ErrInfo.errType = ErrTypeInternalError
+		jsonData.ErrInfo.err = fmt.Errorf("unknown response data, file saved path not found")
+		return jsonData.ErrInfo
 	}
 
 	return nil
@@ -122,18 +116,6 @@ func (pcs *BaiduPCS) UploadCreateSuperFile(targetPath string, blockList ...strin
 
 	defer dataReadCloser.Close()
 
-	errInfo := NewErrorInfo(OperationUploadCreateSuperFile)
-
-	d := jsoniter.NewDecoder(dataReadCloser)
-	err = d.Decode(errInfo)
-	if err != nil {
-		errInfo.jsonError(err)
-		return errInfo
-	}
-
-	if errInfo.ErrCode != 0 {
-		return errInfo
-	}
-
-	return nil
+	errInfo := decodeJSONError(OperationUploadCreateSuperFile, dataReadCloser)
+	return errInfo
 }
