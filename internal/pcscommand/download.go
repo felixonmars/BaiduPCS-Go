@@ -4,14 +4,21 @@ import (
 	"container/list"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/downloader"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/iikira/BaiduPCS-Go/requester/downloader"
+	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"net/http/cookiejar"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
+)
+
+var (
+	//DownloadSuffix 文件下载后缀
+	DownloadSuffix = ".BaiduPCS-Go-downloading"
 )
 
 // dtask 下载任务
@@ -21,7 +28,7 @@ type dtask struct {
 	downloadInfo *baidupcs.FileDirectory // 文件或目录详情
 }
 
-func getDownloadFunc(id int, cfg *downloader.Config) baidupcs.DownloadFunc {
+func getDownloadFunc(id int, savePath string, cfg *downloader.Config) baidupcs.DownloadFunc {
 	if cfg == nil {
 		cfg = downloader.NewConfig()
 	}
@@ -34,21 +41,30 @@ func getDownloadFunc(id int, cfg *downloader.Config) baidupcs.DownloadFunc {
 		h.SetKeepAlive(true)
 		h.SetTimeout(10 * time.Minute)
 
-		cfg.Client = h
+		var (
+			file rio.WriteCloserAt
+			err  error
+		)
 
-		download, err := downloader.NewDownloader(downloadURL, *cfg)
-		if err != nil {
-			return err
+		if !cfg.IsTest {
+			cfg.InstanceStatePath = savePath + DownloadSuffix
+			os.MkdirAll(filepath.Dir(savePath), 0777)
+			file, err = os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY, 0777)
+			if err != nil {
+				return err
+			}
 		}
 
-		exitDownloadFunc := make(chan struct{})
+		download := downloader.NewDownloader(downloadURL, file, cfg)
+		download.SetClient(h)
 
-		download.OnExecute = func() {
-			if cfg.Testing {
+		exitDownloadFunc := make(chan struct{})
+		download.OnExecute(func() {
+			if cfg.IsTest {
 				fmt.Printf("[%d] 测试下载开始\n\n", id)
 			}
 
-			ds := download.GetStatusChan()
+			ds := download.GetDownloadStatusChan()
 			for {
 				select {
 				case <-exitDownloadFunc:
@@ -59,27 +75,26 @@ func getDownloadFunc(id int, cfg *downloader.Config) baidupcs.DownloadFunc {
 					}
 
 					fmt.Printf("\r[%d] ↓ %s/%s %s/s in %s ............", id,
-						pcsutil.ConvertFileSize(v.Downloaded, 2),
-						pcsutil.ConvertFileSize(v.TotalSize, 2),
-						pcsutil.ConvertFileSize(v.Speeds, 2),
-						v.TimeElapsed,
+						pcsutil.ConvertFileSize(v.Downloaded(), 2),
+						pcsutil.ConvertFileSize(v.TotalSize(), 2),
+						pcsutil.ConvertFileSize(v.SpeedsPerSecond(), 2),
+						v.TimeElapsed()/1e7*1e7,
 					)
 				}
 			}
-		}
+		})
 
-		download.OnFinish = func() {
+		download.OnFinish(func() {
 			exitDownloadFunc <- struct{}{}
-		}
+		})
 
-		done, err := download.Execute()
+		err = download.Execute()
 		if err != nil {
-			return fmt.Errorf("[%d] 下载发生错误, %s", id, err)
+			return err
 		}
-		<-done
 
-		if !cfg.Testing {
-			fmt.Printf("\n\n[%d] 下载完成, 保存位置: %s\n\n", id, cfg.SavePath)
+		if !cfg.IsTest {
+			fmt.Printf("\n\n[%d] 下载完成, 保存位置: %s\n\n", id, savePath)
 		} else {
 			fmt.Printf("\n\n[%d] 测试下载结束\n\n", id)
 		}
@@ -89,10 +104,10 @@ func getDownloadFunc(id int, cfg *downloader.Config) baidupcs.DownloadFunc {
 }
 
 // RunDownload 执行下载网盘内文件
-func RunDownload(testing bool, parallel int, paths []string) {
+func RunDownload(isTest bool, parallel int, paths []string) {
 	// 设置下载配置
 	cfg := &downloader.Config{
-		Testing:   testing,
+		IsTest:    isTest,
 		CacheSize: pcsconfig.Config.CacheSize,
 	}
 
@@ -100,7 +115,7 @@ func RunDownload(testing bool, parallel int, paths []string) {
 	if parallel == 0 {
 		parallel = pcsconfig.Config.MaxParallel
 	}
-	cfg.Parallel = parallel
+	cfg.MaxParallel = parallel
 
 	paths, err := getAllAbsPaths(paths...)
 	if err != nil {
@@ -109,7 +124,7 @@ func RunDownload(testing bool, parallel int, paths []string) {
 	}
 
 	fmt.Printf("\n")
-	fmt.Printf("[0] 提示: 当前下载最大并发量为: %d, 下载缓存为: %d\n", cfg.Parallel, cfg.CacheSize)
+	fmt.Printf("[0] 提示: 当前下载最大并发量为: %d, 下载缓存为: %d\n", cfg.MaxParallel, cfg.CacheSize)
 
 	dlist := list.New()
 	lastID := 0
@@ -184,8 +199,8 @@ func RunDownload(testing bool, parallel int, paths []string) {
 
 		// 如果是一个目录, 将子文件和子目录加入队列
 		if task.downloadInfo.Isdir {
-			if !testing { // 测试下载, 不建立空目录
-				os.MkdirAll(pcsconfig.GetSavePath(task.path), 0777) // 首先在本地创建目录
+			if !isTest { // 测试下载, 不建立空目录
+				os.MkdirAll(pcsconfig.GetSavePath(task.path), 0777) // 首先在本地创建目录, 保证空目录也能被保存
 			}
 
 			fileList, err := info.FilesDirectoriesList(task.path)
@@ -210,10 +225,14 @@ func RunDownload(testing bool, parallel int, paths []string) {
 			continue
 		}
 
+		savePath := pcsconfig.GetSavePath(task.path)
 		fmt.Printf("[%d] 准备下载: %s\n\n", task.ID, task.path)
+		if !isTest && fileExist(savePath) {
+			fmt.Printf("[%d] 文件已经存在: %s, 跳过...\n", task.ID, savePath)
+			continue
+		}
 
-		cfg.SavePath = pcsconfig.GetSavePath(task.path)
-		err = info.DownloadFile(task.path, getDownloadFunc(task.ID, cfg))
+		err = info.DownloadFile(task.path, getDownloadFunc(task.ID, savePath, cfg))
 		if err != nil {
 			handleTaskErr(task, "下载文件错误", err)
 			continue
@@ -223,4 +242,16 @@ func RunDownload(testing bool, parallel int, paths []string) {
 	}
 
 	fmt.Printf("任务结束, 数据总量: %s\n", pcsutil.ConvertFileSize(totalSize))
+}
+
+// fileExist 检查文件是否存在,
+// 只有当文件存在, 断点续传文件不存在时, 才判断为存在
+func fileExist(path string) bool {
+	if _, err := os.Stat(path); err == nil {
+		if _, err = os.Stat(path + DownloadSuffix); err != nil {
+			return true
+		}
+	}
+
+	return false
 }

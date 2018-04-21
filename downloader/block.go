@@ -3,8 +3,8 @@ package downloader
 import (
 	"errors"
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/downloader/cachepool"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
+	"github.com/iikira/BaiduPCS-Go/requester/downloader/cachepool"
 	"io"
 	"net/http"
 	"sync/atomic"

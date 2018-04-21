@@ -3,8 +3,8 @@ package downloader
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/downloader/cachepool"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
+	"github.com/iikira/BaiduPCS-Go/requester/downloader/cachepool"
 	"io"
 	"sync"
 	"time"

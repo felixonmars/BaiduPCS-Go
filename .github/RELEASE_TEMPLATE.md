@@ -10,8 +10,8 @@
 
 |amd|arm| mips| 说明 |
 |-----|----------------|------------------|------------------|
-|amd64, x64 |arm64   | mips, mipsle |适用于64位CPU或操作系统的计算机|
-|386, x86 |armv5, armv7  | mips64, mips64le |适用于32位CPU或操作系统的计算机|
+|amd64, x64 |arm64   | mips64, mips64le |适用于64位CPU或操作系统的计算机|
+|386, x86 |armv5, armv7  | mips, mipsle |适用于32位CPU或操作系统的计算机|
 
 ## 注意区别 `arm` 和 `amd`, 不要搞错了!!!!
 

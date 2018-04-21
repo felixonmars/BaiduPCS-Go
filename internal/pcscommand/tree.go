@@ -2,6 +2,7 @@ package pcscommand
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"strings"
 )
 
@@ -12,13 +13,19 @@ const (
 )
 
 func getTree(path string, depth int) {
-	path, err := getAbsPath(path)
-	if err != nil {
-		fmt.Println(err)
-		return
+	var (
+		err   error
+		files baidupcs.FileDirectoryList
+	)
+	if depth == 0 {
+		path, err = getAbsPath(path)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	}
 
-	files, err := info.FilesDirectoriesList(path)
+	files, err = info.FilesDirectoriesList(path)
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/downloader/cachepool"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
@@ -85,7 +84,7 @@ func (lp *LocalPathInfo) repeatRead(ws ...io.Writer) {
 	}
 
 	if lp.buf == nil {
-		lp.buf = cachepool.SetIfNotExist(0, int(requiredSliceLen))
+		lp.buf = make([]byte, int(requiredSliceLen))
 	}
 
 	var (
@@ -162,7 +161,7 @@ func (lp *LocalPathInfo) SliceMD5Sum() {
 
 	// 获取前 256KB 文件切片的 md5
 	if lp.buf == nil {
-		lp.buf = cachepool.SetIfNotExist(0, int(requiredSliceLen))
+		lp.buf = make([]byte, int(requiredSliceLen))
 	}
 
 	m := md5.New()

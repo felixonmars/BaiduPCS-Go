@@ -1,3 +1,5 @@
+#!/bin/sh
+
 name="BaiduPCS-Go"
 version=$1
 

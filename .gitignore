@@ -19,6 +19,7 @@ out/
 # Others
 .DS_Store
 *.txt
+*.log
 captcha.png
 pcs_config.json
 test/
