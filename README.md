@@ -1,5 +1,7 @@
 # BaiduPCS-Go 百度网盘客户端
 
+[![Build status](https://ci.appveyor.com/api/projects/status/nhx92nqyrfq9su7y?svg=true)](https://ci.appveyor.com/project/iikira/baidupcs-go)
+
 仿 Linux 文件处理命令的百度网盘命令行客户端.
 
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
