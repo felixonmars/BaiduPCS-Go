@@ -30,16 +30,6 @@ type Downloader struct {
 	instanceState *InstanceState
 }
 
-//MustCheck 遇到错误则panic
-func (der *Downloader) MustCheck() {
-	if der.config == nil {
-		panic("config is nil")
-	}
-	if der.client == nil {
-		panic("client is nil")
-	}
-}
-
 //NewDownloader 初始化Downloader
 func NewDownloader(durl string, writer rio.WriteCloserAt, config *Config) (der *Downloader) {
 	der = &Downloader{
@@ -47,33 +37,29 @@ func NewDownloader(durl string, writer rio.WriteCloserAt, config *Config) (der *
 		config: config,
 		writer: writer,
 	}
-	if der.config == nil {
-		der.config = NewConfig()
-	}
 	return
 }
 
 //SetClient 设置http客户端
 func (der *Downloader) SetClient(client *requester.HTTPClient) {
 	der.client = client
-	der.MustCheck()
 }
 
 func (der *Downloader) lazyInit() {
+	if der.config == nil {
+		der.config = NewConfig()
+	}
 	if der.client == nil {
 		der.client = requester.NewHTTPClient()
 	}
 	if der.monitor == nil {
-		der.monitor = &Monitor{
-			status: NewDownloadStatus(),
-		}
+		der.monitor = NewMonitor()
 	}
 }
 
 //Execute 开始任务
 func (der *Downloader) Execute() error {
 	der.lazyInit()
-	der.MustCheck()
 
 	// 检测
 	resp, err := der.client.Req("HEAD", der.durl, nil, nil)
@@ -98,7 +84,8 @@ func (der *Downloader) Execute() error {
 		acceptRanges = "bytes"
 	}
 
-	der.monitor.status.totalSize = resp.ContentLength
+	status := NewDownloadStatus()
+	status.totalSize = resp.ContentLength
 
 	var (
 		req           = resp.Request
@@ -127,7 +114,7 @@ func (der *Downloader) Execute() error {
 	}
 
 	if dlStatus != nil {
-		der.monitor.status = dlStatus
+		status = dlStatus
 	}
 
 	// 数据处理
@@ -138,13 +125,13 @@ func (der *Downloader) Execute() error {
 		der.config.parallel = len(ranges)
 	} else {
 		der.config.parallel = der.config.MaxParallel
-		if int64(der.config.parallel) > der.monitor.status.totalSize/int64(MinParallelSize) {
-			der.config.parallel = int(der.monitor.status.totalSize/int64(MinParallelSize)) + 1
+		if int64(der.config.parallel) > status.totalSize/int64(MinParallelSize) {
+			der.config.parallel = int(status.totalSize/int64(MinParallelSize)) + 1
 		}
 	}
 
 	der.config.cacheSize = der.config.CacheSize
-	blockSize := der.monitor.status.totalSize / int64(der.config.parallel)
+	blockSize := status.totalSize / int64(der.config.parallel)
 
 	// 如果 cache size 过高, 则调低
 	if int64(der.config.cacheSize) > blockSize {
@@ -153,7 +140,7 @@ func (der *Downloader) Execute() error {
 
 	pcsverbose.Verbosef("DEBUG: CREATED: parallel: %d, cache size: %d\n", der.config.parallel, der.config.cacheSize)
 
-	der.monitor.workers = make([]*Worker, 0, der.config.parallel)
+	der.monitor.InitMonitorCapacity(der.config.parallel)
 
 	// 数据平均分配给各个线程
 	var (
@@ -190,11 +177,14 @@ func (der *Downloader) Execute() error {
 			})
 			begin = end + 1
 			if i == der.config.parallel-1 {
-				worker.wrange.End = der.monitor.status.totalSize - 1
+				worker.wrange.End = status.totalSize - 1
 			}
 		}
 		der.monitor.Append(worker)
 	}
+
+	der.monitor.SetStatus(status)
+	der.monitor.SetReloadWorker(acceptRanges != "")
 
 	moniterCtx, moniterCancelFunc := context.WithCancel(context.Background())
 	der.monitorCancelFunc = moniterCancelFunc
@@ -210,19 +200,27 @@ func (der *Downloader) Execute() error {
 //GetDownloadStatusChan 获取下载统计信息
 func (der *Downloader) GetDownloadStatusChan() <-chan DlStatus {
 	if der.monitor == nil {
+		pcsverbose.Verbosef("DEBUG: GetDownloadStatusChan: monitor is nil\n")
 		return nil
 	}
+
+	status := der.monitor.Status()
+	if status == nil {
+		pcsverbose.Verbosef("DEBUG: GetDownloadStatusChan: monitor.status is nil\n")
+		return nil
+	}
+
 	c := make(chan DlStatus)
 	nowTime := time.Now()
 	go func() {
 		for {
 			select {
-			case <-der.monitor.completed:
+			case <-der.monitor.CompletedChan():
 				close(c)
 				return
 			default:
-				der.monitor.status.timeElapsed = time.Since(nowTime)
-				c <- der.monitor.status
+				status.timeElapsed = time.Since(nowTime)
+				c <- status
 				time.Sleep(1 * time.Second)
 			}
 		}

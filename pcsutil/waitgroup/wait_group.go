@@ -1,4 +1,4 @@
-package pcsutil
+package waitgroup
 
 import "sync"
 

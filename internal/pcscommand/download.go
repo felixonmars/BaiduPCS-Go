@@ -28,7 +28,7 @@ type dtask struct {
 	downloadInfo *baidupcs.FileDirectory // 文件或目录详情
 }
 
-func getDownloadFunc(id int, savePath string, cfg *downloader.Config) baidupcs.DownloadFunc {
+func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintStatus bool) baidupcs.DownloadFunc {
 	if cfg == nil {
 		cfg = downloader.NewConfig()
 	}
@@ -42,8 +42,9 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config) baidupcs.D
 		h.SetTimeout(10 * time.Minute)
 
 		var (
-			file rio.WriteCloserAt
-			err  error
+			file     rio.WriteCloserAt
+			err      error
+			exitChan chan struct{}
 		)
 
 		if !cfg.IsTest {
@@ -58,37 +59,59 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config) baidupcs.D
 		download := downloader.NewDownloader(downloadURL, file, cfg)
 		download.SetClient(h)
 
-		exitDownloadFunc := make(chan struct{})
+		exitChan = make(chan struct{})
+
 		download.OnExecute(func() {
 			if cfg.IsTest {
 				fmt.Printf("[%d] 测试下载开始\n\n", id)
 			}
 
-			ds := download.GetDownloadStatusChan()
+			var (
+				ds                            = download.GetDownloadStatusChan()
+				downloaded, totalSize, speeds int64
+				leftStr                       string
+			)
 			for {
 				select {
-				case <-exitDownloadFunc:
+				case <-exitChan:
 					return
 				case v, ok := <-ds:
 					if !ok { // channel 已经关闭
 						return
 					}
 
-					fmt.Printf("\r[%d] ↓ %s/%s %s/s in %s ............", id,
+					downloaded, totalSize, speeds = v.Downloaded(), v.TotalSize(), v.SpeedsPerSecond()
+					if speeds <= 0 {
+						leftStr = "-"
+					} else {
+						leftStr = fmt.Sprintf("%ds", (totalSize-downloaded)/(speeds))
+					}
+
+					fmt.Printf("\r[%d] ↓ %s/%s %s/s in %s, left %s ............", id,
 						pcsutil.ConvertFileSize(v.Downloaded(), 2),
 						pcsutil.ConvertFileSize(v.TotalSize(), 2),
 						pcsutil.ConvertFileSize(v.SpeedsPerSecond(), 2),
-						v.TimeElapsed()/1e7*1e7,
+						v.TimeElapsed()/1e7*1e7, leftStr,
 					)
 				}
 			}
 		})
 
-		download.OnFinish(func() {
-			exitDownloadFunc <- struct{}{}
-		})
-
+		if isPrintStatus {
+			go func() {
+				for {
+					time.Sleep(1 * time.Second)
+					select {
+					case <-exitChan:
+						return
+					default:
+						download.PrintAllWorkers()
+					}
+				}
+			}()
+		}
 		err = download.Execute()
+		close(exitChan)
 		if err != nil {
 			return err
 		}
@@ -104,7 +127,7 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config) baidupcs.D
 }
 
 // RunDownload 执行下载网盘内文件
-func RunDownload(isTest bool, parallel int, paths []string) {
+func RunDownload(isTest, isPrintStatus bool, parallel int, paths []string) {
 	// 设置下载配置
 	cfg := &downloader.Config{
 		IsTest:    isTest,
@@ -232,7 +255,7 @@ func RunDownload(isTest bool, parallel int, paths []string) {
 			continue
 		}
 
-		err = info.DownloadFile(task.path, getDownloadFunc(task.ID, savePath, cfg))
+		err = info.DownloadFile(task.path, getDownloadFunc(task.ID, savePath, cfg, isPrintStatus))
 		if err != nil {
 			handleTaskErr(task, "下载文件错误", err)
 			continue

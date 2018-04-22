@@ -5,7 +5,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcspath"
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/waitgroup"
 	fpath "path"
 	"regexp"
 	"strings"
@@ -96,7 +96,7 @@ func recurseParsePath(path string) (paths []string, err baidupcs.Error) {
 		}
 
 		// 多线程获取信息
-		wg := pcsutil.NewWaitGroup(10)
+		wg := waitgroup.NewWaitGroup(10)
 
 		for k2 := range pfiles {
 			wg.AddDelta()

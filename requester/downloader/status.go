@@ -1,9 +1,15 @@
 package downloader
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
 )
+
+//Adder 增加
+type Adder interface {
+	Add(int64)
+}
 
 //Status 状态
 type Status interface {
@@ -29,16 +35,16 @@ type DlStatus interface {
 
 //DownloadStatus 下载状态及统计信息
 type DownloadStatus struct {
-	totalSize       int64         // 总大小
-	downloaded      int64         // 已下载的数据量
-	speedsPerSecond int64         // 下载速度
-	maxSpeeds       int64         // 最大下载速度
-	timeElapsed     time.Duration // 下载的时间
-}
+	totalSize       int64 // 总大小
+	downloaded      int64 // 已下载的数据量
+	speedsPerSecond int64 // 下载速度
+	maxSpeeds       int64 // 最大下载速度
 
-//AddDownloaded 增加已下载数据量, 原子操作
-func (ds *DownloadStatus) AddDownloaded(n int64) {
-	atomic.AddInt64(&ds.downloaded, n)
+	oldDownloaded int64
+	timeElapsed   time.Duration // 下载的时间
+	nowTime       time.Time
+	sinceNowTime  time.Duration
+	mu            sync.Mutex
 }
 
 const (
@@ -124,17 +130,60 @@ func (ws *WorkerStatus) StatusText() string {
 
 //NewDownloadStatus 初始化DownloadStatus
 func NewDownloadStatus() *DownloadStatus {
-	return &DownloadStatus{}
+	return &DownloadStatus{
+		nowTime: time.Now(),
+	}
 }
 
-//StoreSpeedsPerSecond 储存每秒速度, 原子操作
-func (ds *DownloadStatus) StoreSpeedsPerSecond(n int64) {
-	atomic.StoreInt64(&ds.speedsPerSecond, n)
+//Add 实现Adder接口
+func (ds *DownloadStatus) Add(i int64) {
+	ds.AddDownloaded(i)
+}
+
+//AddDownloaded 增加已下载数据量
+func (ds *DownloadStatus) AddDownloaded(d int64) {
+	atomic.AddInt64(&ds.downloaded, d)
+	ds.updateSpeeds()
+}
+
+func (ds *DownloadStatus) updateSpeeds() {
+	ds.mu.Lock()
+	defer ds.mu.Unlock()
+
+	if ds.nowTime.Unix() <= 0 {
+		ds.nowTime = time.Now()
+	}
+
+	ds.sinceNowTime = time.Since(ds.nowTime)
+	seconds := ds.sinceNowTime.Seconds()
+	if seconds < 0.5 {
+		return
+	}
+
+	downloaded := ds.Downloaded() - ds.oldDownloaded
+	speeds := int64(float64(downloaded) / seconds)
+	ds.StoreSpeedsPerSecond(speeds)
+	if speeds > ds.MaxSpeeds() {
+		ds.StoreMaxSpeeds(ds.speedsPerSecond)
+	}
+
+	ds.nowTime = time.Now()
+	ds.oldDownloaded = ds.Downloaded()
+}
+
+//ResetMaxSpeeds 清空最大速度统计
+func (ds *DownloadStatus) ResetMaxSpeeds() {
+	ds.StoreMaxSpeeds(0)
 }
 
 //StoreMaxSpeeds 储存最大速度, 原子操作
-func (ds *DownloadStatus) StoreMaxSpeeds(n int64) {
-	atomic.StoreInt64(&ds.maxSpeeds, n)
+func (ds *DownloadStatus) StoreMaxSpeeds(speeds int64) {
+	atomic.StoreInt64(&ds.maxSpeeds, speeds)
+}
+
+//StoreSpeedsPerSecond 储存速度, 原子操作
+func (ds *DownloadStatus) StoreSpeedsPerSecond(speeds int64) {
+	atomic.StoreInt64(&ds.speedsPerSecond, speeds)
 }
 
 //TotalSize 返回总大小
@@ -150,6 +199,11 @@ func (ds *DownloadStatus) Downloaded() int64 {
 //SpeedsPerSecond 返回每秒速度
 func (ds *DownloadStatus) SpeedsPerSecond() int64 {
 	return atomic.LoadInt64(&ds.speedsPerSecond)
+}
+
+//MaxSpeeds 返回最大速度
+func (ds *DownloadStatus) MaxSpeeds() int64 {
+	return atomic.LoadInt64(&ds.maxSpeeds)
 }
 
 //TimeElapsed 返回花费的时间

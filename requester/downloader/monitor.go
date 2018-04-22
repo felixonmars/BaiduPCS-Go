@@ -8,24 +8,23 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 //Monitor 线程监控器
 type Monitor struct {
-	workers       []*Worker
-	status        *DownloadStatus
-	instanceState *InstanceState
-	completed     <-chan struct{}
-	dymanicMu     sync.Mutex
+	workers        []*Worker
+	status         *DownloadStatus
+	instanceState  *InstanceState
+	completed      <-chan struct{}
+	dymanicMu      sync.Mutex
+	isReloadWorker bool //是否重载worker
 }
 
 //NewMonitor 初始化Monitor
-func NewMonitor(parallel int) *Monitor {
-	monitor := &Monitor{
-		workers: make([]*Worker, 0, parallel),
-	}
-	monitor.lazyInit()
+func NewMonitor() *Monitor {
+	monitor := &Monitor{}
 	return monitor
 }
 
@@ -38,6 +37,11 @@ func (mt *Monitor) lazyInit() {
 	}
 }
 
+//InitMonitorCapacity 初始化workers, 用于Append
+func (mt *Monitor) InitMonitorCapacity(capacity int) {
+	mt.workers = make([]*Worker, 0, capacity)
+}
+
 //Append 增加Worker
 func (mt *Monitor) Append(worker *Worker) {
 	if worker == nil {
@@ -46,22 +50,46 @@ func (mt *Monitor) Append(worker *Worker) {
 	mt.workers = append(mt.workers, worker)
 }
 
+//SetWorkers 设置workers, 此操作会覆盖原有的workers
+func (mt *Monitor) SetWorkers(workers []*Worker) {
+	mt.workers = workers
+}
+
+//SetStatus 设置DownloadStatus
+func (mt *Monitor) SetStatus(status *DownloadStatus) {
+	mt.status = status
+}
+
 //SetInstanceState 设置状态
 func (mt *Monitor) SetInstanceState(instanceState *InstanceState) {
 	mt.instanceState = instanceState
 }
 
-//GetSpeedsPerSecond 获取每秒的速度
-func (mt *Monitor) GetSpeedsPerSecond() int64 {
-	var speeds int64
-	for _, worker := range mt.workers {
-		if worker == nil {
-			continue
-		}
+//Status 返回DownloadStatus
+func (mt *Monitor) Status() *DownloadStatus {
+	return mt.status
+}
 
-		speeds += worker.GetSpeedsPerSecond()
+//CompletedChan 获取completed chan
+func (mt *Monitor) CompletedChan() <-chan struct{} {
+	return mt.completed
+}
+
+//GetSpeedsPerSecondFunc 获取每秒的速度, 返回获取速度的函数
+func (mt *Monitor) GetSpeedsPerSecondFunc() func() int64 {
+	if mt.status == nil {
+		return nil
 	}
-	return speeds
+	old := mt.status.Downloaded()
+	nowTime := time.Now()
+	return func() int64 {
+		d := mt.status.Downloaded() - old
+		s := time.Since(nowTime)
+
+		old = mt.status.Downloaded()
+		nowTime = time.Now()
+		return int64(float64(d) / s.Seconds())
+	}
 }
 
 //GetAvaliableWorker 获取空闲的worker
@@ -86,15 +114,23 @@ func (mt *Monitor) GetAllWorkersRange() (ranges []*Range) {
 			continue
 		}
 
-		ranges = append(ranges, worker.wrange)
+		ranges = append(ranges, worker.GetRange())
 	}
 	return
 }
 
-//AllFailed 是否全部失败
-func (mt *Monitor) AllFailed() bool {
+//SetReloadWorker 是否重载worker
+func (mt *Monitor) SetReloadWorker(b bool) {
+	mt.isReloadWorker = b
+}
+
+//IsLeftWorkersAllFailed 剩下的线程是否全部失败
+func (mt *Monitor) IsLeftWorkersAllFailed() bool {
 	for _, worker := range mt.workers {
 		if worker == nil {
+			continue
+		}
+		if worker.Completed() {
 			continue
 		}
 
@@ -176,14 +212,18 @@ func (mt *Monitor) Execute(ctx context.Context) {
 		if worker == nil {
 			continue
 		}
-		worker.AppendOthersAdd(&mt.status.downloaded)
+		worker.AppendOthersAdd(mt.status)
 		go worker.Execute()
 	}
 
 	mt.completed = mt.AllCompleted()
-	ranges := mt.GetAllWorkersRange()
 
-	exitErr := make(chan error)
+	var (
+		ranges       = mt.GetAllWorkersRange()
+		exitErr      = make(chan error)
+		reloadNum    int32
+		maxReloadNum = int32(len(mt.workers)/5 + 1)
+	)
 	//开始监控
 	for {
 		select {
@@ -199,23 +239,22 @@ func (mt *Monitor) Execute(ctx context.Context) {
 
 				err = worker.Cancel()
 				if err != nil {
-					pcsverbose.Verbosef("DEBUG: cancel failed, worker id: %d, err: %s\n", worker.id, err)
+					pcsverbose.Verbosef("DEBUG: cancel failed, worker id: %d, err: %s\n", worker.ID(), err)
 				}
 			}
 			return
 		case <-mt.completed:
 			return
 		default:
+			time.Sleep(1 * time.Second)
+
+			atomic.StoreInt32(&reloadNum, 0)
+			mt.status.updateSpeeds()
 			if mt.instanceState != nil {
 				mt.instanceState.Put(&InstanceInfo{
 					DlStatus: mt.status,
 					Ranges:   ranges,
 				})
-			}
-			speeds := mt.GetSpeedsPerSecond()
-			mt.status.StoreSpeedsPerSecond(speeds)
-			if speeds > mt.status.maxSpeeds {
-				mt.status.StoreMaxSpeeds(speeds)
 			}
 
 			for _, worker := range mt.workers {
@@ -225,14 +264,23 @@ func (mt *Monitor) Execute(ctx context.Context) {
 
 				switch worker.GetStatus().StatusCode() {
 				case StatusCodeInternalError:
-					exitErr <- worker.err
+					exitErr <- worker.Err()
 					return
 				}
 			}
 
+			// 不重载worker
+			if !mt.isReloadWorker {
+				continue
+			}
+
 			// 速度减慢或者全部失败, 开始监控
-			if speeds < mt.status.maxSpeeds/10 || mt.AllFailed() {
-				mt.status.StoreMaxSpeeds(0) //清空统计
+			isLeftWorkersAllFailed := mt.IsLeftWorkersAllFailed()
+			if mt.status.SpeedsPerSecond() < mt.status.MaxSpeeds()/20 || isLeftWorkersAllFailed {
+				if isLeftWorkersAllFailed {
+					pcsverbose.Verbosef("DEBUG: monitor: All workers failed\n")
+				}
+				mt.status.ResetMaxSpeeds() //清空统计
 				for k := range mt.workers {
 					if mt.workers[k] == nil {
 						continue
@@ -240,7 +288,7 @@ func (mt *Monitor) Execute(ctx context.Context) {
 
 					// 重设长时间无响应, 和下载速度为 0 的线程
 					go func(worker *Worker) {
-						if !worker.inited || worker.Completed() || !worker.Resetable() {
+						if !worker.Inited() || worker.Completed() {
 							return
 						}
 
@@ -253,70 +301,90 @@ func (mt *Monitor) Execute(ctx context.Context) {
 						}
 
 						switch status.StatusCode() {
+						case StatusCodePending, StatusCodeReseted:
+							fallthrough
 						case StatusCodeWaitToWrite: // 正在写入数据
 							fallthrough
 						case StatusCodePaused: // 已暂停
 							// 忽略, 返回
 							return
-						case StatusCodeNetError:
-							fallthrough
-						case StatusCodeTooManyConnections:
-							// do nothing
+						}
+
+						//最大重载数量
+						newReloadNum := atomic.AddInt32(&reloadNum, 1)
+						if newReloadNum > maxReloadNum {
+							return
 						}
 
 						// 重设连接
-						pcsverbose.Verbosef("MONITER: worker reload, worker id: %d\n", worker.id)
+						pcsverbose.Verbosef("MONITER: worker reload, worker id: %d\n", worker.ID())
 						worker.Reset()
 					}(mt.workers[k])
 
-					//动态分配线程
-					go func(worker *Worker) {
-						if !worker.Resetable() { // 不可重设
-							return
+				}
+
+				//下载快完成了, 动态分配线程
+				if float64(mt.status.Downloaded()) > float64(mt.status.totalSize)*0.8 {
+					for k := range mt.workers {
+						if mt.workers[k] == nil {
+							continue
 						}
-						mt.dymanicMu.Lock()
-						defer mt.dymanicMu.Unlock()
+						//动态分配线程
+						go func(worker *Worker) {
+							//过滤速度为0的worker
+							if worker.GetSpeedsPerSecond() == 0 {
+								return
+							}
 
-						// 筛选空闲的Worker
-						avaliableWorker := mt.GetAvaliableWorker()
-						if avaliableWorker == nil || worker == avaliableWorker { // 没有空的
-							return
-						}
+							mt.dymanicMu.Lock()
+							defer mt.dymanicMu.Unlock()
 
-						end := worker.wrange.LoadEnd()
-						middle := (worker.wrange.LoadBegin() + end) / 2
+							// 筛选空闲的Worker
+							avaliableWorker := mt.GetAvaliableWorker()
+							if avaliableWorker == nil || worker == avaliableWorker { // 没有空的
+								return
+							}
 
-						if end-middle <= MinParallelSize { // 如果线程剩余的下载量太少, 不分配空闲线程
-							return
-						}
+							wrange := worker.GetRange()
 
-						// 折半
-						avaliableWorker.wrange = &Range{
-							Begin: middle + 1,
-							End:   end,
-						}
-						avaliableWorker.CleanStatus()
+							end := wrange.LoadEnd()
+							middle := (wrange.LoadBegin() + end) / 2
 
-						worker.wrange.StoreEnd(middle)
+							if end-middle <= MinParallelSize { // 如果线程剩余的下载量太少, 不分配空闲线程
+								return
+							}
 
-						pcsverbose.Verbosef("MONITER: thread duplicated: %d <- %d\n", avaliableWorker.id, worker.id)
-						go avaliableWorker.Execute()
-						<-avaliableWorker.InitedChan()
-					}(mt.workers[k])
+							// 折半
+							avaliableWorker.wrange = &Range{
+								Begin: middle + 1,
+								End:   end,
+							}
+							avaliableWorker.CleanStatus()
+
+							wrange.StoreEnd(middle)
+
+							pcsverbose.Verbosef("MONITER: thread duplicated: %d <- %d\n", avaliableWorker.id, worker.ID())
+							go avaliableWorker.Execute()
+							<-avaliableWorker.InitedChan()
+						}(mt.workers[k])
+					}
 				}
 			}
-			time.Sleep(1 * time.Second)
 		}
 	}
 }
 
 //ShowWorkers 返回所有worker的状态
 func (mt *Monitor) ShowWorkers() string {
-	builder := &strings.Builder{}
-	tb := pcstable.NewTable(builder)
-	tb.SetHeader([]string{"#", "status", "range", "speeds", "error"})
+	var (
+		builder = &strings.Builder{}
+		tb      = pcstable.NewTable(builder)
+		wrange  *Range
+	)
+	tb.SetHeader([]string{"#", "status", "range", "left", "speeds", "error"})
 	mt.RangeWorker(func(key int, worker *Worker) bool {
-		tb.Append([]string{fmt.Sprint(worker.id), worker.GetStatus().StatusText(), worker.wrange.String(), strconv.FormatInt(worker.GetSpeedsPerSecond(), 10), fmt.Sprint(worker.err)})
+		wrange = worker.GetRange()
+		tb.Append([]string{fmt.Sprint(worker.ID()), worker.GetStatus().StatusText(), wrange.String(), strconv.FormatInt(wrange.Len(), 10), strconv.FormatInt(worker.GetSpeedsPerSecond(), 10), fmt.Sprint(worker.Err())})
 		return true
 	})
 	tb.Render()

@@ -31,7 +31,6 @@ type Worker struct {
 	writeMu         *sync.Mutex
 	execMu          sync.Mutex
 
-	resetable  bool
 	inited     bool
 	paused     bool
 	pauseChan  chan struct{}
@@ -39,7 +38,7 @@ type Worker struct {
 	resetFunc  context.CancelFunc
 	err        error //错误信息
 	status     *WorkerStatus
-	othersAdd  []*int64
+	othersAdd  []Adder
 }
 
 //NewWorker 初始化Worker
@@ -51,6 +50,11 @@ func NewWorker(id int32, durl string, writerAt io.WriterAt) *Worker {
 	}
 }
 
+//ID 返回worker ID
+func (wer *Worker) ID() int32 {
+	return wer.id
+}
+
 //MustCheck 遇到错误则panic
 func (wer *Worker) MustCheck() {
 	if wer.client == nil {
@@ -59,6 +63,11 @@ func (wer *Worker) MustCheck() {
 	if wer.status == nil {
 		panic("status is nil")
 	}
+}
+
+//Inited 是否已经完全的初始化
+func (wer *Worker) Inited() bool {
+	return wer.inited
 }
 
 //InitedChan 是否已经完全的初始化, 是则发送chan
@@ -119,8 +128,8 @@ func (wer *Worker) SetWriteMutex(mu *sync.Mutex) {
 }
 
 //AppendOthersAdd 增加其他需要统计的数据
-func (wer *Worker) AppendOthersAdd(ptrI *int64) {
-	wer.othersAdd = append(wer.othersAdd, ptrI)
+func (wer *Worker) AppendOthersAdd(adder Adder) {
+	wer.othersAdd = append(wer.othersAdd, adder)
 }
 
 //GetStatus 返回下载状态
@@ -129,6 +138,11 @@ func (wer *Worker) GetStatus() Status {
 		wer.status = NewWorkerStatus()
 	}
 	return wer.status
+}
+
+//GetRange 返回worker范围
+func (wer *Worker) GetRange() *Range {
+	return wer.wrange
 }
 
 //GetSpeedsPerSecond 获取每秒的速度
@@ -169,17 +183,8 @@ func (wer *Worker) Cancel() error {
 	return nil
 }
 
-//Resetable 是否可以重设
-func (wer *Worker) Resetable() bool {
-	return wer.resetable
-}
-
 //Reset 重设连接
 func (wer *Worker) Reset() {
-	if !wer.resetable {
-		return
-	}
-
 	if wer.resetFunc == nil {
 		pcsverbose.Verbosef("DEBUG: worker: resetFunc not set")
 		return
@@ -209,7 +214,11 @@ func (wer *Worker) Completed() bool {
 
 //Failed 是否失败
 func (wer *Worker) Failed() bool {
-	switch wer.GetStatus().StatusCode() {
+	if wer.status == nil {
+		return true
+	}
+
+	switch wer.status.statusCode {
 	case StatusCodeFailed, StatusCodeInternalError, StatusCodeTooManyConnections, StatusCodeNetError:
 		return true
 	default:
@@ -220,7 +229,6 @@ func (wer *Worker) Failed() bool {
 //CleanStatus 清空状态
 func (wer *Worker) CleanStatus() {
 	wer.status = NewWorkerStatus()
-	wer.resetable = false
 }
 
 // updateSpeeds 更新速度
@@ -239,6 +247,11 @@ func (wer *Worker) updateSpeeds(ctx context.Context) {
 	}()
 }
 
+//Err 返回worker错误
+func (wer *Worker) Err() error {
+	return wer.err
+}
+
 //Execute 执行任务
 func (wer *Worker) Execute() {
 	wer.lazyInit()
@@ -246,13 +259,7 @@ func (wer *Worker) Execute() {
 	wer.execMu.Lock()
 	defer wer.execMu.Unlock()
 
-	wer.err = nil
 	single := wer.acceptRanges == ""
-
-	go func() {
-		time.Sleep(5e9)
-		wer.resetable = true
-	}()
 
 	// 如果已暂停, 退出
 	if wer.paused {
@@ -289,7 +296,6 @@ func (wer *Worker) Execute() {
 	var resp *http.Response
 
 	resp, wer.err = wer.client.Req("GET", wer.url, nil, header)
-	wer.resetable = true
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -401,7 +407,7 @@ func (wer *Worker) Execute() {
 				if wer.othersAdd[k] == nil {
 					continue
 				}
-				atomic.AddInt64(wer.othersAdd[k], n64)
+				wer.othersAdd[k].Add(n64)
 			}
 
 			if readErr != nil {

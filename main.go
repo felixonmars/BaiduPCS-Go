@@ -538,13 +538,17 @@ func main() {
 					return nil
 				}
 
-				pcscommand.RunDownload(c.Bool("test"), c.Int("p"), c.Args())
+				pcscommand.RunDownload(c.Bool("test"), c.Bool("state"), c.Int("p"), c.Args())
 				return nil
 			},
 			Flags: []cli.Flag{
 				cli.BoolFlag{
 					Name:  "test",
 					Usage: "测试下载, 此操作不会保存文件到本地",
+				},
+				cli.BoolFlag{
+					Name:  "state",
+					Usage: "输出所有线程的工作状态",
 				},
 				cli.IntFlag{
 					Name:  "p",

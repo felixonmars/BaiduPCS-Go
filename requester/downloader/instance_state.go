@@ -36,8 +36,9 @@ type instanceInfo struct {
 func (ii *instanceInfo) Convert() (eii *InstanceInfo) {
 	eii = &InstanceInfo{}
 	eii.DlStatus = &DownloadStatus{
-		totalSize:  ii.TotalSize,
-		downloaded: ii.Downloaded,
+		totalSize:     ii.TotalSize,
+		downloaded:    ii.Downloaded,
+		oldDownloaded: ii.Downloaded,
 	}
 	eii.Ranges = make([]*Range, 0, len(ii.Ranges))
 	for k := range ii.Ranges {
