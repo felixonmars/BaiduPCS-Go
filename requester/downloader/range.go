@@ -11,6 +11,9 @@ type Range struct {
 	End   int64
 }
 
+//RangeList 请求范围列表
+type RangeList []*Range
+
 //Len 长度
 func (r *Range) Len() int64 {
 	return r.LoadEnd() - r.LoadBegin() + 1
@@ -43,4 +46,16 @@ func (r *Range) StoreEnd(end int64) {
 
 func (r *Range) String() string {
 	return fmt.Sprintf("{%d-%d}", r.Begin, r.End)
+}
+
+//Len 获取所有的Range长度
+func (rl *RangeList) Len() int64 {
+	var l int64
+	for _, wrange := range *rl {
+		if wrange == nil {
+			continue
+		}
+		l += wrange.Len()
+	}
+	return l
 }

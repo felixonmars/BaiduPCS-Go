@@ -1,7 +1,7 @@
 package pcsutil
 
 import (
-	"github.com/iikira/osext"
+	"github.com/kardianos/osext"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,7 +16,13 @@ func ExecutablePath() string {
 			folderPath = filepath.Dir(os.Args[0])
 		}
 	}
-	return folderPath
+
+	// 读取链接
+	linkFolderPath, err := filepath.EvalSymlinks(folderPath)
+	if err != nil {
+		return folderPath
+	}
+	return linkFolderPath
 }
 
 // ExecutablePathJoin 返回程序所在目录的子目录

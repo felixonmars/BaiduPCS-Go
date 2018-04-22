@@ -19,7 +19,7 @@ func fixCacheSize(size *int) {
 	}
 }
 
-func readFullFrom(r io.Reader, buf []byte, sps ...*speeds.Speeds) (n int, err error) {
+func readFullFrom(r io.Reader, buf []byte, sps ...speeds.Adder) (n int, err error) {
 	var nn int
 	for n < len(buf) && err == nil {
 		nn, err = r.Read(buf[n:])
@@ -29,7 +29,7 @@ func readFullFrom(r io.Reader, buf []byte, sps ...*speeds.Speeds) (n int, err er
 			if sp == nil {
 				continue
 			}
-			sp.AddReaded(int64(nn))
+			sp.Add(int64(nn))
 		}
 		n += nn
 	}

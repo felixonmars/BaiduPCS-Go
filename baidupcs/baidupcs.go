@@ -1,3 +1,4 @@
+// Package baidupcs BaiduPCS RESTful API 工具包
 package baidupcs
 
 import (

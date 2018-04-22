@@ -6,11 +6,6 @@ import (
 	"time"
 )
 
-//Adder 增加
-type Adder interface {
-	Add(int64)
-}
-
 //Status 状态
 type Status interface {
 	StatusCode() StatusCode //状态码

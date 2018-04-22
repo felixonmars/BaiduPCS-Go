@@ -1,3 +1,4 @@
+// Package speeds 速度计算工具包
 package speeds
 
 import (
@@ -6,6 +7,11 @@ import (
 	"time"
 	"unsafe"
 )
+
+//Adder 增加
+type Adder interface {
+	Add(int64)
+}
 
 // Speeds 统计下载速度
 type Speeds struct {
@@ -26,8 +32,8 @@ func (sps *Speeds) Init() {
 	})
 }
 
-// AddReaded 原子操作, 增加数据量
-func (sps *Speeds) AddReaded(readed int64) {
+// Add 原子操作, 增加数据量
+func (sps *Speeds) Add(readed int64) {
 	// 初始化
 	if !sps.inited {
 		sps.Init()

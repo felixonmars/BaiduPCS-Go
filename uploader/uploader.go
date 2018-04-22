@@ -4,6 +4,7 @@ package uploader
 import (
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
+	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"net/http"
 )
 
@@ -79,7 +80,7 @@ func (u *Uploader) Execute(checkFunc func(resp *http.Response, err error)) <-cha
 func (u *Uploader) execute() (resp *http.Response, code int, err error) {
 	var (
 		contentType string
-		obody       multipartreader.ReaderLen64
+		obody       rio.ReaderLen64
 	)
 
 	if u.Options.IsMultiPart {

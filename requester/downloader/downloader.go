@@ -1,3 +1,4 @@
+// Package downloader 多线程下载器, 重构版
 package downloader
 
 import (

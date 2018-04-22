@@ -5,6 +5,7 @@ package multipartreader
 import (
 	"bytes"
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -32,12 +33,12 @@ type MultipartReader struct {
 
 type part struct {
 	form      string
-	readerlen ReaderLen
+	readerlen rio.ReaderLen
 }
 
 type part64 struct {
 	form        string
-	readerlen64 ReaderLen64
+	readerlen64 rio.ReaderLen64
 }
 
 // NewMultipartReader 返回初始化的 *MultipartReader
@@ -61,7 +62,7 @@ func (mr *MultipartReader) ContentType() string {
 }
 
 // AddFormFeild 增加 form 表单
-func (mr *MultipartReader) AddFormFeild(fieldname string, readerlen ReaderLen) {
+func (mr *MultipartReader) AddFormFeild(fieldname string, readerlen rio.ReaderLen) {
 	mr.parts = append(mr.parts, &part{
 		form:      fmt.Sprintf("--%s\r\nContent-Disposition: form-data; name=\"%s\"\r\n\r\n", mr.boundary, fieldname),
 		readerlen: readerlen,
@@ -69,7 +70,7 @@ func (mr *MultipartReader) AddFormFeild(fieldname string, readerlen ReaderLen) {
 }
 
 // AddFormFile 增加 form 文件表单
-func (mr *MultipartReader) AddFormFile(fieldname, filename string, readerlen64 ReaderLen64) {
+func (mr *MultipartReader) AddFormFile(fieldname, filename string, readerlen64 rio.ReaderLen64) {
 	mr.part64s = append(mr.part64s, &part64{
 		form:        fmt.Sprintf("--%s\r\nContent-Disposition: form-data; name=\"%s\"; filename=\"%s\"\r\n\r\n", mr.boundary, fieldname, filename),
 		readerlen64: readerlen64,

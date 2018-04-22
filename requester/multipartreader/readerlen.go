@@ -1,26 +1,14 @@
 package multipartreader
 
 import (
-	"io"
+	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"os"
 	"sync/atomic"
 )
 
-// ReaderLen 实现io.Reader和32-bit长度接口
-type ReaderLen interface {
-	io.Reader
-	Len() int
-}
-
-// ReaderLen64 实现io.Reader和64-bit长度接口
-type ReaderLen64 interface {
-	io.Reader
-	Len() int64
-}
-
 // ReadedLen64 实现io.Reader, 64-bit长度接口和已读取数据量接口
 type ReadedLen64 interface {
-	ReaderLen64
+	rio.ReaderLen64
 	Readed() int64
 }
 

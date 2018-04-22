@@ -367,11 +367,11 @@ func (mt *Monitor) Execute(ctx context.Context) {
 							go avaliableWorker.Execute()
 							<-avaliableWorker.InitedChan()
 						}(mt.workers[k])
-					}
-				}
-			}
-		}
-	}
+					} //end for
+				} // end if 2
+			} //end if 1
+		} //end selete
+	} //end for
 }
 
 //ShowWorkers 返回所有worker的状态

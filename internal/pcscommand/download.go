@@ -49,8 +49,13 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 
 		if !cfg.IsTest {
 			cfg.InstanceStatePath = savePath + DownloadSuffix
+
+			// 创建下载的目录
 			os.MkdirAll(filepath.Dir(savePath), 0777)
 			file, err = os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY, 0777)
+			if file != nil {
+				defer file.Close()
+			}
 			if err != nil {
 				return err
 			}
@@ -84,7 +89,7 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 					if speeds <= 0 {
 						leftStr = "-"
 					} else {
-						leftStr = fmt.Sprintf("%ds", (totalSize-downloaded)/(speeds))
+						leftStr = (time.Duration((totalSize-downloaded)/(speeds)) * time.Second).String()
 					}
 
 					fmt.Printf("\r[%d] ↓ %s/%s %s/s in %s, left %s ............", id,

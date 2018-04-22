@@ -38,7 +38,7 @@ type Worker struct {
 	resetFunc  context.CancelFunc
 	err        error //错误信息
 	status     *WorkerStatus
-	othersAdd  []Adder
+	othersAdd  []speeds.Adder
 }
 
 //NewWorker 初始化Worker
@@ -128,7 +128,7 @@ func (wer *Worker) SetWriteMutex(mu *sync.Mutex) {
 }
 
 //AppendOthersAdd 增加其他需要统计的数据
-func (wer *Worker) AppendOthersAdd(adder Adder) {
+func (wer *Worker) AppendOthersAdd(adder speeds.Adder) {
 	wer.othersAdd = append(wer.othersAdd, adder)
 }
 
@@ -342,12 +342,14 @@ func (wer *Worker) Execute() {
 
 	fixCacheSize(&wer.cacheSize)
 	var (
+		adder                   = append(wer.othersAdd, &wer.speedsStat)
 		speedsCtx, speedsCancel = context.WithCancel(context.Background())
 		buf                     = cachepool.SetIfNotExist(wer.id, wer.cacheSize)
 		n                       int
 		n64                     int64
 		readErr                 error
 	)
+
 	wer.updateSpeeds(speedsCtx)
 	defer speedsCancel()
 
@@ -364,7 +366,7 @@ func (wer *Worker) Execute() {
 			return
 		default:
 			wer.status.SetStatusCode(StatusCodeDownloading)
-			n, readErr = readFullFrom(resp.Body, buf, &wer.speedsStat)
+			n, readErr = readFullFrom(resp.Body, buf, adder...)
 			n64 = int64(n)
 
 			// 非单线程模式下
@@ -403,12 +405,6 @@ func (wer *Worker) Execute() {
 
 			// 更新数据
 			wer.wrange.AddBegin(n64)
-			for k := range wer.othersAdd {
-				if wer.othersAdd[k] == nil {
-					continue
-				}
-				wer.othersAdd[k].Add(n64)
-			}
 
 			if readErr != nil {
 				switch {

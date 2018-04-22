@@ -1,4 +1,4 @@
-// Package downloader 多线程下载器
+// Package downloader 多线程下载器(已经弃用)
 package downloader
 
 import (

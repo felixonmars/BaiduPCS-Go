@@ -24,22 +24,16 @@ type rangeInfo struct {
 //InstanceInfo 状态详细信息, 用于导出状态文件
 type InstanceInfo struct {
 	DlStatus *DownloadStatus
-	Ranges   []*Range
+	Ranges   RangeList
 }
 
 type instanceInfo struct {
-	TotalSize  int64        `json:"total_size"` // 总大小
-	Downloaded int64        `json:"downloaded"` // 已下载的数据量
-	Ranges     []*rangeInfo `json:"ranges"`
+	TotalSize int64        `json:"total_size"` // 总大小
+	Ranges    []*rangeInfo `json:"ranges"`
 }
 
 func (ii *instanceInfo) Convert() (eii *InstanceInfo) {
 	eii = &InstanceInfo{}
-	eii.DlStatus = &DownloadStatus{
-		totalSize:     ii.TotalSize,
-		downloaded:    ii.Downloaded,
-		oldDownloaded: ii.Downloaded,
-	}
 	eii.Ranges = make([]*Range, 0, len(ii.Ranges))
 	for k := range ii.Ranges {
 		if ii.Ranges[k] == nil {
@@ -51,6 +45,13 @@ func (ii *instanceInfo) Convert() (eii *InstanceInfo) {
 			End:   ii.Ranges[k].End,
 		})
 	}
+
+	downloaded := ii.TotalSize - eii.Ranges.Len()
+	eii.DlStatus = &DownloadStatus{
+		totalSize:     ii.TotalSize,
+		downloaded:    downloaded,
+		oldDownloaded: downloaded,
+	}
 	return eii
 }
 
@@ -60,7 +61,6 @@ func (ii *instanceInfo) Render(eii *InstanceInfo) {
 	}
 	if eii.DlStatus != nil {
 		ii.TotalSize = eii.DlStatus.TotalSize()
-		ii.Downloaded = eii.DlStatus.Downloaded()
 	}
 	if eii.Ranges != nil {
 		ii.Ranges = make([]*rangeInfo, 0, len(eii.Ranges))
