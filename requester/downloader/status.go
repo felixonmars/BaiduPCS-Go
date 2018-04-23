@@ -35,11 +35,12 @@ type DownloadStatus struct {
 	speedsPerSecond int64 // 下载速度
 	maxSpeeds       int64 // 最大下载速度
 
-	oldDownloaded int64
-	timeElapsed   time.Duration // 下载的时间
-	nowTime       time.Time
-	sinceNowTime  time.Duration
-	mu            sync.Mutex
+	speedsDownloaded int64 // 用于统计数据的downloaded
+	oldDownloaded    int64
+	timeElapsed      time.Duration // 下载的时间
+	nowTime          time.Time
+	sinceNowTime     time.Duration
+	mu               sync.Mutex
 }
 
 const (
@@ -138,6 +139,11 @@ func (ds *DownloadStatus) Add(i int64) {
 //AddDownloaded 增加已下载数据量
 func (ds *DownloadStatus) AddDownloaded(d int64) {
 	atomic.AddInt64(&ds.downloaded, d)
+}
+
+//AddSpeedsDownloaded 增加已下载数据量, 用于统计速度
+func (ds *DownloadStatus) AddSpeedsDownloaded(d int64) {
+	atomic.AddInt64(&ds.speedsDownloaded, d)
 	ds.updateSpeeds()
 }
 
@@ -155,7 +161,7 @@ func (ds *DownloadStatus) updateSpeeds() {
 		return
 	}
 
-	downloaded := ds.Downloaded() - ds.oldDownloaded
+	downloaded := ds.SpeedsDownloaded() - ds.oldDownloaded
 	speeds := int64(float64(downloaded) / seconds)
 	ds.StoreSpeedsPerSecond(speeds)
 	if speeds > ds.MaxSpeeds() {
@@ -163,7 +169,7 @@ func (ds *DownloadStatus) updateSpeeds() {
 	}
 
 	ds.nowTime = time.Now()
-	ds.oldDownloaded = ds.Downloaded()
+	ds.oldDownloaded = ds.SpeedsDownloaded()
 }
 
 //ResetMaxSpeeds 清空最大速度统计
@@ -189,6 +195,11 @@ func (ds *DownloadStatus) TotalSize() int64 {
 //Downloaded 返回已下载数据量
 func (ds *DownloadStatus) Downloaded() int64 {
 	return atomic.LoadInt64(&ds.downloaded)
+}
+
+//SpeedsDownloaded 返回用于统计速度的已下载数据量
+func (ds *DownloadStatus) SpeedsDownloaded() int64 {
+	return atomic.LoadInt64(&ds.speedsDownloaded)
 }
 
 //SpeedsPerSecond 返回每秒速度

@@ -1,4 +1,4 @@
-package ramdominfo
+package randominfo
 
 var (
 	// PhoneModelDataBase 手机型号库

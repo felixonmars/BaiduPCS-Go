@@ -1,4 +1,4 @@
-package ramdominfo
+package randominfo
 
 // SumIMEI 根据key计算出imei
 func SumIMEI(key string) uint64 {

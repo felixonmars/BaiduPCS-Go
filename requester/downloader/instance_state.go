@@ -48,9 +48,10 @@ func (ii *instanceInfo) Convert() (eii *InstanceInfo) {
 
 	downloaded := ii.TotalSize - eii.Ranges.Len()
 	eii.DlStatus = &DownloadStatus{
-		totalSize:     ii.TotalSize,
-		downloaded:    downloaded,
-		oldDownloaded: downloaded,
+		totalSize:        ii.TotalSize,
+		downloaded:       downloaded,
+		speedsDownloaded: downloaded,
+		oldDownloaded:    downloaded,
 	}
 	return eii
 }
@@ -130,7 +131,13 @@ func (is *InstanceState) Get() (eii *InstanceInfo) {
 	if is.ii == nil {
 		is.ii = &instanceInfo{}
 	}
-	err := jsoniter.Unmarshal(is.getSaveFileContents(), is.ii)
+
+	contents := is.getSaveFileContents()
+	if len(contents) <= 0 {
+		return
+	}
+
+	err := jsoniter.Unmarshal(contents, is.ii)
 	if err != nil {
 		pcsverbose.Verbosef("DEBUG: unmarshal json error: %s\n", err)
 		return

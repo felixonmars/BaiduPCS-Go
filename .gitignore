@@ -18,6 +18,7 @@ out/
 
 # Others
 .DS_Store
+*.proc
 *.txt
 *.log
 captcha.png

@@ -119,6 +119,20 @@ func (mt *Monitor) GetAllWorkersRange() (ranges []*Range) {
 	return
 }
 
+//NumLeftWorkers 剩余的worker数量
+func (mt *Monitor) NumLeftWorkers() (num int) {
+	for _, worker := range mt.workers {
+		if worker == nil {
+			continue
+		}
+
+		if !worker.Completed() {
+			num++
+		}
+	}
+	return
+}
+
 //SetReloadWorker 是否重载worker
 func (mt *Monitor) SetReloadWorker(b bool) {
 	mt.isReloadWorker = b
@@ -126,6 +140,7 @@ func (mt *Monitor) SetReloadWorker(b bool) {
 
 //IsLeftWorkersAllFailed 剩下的线程是否全部失败
 func (mt *Monitor) IsLeftWorkersAllFailed() bool {
+	reach := false
 	for _, worker := range mt.workers {
 		if worker == nil {
 			continue
@@ -134,11 +149,12 @@ func (mt *Monitor) IsLeftWorkersAllFailed() bool {
 			continue
 		}
 
+		reach = true
 		if !worker.Failed() {
 			return false
 		}
 	}
-	return true
+	return !reach
 }
 
 //AllCompleted 全部完成则发送消息
@@ -206,31 +222,42 @@ func (mt *Monitor) Resume() {
 }
 
 //Execute 执行任务
-func (mt *Monitor) Execute(ctx context.Context) {
+func (mt *Monitor) Execute(cancelCtx context.Context) {
+	if len(mt.workers) == 0 {
+		return
+	}
+
 	mt.lazyInit()
 	for _, worker := range mt.workers {
 		if worker == nil {
 			continue
 		}
-		worker.AppendOthersAdd(mt.status)
+		worker.SetDownloadStatus(mt.status)
 		go worker.Execute()
 	}
 
 	mt.completed = mt.AllCompleted()
 
 	var (
-		ranges       = mt.GetAllWorkersRange()
-		exitErr      = make(chan error)
-		reloadNum    int32
-		maxReloadNum = int32(len(mt.workers)/5 + 1)
+		ranges           = mt.GetAllWorkersRange()
+		exitErr          = make(chan error)
+		maxReloadNumFunc = func() int32 {
+			num := int32(len(mt.workers) - mt.NumLeftWorkers())
+			if num > 32 {
+				return 32
+			}
+			return num + 5
+		}
+		reloadNum int32
 	)
+
 	//开始监控
 	for {
 		select {
 		case err := <-exitErr:
 			pcsverbose.Verbosef("ERROR: fatal error: %s\n", err)
 			return
-		case <-ctx.Done():
+		case <-cancelCtx.Done():
 			var err error
 			for _, worker := range mt.workers {
 				if worker == nil {
@@ -277,18 +304,16 @@ func (mt *Monitor) Execute(ctx context.Context) {
 			// 速度减慢或者全部失败, 开始监控
 			isLeftWorkersAllFailed := mt.IsLeftWorkersAllFailed()
 			if mt.status.SpeedsPerSecond() < mt.status.MaxSpeeds()/20 || isLeftWorkersAllFailed {
+				pcsverbose.Verbosef("DEBUG: monitor: start reload.\n")
 				if isLeftWorkersAllFailed {
 					pcsverbose.Verbosef("DEBUG: monitor: All workers failed\n")
 				}
 				mt.status.ResetMaxSpeeds() //清空统计
-				for k := range mt.workers {
-					if mt.workers[k] == nil {
-						continue
-					}
 
+				for _, worker := range mt.workers {
 					// 重设长时间无响应, 和下载速度为 0 的线程
 					go func(worker *Worker) {
-						if !worker.Inited() || worker.Completed() {
+						if worker.Completed() {
 							return
 						}
 
@@ -310,21 +335,20 @@ func (mt *Monitor) Execute(ctx context.Context) {
 							return
 						}
 
-						//最大重载数量
-						newReloadNum := atomic.AddInt32(&reloadNum, 1)
-						if newReloadNum > maxReloadNum {
+						n := atomic.AddInt32(&reloadNum, 1)
+						if n > maxReloadNumFunc() { //达到最大重载次数
 							return
 						}
 
 						// 重设连接
 						pcsverbose.Verbosef("MONITER: worker reload, worker id: %d\n", worker.ID())
 						worker.Reset()
-					}(mt.workers[k])
-
+					}(worker)
 				}
 
 				//下载快完成了, 动态分配线程
 				if float64(mt.status.Downloaded()) > float64(mt.status.totalSize)*0.8 {
+					pcsverbose.Verbosef("DEBUG: monitor: start duplicate.\n")
 					for k := range mt.workers {
 						if mt.workers[k] == nil {
 							continue
@@ -350,7 +374,7 @@ func (mt *Monitor) Execute(ctx context.Context) {
 							end := wrange.LoadEnd()
 							middle := (wrange.LoadBegin() + end) / 2
 
-							if end-middle <= MinParallelSize { // 如果线程剩余的下载量太少, 不分配空闲线程
+							if end-middle < MinParallelSize/5 { // 如果线程剩余的下载量太少, 不分配空闲线程
 								return
 							}
 
@@ -363,9 +387,9 @@ func (mt *Monitor) Execute(ctx context.Context) {
 
 							wrange.StoreEnd(middle)
 
-							pcsverbose.Verbosef("MONITER: thread duplicated: %d <- %d\n", avaliableWorker.id, worker.ID())
+							pcsverbose.Verbosef("MONITER: thread duplicated: %d <- %d\n", avaliableWorker.ID(), worker.ID())
 							go avaliableWorker.Execute()
-							<-avaliableWorker.InitedChan()
+							time.Sleep(10 * time.Microsecond)
 						}(mt.workers[k])
 					} //end for
 				} // end if 2
@@ -388,5 +412,5 @@ func (mt *Monitor) ShowWorkers() string {
 		return true
 	})
 	tb.Render()
-	return builder.String()
+	return "\n" + builder.String()
 }

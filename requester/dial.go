@@ -23,15 +23,29 @@ func dialContext(ctx context.Context, network, address string) (conn net.Conn, e
 			return net.DialTCP(network, nil, TCPAddrCache.Get(address))
 		}
 
-		// Resolve TCP address
-		ta, err := net.ResolveTCPAddr(network, address)
-		if err != nil {
-			return nil, err
-		}
+		var (
+			ta   *net.TCPAddr
+			done = make(chan struct{})
+		)
 
-		// 加入缓存
-		TCPAddrCache.Set(address, ta)
-		return net.DialTCP(network, nil, ta)
+		go func() {
+			// Resolve TCP address
+			ta, err = net.ResolveTCPAddr(network, address)
+			close(done)
+		}()
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-done:
+			if err != nil {
+				return nil, err
+			}
+
+			// 加入缓存
+			TCPAddrCache.Set(address, ta)
+			return net.DialTCP(network, nil, ta)
+		}
 	}
 
 	// 非 tcp 请求

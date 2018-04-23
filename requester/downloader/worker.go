@@ -26,19 +26,19 @@ type Worker struct {
 	referer         string //来源地址
 	acceptRanges    string
 	client          *requester.HTTPClient
-	resp            *http.Response
 	writerAt        io.WriterAt
 	writeMu         *sync.Mutex
 	execMu          sync.Mutex
 
-	inited     bool
-	paused     bool
-	pauseChan  chan struct{}
-	cancelFunc context.CancelFunc
-	resetFunc  context.CancelFunc
-	err        error //错误信息
-	status     *WorkerStatus
-	othersAdd  []speeds.Adder
+	paused                 bool
+	pauseChan              chan struct{}
+	workerCancelFunc       context.CancelFunc
+	resetFunc              context.CancelFunc
+	readRespBodyCancelFunc func()
+	err                    error //错误信息
+	status                 WorkerStatus
+	totalDownloaded        *int64
+	downloadStatus         *DownloadStatus //总的下载状态
 }
 
 //NewWorker 初始化Worker
@@ -60,42 +60,15 @@ func (wer *Worker) MustCheck() {
 	if wer.client == nil {
 		panic("client is nil")
 	}
-	if wer.status == nil {
-		panic("status is nil")
-	}
-}
-
-//Inited 是否已经完全的初始化
-func (wer *Worker) Inited() bool {
-	return wer.inited
-}
-
-//InitedChan 是否已经完全的初始化, 是则发送chan
-func (wer *Worker) InitedChan() <-chan struct{} {
-	c := make(chan struct{})
-	go func() {
-		for {
-			time.Sleep(1e8)
-			if wer.inited {
-				c <- struct{}{}
-				return
-			}
-		}
-	}()
-	return c
 }
 
 func (wer *Worker) lazyInit() {
 	if wer.client == nil {
 		wer.client = requester.NewHTTPClient()
 	}
-	if wer.status == nil {
-		wer.status = NewWorkerStatus()
-	}
 	if wer.writeMu == nil {
 		wer.writeMu = &sync.Mutex{}
 	}
-	wer.inited = true
 }
 
 //SetClient 设置http客户端
@@ -127,17 +100,15 @@ func (wer *Worker) SetWriteMutex(mu *sync.Mutex) {
 	wer.writeMu = mu
 }
 
-//AppendOthersAdd 增加其他需要统计的数据
-func (wer *Worker) AppendOthersAdd(adder speeds.Adder) {
-	wer.othersAdd = append(wer.othersAdd, adder)
+//SetDownloadStatus 增加其他需要统计的数据
+func (wer *Worker) SetDownloadStatus(downloadStatus *DownloadStatus) {
+	wer.downloadStatus = downloadStatus
 }
 
 //GetStatus 返回下载状态
 func (wer *Worker) GetStatus() Status {
-	if wer.status == nil {
-		wer.status = NewWorkerStatus()
-	}
-	return wer.status
+	// 空接口与空指针不等价
+	return &wer.status
 }
 
 //GetRange 返回worker范围
@@ -173,12 +144,12 @@ func (wer *Worker) Resume() {
 
 //Cancel 取消下载
 func (wer *Worker) Cancel() error {
-	if wer.cancelFunc == nil {
+	if wer.workerCancelFunc == nil {
 		return errors.New("cancelFunc not set")
 	}
-	wer.cancelFunc()
-	if wer.resp != nil {
-		wer.resp.Body.Close()
+	wer.workerCancelFunc()
+	if wer.readRespBodyCancelFunc != nil {
+		wer.readRespBodyCancelFunc()
 	}
 	return nil
 }
@@ -190,8 +161,8 @@ func (wer *Worker) Reset() {
 		return
 	}
 	wer.resetFunc()
-	if wer.resp != nil {
-		wer.resp.Body.Close()
+	if wer.readRespBodyCancelFunc != nil {
+		wer.readRespBodyCancelFunc()
 	}
 	wer.CleanStatus()
 	go wer.Execute()
@@ -199,12 +170,12 @@ func (wer *Worker) Reset() {
 
 // Canceled 是否已经取消
 func (wer *Worker) Canceled() bool {
-	return wer.GetStatus().StatusCode() == StatusCodeCanceled
+	return wer.status.statusCode == StatusCodeCanceled
 }
 
 //Completed 是否已经完成
 func (wer *Worker) Completed() bool {
-	switch wer.GetStatus().StatusCode() {
+	switch wer.status.statusCode {
 	case StatusCodeSuccessed, StatusCodeCanceled:
 		return true
 	default:
@@ -214,10 +185,6 @@ func (wer *Worker) Completed() bool {
 
 //Failed 是否失败
 func (wer *Worker) Failed() bool {
-	if wer.status == nil {
-		return true
-	}
-
 	switch wer.status.statusCode {
 	case StatusCodeFailed, StatusCodeInternalError, StatusCodeTooManyConnections, StatusCodeNetError:
 		return true
@@ -228,7 +195,7 @@ func (wer *Worker) Failed() bool {
 
 //CleanStatus 清空状态
 func (wer *Worker) CleanStatus() {
-	wer.status = NewWorkerStatus()
+	wer.status.statusCode = StatusCodeInit
 }
 
 // updateSpeeds 更新速度
@@ -263,24 +230,20 @@ func (wer *Worker) Execute() {
 
 	// 如果已暂停, 退出
 	if wer.paused {
-		wer.status.SetStatusCode(StatusCodePaused)
+		wer.status.statusCode = StatusCodePaused
 		return
 	}
 
 	// 已完成
 	if wer.wrange.Len() == 0 {
-		wer.status.SetStatusCode(StatusCodeSuccessed)
+		wer.status.statusCode = StatusCodeSuccessed
 		return
 	}
 
-	cancelCtx, cancelFunc := context.WithCancel(context.Background())
-	wer.cancelFunc = cancelFunc
+	workerCancelCtx, workerCancelFunc := context.WithCancel(context.Background())
+	wer.workerCancelFunc = workerCancelFunc
 	resetCtx, resetFunc := context.WithCancel(context.Background())
 	wer.resetFunc = resetFunc
-
-	setNetError := func() {
-		wer.status.SetStatusCode(StatusCodeNetError)
-	}
 
 	header := map[string]string{}
 	if wer.referer != "" {
@@ -291,20 +254,21 @@ func (wer *Worker) Execute() {
 		header["Range"] = fmt.Sprintf("%s=%d-%d", wer.acceptRanges, wer.wrange.LoadBegin(), wer.wrange.LoadEnd())
 	}
 
-	wer.status.SetStatusCode(StatusCodePending)
+	wer.status.statusCode = StatusCodePending
 
 	var resp *http.Response
 
 	resp, wer.err = wer.client.Req("GET", wer.url, nil, header)
 	if resp != nil {
 		defer resp.Body.Close()
+		wer.readRespBodyCancelFunc = func() {
+			resp.Body.Close()
+		}
 	}
 	if wer.err != nil {
-		setNetError()
+		wer.status.statusCode = StatusCodeNetError
 		return
 	}
-
-	wer.resp = resp
 
 	var (
 		contentLength = resp.ContentLength
@@ -313,7 +277,7 @@ func (wer *Worker) Execute() {
 
 	if !single {
 		if contentLength != rangeLength {
-			setNetError()
+			wer.status.statusCode = StatusCodeNetError
 			wer.err = fmt.Errorf("Content-Length is unexpected: %d, need %d", contentLength, rangeLength)
 			return
 		}
@@ -327,7 +291,7 @@ func (wer *Worker) Execute() {
 	case 403: // Forbidden
 		fallthrough
 	case 406: // Not Acceptable
-		setNetError()
+		wer.status.statusCode = StatusCodeNetError
 		wer.err = errors.New(resp.Status)
 		return
 	case 429, 509: // Too Many Requests
@@ -335,38 +299,61 @@ func (wer *Worker) Execute() {
 		wer.err = errors.New(resp.Status)
 		return
 	default:
-		setNetError()
+		wer.status.statusCode = StatusCodeNetError
 		wer.err = fmt.Errorf("unexpected http status code, %d, %s", resp.StatusCode, resp.Status)
 		return
 	}
 
 	fixCacheSize(&wer.cacheSize)
 	var (
-		adder                   = append(wer.othersAdd, &wer.speedsStat)
-		speedsCtx, speedsCancel = context.WithCancel(context.Background())
-		buf                     = cachepool.SetIfNotExist(wer.id, wer.cacheSize)
-		n                       int
-		n64                     int64
-		readErr                 error
+		speedsCtx, speedsCancelFunc = context.WithCancel(context.Background())
+		cache                       = cachepool.CachePool2.Require(wer.cacheSize)
+		buf                         = cache.Bytes()
+		n, nn                       int
+		n64, nn64                   int64
+		readErr                     error
 	)
 
 	wer.updateSpeeds(speedsCtx)
-	defer speedsCancel()
+	defer func() {
+		speedsCancelFunc()
+		cache.Free()
+	}()
 
 	for {
 		select {
-		case <-cancelCtx.Done():
-			wer.status.SetStatusCode(StatusCodeCanceled)
+		case <-workerCancelCtx.Done(): //取消
+			wer.status.statusCode = StatusCodeCanceled
 			return
-		case <-resetCtx.Done():
-			wer.status.SetStatusCode(StatusCodeReseted)
+		case <-resetCtx.Done(): //重设连接
+			wer.status.statusCode = StatusCodeReseted
 			return
-		case <-wer.pauseChan:
-			wer.status.SetStatusCode(StatusCodePaused)
+		case <-wer.pauseChan: //暂停
+			wer.status.statusCode = StatusCodePaused
 			return
 		default:
-			wer.status.SetStatusCode(StatusCodeDownloading)
-			n, readErr = readFullFrom(resp.Body, buf, adder...)
+			wer.status.statusCode = StatusCodeDownloading
+
+			// 初始化数据
+			n, readErr = 0, nil
+			// 线程未被分配
+			for n < len(buf) && readErr == nil && wer.wrange.Len() > 0 {
+				nn, readErr = resp.Body.Read(buf[n:])
+				nn64 = int64(nn)
+
+				// 更新速度统计
+				if wer.downloadStatus != nil {
+					wer.downloadStatus.AddSpeedsDownloaded(nn64)
+				}
+				wer.speedsStat.Add(nn64)
+				n += nn
+			}
+			if n >= len(buf) {
+				readErr = nil
+			} else if n > 0 && readErr == io.EOF {
+				readErr = io.ErrUnexpectedEOF
+			}
+
 			n64 = int64(n)
 
 			// 非单线程模式下
@@ -375,7 +362,7 @@ func (wer *Worker) Execute() {
 
 				// 已完成 (未雨绸缪)
 				if rangeLength <= 0 {
-					wer.status.SetStatusCode(StatusCodeCanceled)
+					wer.status.statusCode = StatusCodeCanceled
 					wer.err = errors.New("worker already complete")
 					return
 				}
@@ -390,21 +377,24 @@ func (wer *Worker) Execute() {
 
 			// 写入数据
 			if wer.writerAt != nil {
-				wer.status.SetStatusCode(StatusCodeWaitToWrite)
+				wer.status.statusCode = StatusCodeWaitToWrite
 				wer.writeMu.Lock()                                           // 加锁, 减轻硬盘的压力
 				_, wer.err = wer.writerAt.WriteAt(buf[:n], wer.wrange.Begin) // 写入数据
 				if wer.err != nil {
 					wer.writeMu.Unlock()
-					wer.status.SetStatusCode(StatusCodeInternalError)
+					wer.status.statusCode = StatusCodeInternalError
 					return
 				}
 
 				wer.writeMu.Unlock() //解锁
-				wer.status.SetStatusCode(StatusCodeDownloading)
+				wer.status.statusCode = StatusCodeDownloading
 			}
 
 			// 更新数据
 			wer.wrange.AddBegin(n64)
+			if wer.downloadStatus != nil {
+				wer.downloadStatus.AddDownloaded(n64)
+			}
 
 			if readErr != nil {
 				switch {
@@ -415,11 +405,11 @@ func (wer *Worker) Execute() {
 					fallthrough
 				case wer.wrange.Len() == 0:
 					// 下载完成
-					wer.status.SetStatusCode(StatusCodeSuccessed)
+					wer.status.statusCode = StatusCodeSuccessed
 					return
 				default:
 					// 其他错误, 返回
-					wer.status.SetStatusCode(StatusCodeFailed)
+					wer.status.statusCode = StatusCodeFailed
 					wer.err = readErr
 					return
 				}

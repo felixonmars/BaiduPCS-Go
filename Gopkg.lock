@@ -58,11 +58,11 @@
   name = "github.com/iikira/baidu-tools"
   packages = [
     ".",
-    "ramdominfo",
+    "randominfo",
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "6c45d17733f14c0f2043d794558ffd61dcd3c975"
+  revision = "263d43ac4b3e0021f3ec5a584b4d563aeb3de877"
 
 [[projects]]
   name = "github.com/json-iterator/go"

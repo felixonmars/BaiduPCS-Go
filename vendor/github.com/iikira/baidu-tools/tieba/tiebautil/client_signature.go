@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
-	"github.com/iikira/baidu-tools/ramdominfo"
+	"github.com/iikira/baidu-tools/randominfo"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,8 +24,8 @@ func TiebaClientSignature(post map[string]string) {
 
 	var (
 		bduss        = post["BDUSS"]
-		model        = ramdominfo.GetPhoneModel(bduss)
-		phoneIMEIStr = strconv.FormatUint(ramdominfo.SumIMEI(model+"_"+bduss), 10)
+		model        = randominfo.GetPhoneModel(bduss)
+		phoneIMEIStr = strconv.FormatUint(randominfo.SumIMEI(model+"_"+bduss), 10)
 		m            = md5.New()
 	)
 

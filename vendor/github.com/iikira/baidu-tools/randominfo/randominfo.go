@@ -1,5 +1,5 @@
-// Package ramdominfo 提供随机信息生成服务
-package ramdominfo
+// Package randominfo 提供随机信息生成服务
+package randominfo
 
 import (
 	"crypto/md5"
