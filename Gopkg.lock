@@ -65,16 +65,16 @@
   revision = "6c45d17733f14c0f2043d794558ffd61dcd3c975"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/iikira/osext"
-  packages = ["."]
-  revision = "f808bcd957c382e32d377c68935d94bbafd0d5d0"
-
-[[projects]]
   name = "github.com/json-iterator/go"
   packages = ["."]
   revision = "ca39e5af3ece67bbcda3d0f4f56a8e24d9f2dad4"
   version = "1.1.3"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/kardianos/osext"
+  packages = ["."]
+  revision = "ae77be60afb1dcacde03767a8c37337fad28ac14"
 
 [[projects]]
   name = "github.com/mattn/go-runewidth"
@@ -98,7 +98,7 @@
   branch = "master"
   name = "github.com/olekukonko/tablewriter"
   packages = ["."]
-  revision = "b8a9be070da40449e501c3c4730a889e42d87a9e"
+  revision = "d5dd8a50526aadb3d5f2c9b5233277bc2db90e88"
 
 [[projects]]
   branch = "master"
@@ -121,6 +121,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "1c4e9e21b2080f065ef8cd3d42caccbb7eb14bb7882367f960f878e7e56496d4"
+  inputs-digest = "3b593d54e283c77c5e9bc3d38266a794bf6e259e9e531838c587b0baa6a5c82a"
   solver-name = "gps-cdcl"
   solver-version = 1
