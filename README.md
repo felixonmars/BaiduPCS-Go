@@ -427,6 +427,13 @@ BaiduPCS-Go config set -max_parallel 150
 BaiduPCS-Go config set -max_parallel 150 -savedir D:/Downloads
 ```
 
+### 工具箱
+```
+BaiduPCS-Go tool
+```
+
+目前工具箱支持加解密文件等.
+
 # 举一些例子
 
 新手建议: **双击运行程序**, 进入 console 模式;
@@ -486,7 +493,7 @@ console 模式下, 运行命令 `ls ..` 来列出当前所在目录的上级目�
 
 ## 5. 下载文件
 
-说明: 下载的文件将会保存到 download/ 目录 (文件夹)
+说明: 下载的文件默认保存到 download/ 目录 (文件夹)
 
 console 模式下, 运行命令 `d -h` (注意空格) 查看帮助
 

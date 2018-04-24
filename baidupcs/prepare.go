@@ -46,6 +46,7 @@ func handleRespStatusError(opreation string, resp *http.Response) Error {
 
 // PrepareQuotaInfo 获取当前用户空间配额信息, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareQuotaInfo() (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	pcsURL := pcs.generatePCSURL("quota", "info")
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationQuotaInfo, pcsURL)
 
@@ -64,6 +65,7 @@ func (pcs *BaiduPCS) PrepareQuotaInfo() (dataReadCloser io.ReadCloser, pcsError 
 
 // PrepareFilesDirectoriesBatchMeta 获取多个文件/目录的元信息, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareFilesDirectoriesBatchMeta(paths ...string) (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	sendData, err := (&PathsListJSON{}).JSON(paths...)
 	if err != nil {
 		panic(OperationFilesDirectoriesMeta + ", json 数据构造失败, " + err.Error())
@@ -92,6 +94,7 @@ func (pcs *BaiduPCS) PrepareFilesDirectoriesBatchMeta(paths ...string) (dataRead
 
 // PrepareFilesDirectoriesList 获取目录下的文件和目录列表, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareFilesDirectoriesList(path string) (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	if path == "" {
 		path = "/"
 	}
@@ -119,6 +122,7 @@ func (pcs *BaiduPCS) PrepareFilesDirectoriesList(path string) (dataReadCloser io
 
 // PrepareRemove 批量删除文件/目录, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareRemove(paths ...string) (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	sendData, err := (&PathsListJSON{}).JSON(paths...)
 	if err != nil {
 		panic(OperationMove + ", json 数据构造失败, " + err.Error())
@@ -147,6 +151,7 @@ func (pcs *BaiduPCS) PrepareRemove(paths ...string) (dataReadCloser io.ReadClose
 
 // PrepareMkdir 创建目录, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareMkdir(pcspath string) (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	pcsURL := pcs.generatePCSURL("file", "mkdir", map[string]string{
 		"path": pcspath,
 	})
@@ -166,6 +171,7 @@ func (pcs *BaiduPCS) PrepareMkdir(pcspath string) (dataReadCloser io.ReadCloser,
 }
 
 func (pcs *BaiduPCS) prepareCpMvOp(op string, cpmvJSON ...*CpMvJSON) (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	var method string
 	switch op {
 	case OperationCopy:
@@ -226,6 +232,7 @@ func (pcs *BaiduPCS) PrepareMove(cpmvJSON ...*CpMvJSON) (dataReadCloser io.ReadC
 
 // PrepareRapidUpload 秒传文件, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	pcsError = pcs.checkIsdir(OperationRapidUpload, targetPath)
 	if pcsError != nil {
 		return nil, pcsError
@@ -256,6 +263,7 @@ func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 
 
 // PrepareUpload 上传单个文件, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareUpload(targetPath string, uploadFunc UploadFunc) (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	pcsError = pcs.checkIsdir(OperationUpload, targetPath)
 	if pcsError != nil {
 		return nil, pcsError
@@ -287,6 +295,7 @@ func (pcs *BaiduPCS) PrepareUpload(targetPath string, uploadFunc UploadFunc) (da
 
 // PrepareUploadTmpFile 分片上传—文件分片及上传, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareUploadTmpFile(uploadFunc UploadFunc) (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	pcsURL := pcs.generatePCSURL("file", "upload", map[string]string{
 		"type": "tmpfile",
 	})
@@ -312,6 +321,7 @@ func (pcs *BaiduPCS) PrepareUploadTmpFile(uploadFunc UploadFunc) (dataReadCloser
 
 // PrepareUploadCreateSuperFile 分片上传—合并分片文件, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(targetPath string, blockList ...string) (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	pcsError = pcs.checkIsdir(OperationUploadCreateSuperFile, targetPath)
 	if pcsError != nil {
 		return nil, pcsError
@@ -354,6 +364,7 @@ func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(targetPath string, blockList .
 
 // PrepareCloudDlAddTask 添加离线下载任务, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareCloudDlAddTask(sourceURL, savePath string) (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	pcsURL2 := pcs.generatePCSURL2("services/cloud_dl", "add_task", map[string]string{
 		"save_path":  savePath,
 		"source_url": sourceURL,
@@ -377,6 +388,7 @@ func (pcs *BaiduPCS) PrepareCloudDlAddTask(sourceURL, savePath string) (dataRead
 // PrepareCloudDlQueryTask 精确查询离线下载任务, 只返回服务器响应数据和错误信息,
 // taskids 例子: 12123,234234,2344, 用逗号隔开多个 task_id
 func (pcs *BaiduPCS) PrepareCloudDlQueryTask(taskIDs string) (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	pcsURL2 := pcs.generatePCSURL2("services/cloud_dl", "query_task", map[string]string{
 		"op_type": "1",
 	})
@@ -402,6 +414,7 @@ func (pcs *BaiduPCS) PrepareCloudDlQueryTask(taskIDs string) (dataReadCloser io.
 
 // PrepareCloudDlListTask 查询离线下载任务列表, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareCloudDlListTask() (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	pcsURL2 := pcs.generatePCSURL2("services/cloud_dl", "list_task", map[string]string{
 		"need_task_info": "1",
 		"status":         "255",
@@ -424,6 +437,7 @@ func (pcs *BaiduPCS) PrepareCloudDlListTask() (dataReadCloser io.ReadCloser, pcs
 }
 
 func (pcs *BaiduPCS) prepareCloudDlCDTask(opreation, method string, taskID int64) (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
 	pcsURL2 := pcs.generatePCSURL2("services/cloud_dl", method, map[string]string{
 		"task_id": strconv.FormatInt(taskID, 10),
 	})

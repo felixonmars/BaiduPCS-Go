@@ -11,12 +11,14 @@ func DoUpload(uploadURL string, readerlen64 rio.ReaderLen64, checkFunc CheckFunc
 	u := NewUploader(uploadURL, readerlen64)
 	u.SetCheckFunc(checkFunc)
 
-	exit := make(chan struct{})
+	exitChan := make(chan struct{})
 
 	u.OnExecute(func() {
 		statusChan := u.GetStatusChan()
 		for {
 			select {
+			case <-exitChan:
+				return
 			case v, ok := <-statusChan:
 				if !ok {
 					return
@@ -32,12 +34,8 @@ func DoUpload(uploadURL string, readerlen64 rio.ReaderLen64, checkFunc CheckFunc
 		}
 	})
 
-	u.OnFinish(func() {
-		close(exit)
-	})
-
 	u.Execute()
+	close(exitChan)
 
-	<-exit
 	return
 }

@@ -307,7 +307,7 @@ func (wer *Worker) Execute() {
 	fixCacheSize(&wer.cacheSize)
 	var (
 		speedsCtx, speedsCancelFunc = context.WithCancel(context.Background())
-		cache                       = cachepool.CachePool2.Require(wer.cacheSize)
+		cache                       = cachepool.Require(wer.cacheSize)
 		buf                         = cache.Bytes()
 		n, nn                       int
 		n64, nn64                   int64

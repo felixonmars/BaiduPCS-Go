@@ -57,13 +57,13 @@ var (
 
 // BaiduPCS 百度 PCS API 详情
 type BaiduPCS struct {
-	appid   int                   // app_id
+	appID   int                   // app_id
 	isHTTPS bool                  // 是否启用https
 	client  *requester.HTTPClient // http 客户端
 }
 
 // NewPCS 提供app_id, 百度BDUSS, 返回 BaiduPCS 对象
-func NewPCS(appid int, bduss string) *BaiduPCS {
+func NewPCS(appID int, bduss string) *BaiduPCS {
 	client := requester.NewHTTPClient()
 
 	pcsURL := &url.URL{
@@ -87,47 +87,39 @@ func NewPCS(appid int, bduss string) *BaiduPCS {
 	client.SetCookiejar(jar)
 
 	return &BaiduPCS{
-		appid:  appid,
+		appID:  appID,
 		client: client,
 	}
 }
 
 // NewPCSWithClient 提供app_id, 自定义客户端, 返回 BaiduPCS 对象
-func NewPCSWithClient(appid int, client *requester.HTTPClient) *BaiduPCS {
+func NewPCSWithClient(appID int, client *requester.HTTPClient) *BaiduPCS {
 	pcs := &BaiduPCS{
-		appid:  appid,
+		appID:  appID,
 		client: client,
 	}
-	pcs.MustCheck()
 	return pcs
 }
 
-// MustCheck 遇到错误则panic
-func (pcs *BaiduPCS) MustCheck() {
-	if pcs.appid == 0 {
-		panic("appid is zero")
-	}
+func (pcs *BaiduPCS) lazyInit() {
 	if pcs.client == nil {
-		panic("client is nil")
+		pcs.client = requester.NewHTTPClient()
 	}
 }
 
 // SetAPPID 设置app_id
-func (pcs *BaiduPCS) SetAPPID(appid int) {
-	pcs.appid = appid
+func (pcs *BaiduPCS) SetAPPID(appID int) {
+	pcs.appID = appID
 }
 
 // SetUserAgent 设置 User-Agent
 func (pcs *BaiduPCS) SetUserAgent(ua string) {
-	pcs.MustCheck()
-	pcs.client.UserAgent = ua
+	pcs.client.SetUserAgent(ua)
 }
 
 // SetHTTPS 是否启用https连接
 func (pcs *BaiduPCS) SetHTTPS(https bool) {
-	pcs.MustCheck()
 	pcs.isHTTPS = https
-	pcs.client.SetHTTPSecure(true)
 }
 
 func (pcs *BaiduPCS) generatePCSURL(subPath, method string, param ...map[string]string) *url.URL {
@@ -142,7 +134,7 @@ func (pcs *BaiduPCS) generatePCSURL(subPath, method string, param ...map[string]
 	}
 
 	uv := pcsURL.Query()
-	uv.Set("app_id", strconv.Itoa(pcs.appid))
+	uv.Set("app_id", strconv.Itoa(pcs.appID))
 	uv.Set("method", method)
 	for k := range param {
 		for k2 := range param[k] {

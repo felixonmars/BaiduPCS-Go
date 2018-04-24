@@ -826,6 +826,7 @@ func main() {
 				tb.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_LEFT})
 				tb.AppendBulk([][]string{
 					[]string{"appid", fmt.Sprint(pcsconfig.Config.AppID), "", "百度 PCS 应用ID"},
+					[]string{"enable_https", fmt.Sprint(pcsconfig.Config.EnableHTTPS), "true", "启用 https"},
 					[]string{"user_agent", pcsconfig.Config.UserAgent, "", "浏览器标识"},
 					[]string{"cache_size", strconv.Itoa(pcsconfig.Config.CacheSize), "1024 ~ 262144", "下载缓存, 如果硬盘占用高或下载速度慢, 请尝试调大此值"},
 					[]string{"max_parallel", strconv.Itoa(pcsconfig.Config.MaxParallel), "50 ~ 500", "下载最大并发量"},

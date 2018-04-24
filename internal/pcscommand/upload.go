@@ -389,6 +389,7 @@ func RunUpload(localPaths []string, savePath string) {
 		pcsError := info.Upload(task.savePath, func(uploadURL string, jar *cookiejar.Jar) (resp *http.Response, uperr error) {
 			h := requester.NewHTTPClient()
 			h.SetCookiejar(jar)
+			setupHTTPClient(h)
 
 			mr := multipartreader.NewMultipartReader()
 			mr.AddFormFile("uploadedfile", "", rio.NewFileReaderLen64(task.uploadInfo.file))

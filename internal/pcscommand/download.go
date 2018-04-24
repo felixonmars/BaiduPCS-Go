@@ -37,12 +37,10 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 
 	return func(downloadURL string, jar *cookiejar.Jar) error {
 		h := requester.NewHTTPClient()
-		h.UserAgent = pcsconfig.Config.UserAgent
-
 		h.SetCookiejar(jar)
 		h.SetKeepAlive(true)
 		h.SetTimeout(10 * time.Minute)
-		h.SetHTTPSecure(pcsconfig.Config.EnableHTTPS)
+		setupHTTPClient(h)
 
 		var (
 			file     rio.WriteCloserAt

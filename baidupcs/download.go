@@ -9,6 +9,7 @@ type DownloadFunc func(downloadURL string, jar *cookiejar.Jar) error
 
 // DownloadFile 下载单个文件
 func (pcs *BaiduPCS) DownloadFile(path string, downloadFunc DownloadFunc) (err error) {
+	pcs.lazyInit()
 	pcsURL := pcs.generatePCSURL("file", "download", map[string]string{
 		"path": path,
 	})
@@ -19,6 +20,7 @@ func (pcs *BaiduPCS) DownloadFile(path string, downloadFunc DownloadFunc) (err e
 
 // DownloadStreamFile 下载流式文件
 func (pcs *BaiduPCS) DownloadStreamFile(path string, downloadFunc DownloadFunc) (err error) {
+	pcs.lazyInit()
 	pcsURL := pcs.generatePCSURL("stream", "download", map[string]string{
 		"path": path,
 	})
