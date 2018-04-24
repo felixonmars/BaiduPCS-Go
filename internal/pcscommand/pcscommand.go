@@ -22,6 +22,7 @@ func ReloadInfo() {
 	pcsconfig.Reload()
 	info = baidupcs.NewPCS(pcsconfig.Config.AppID, pcsconfig.Config.MustGetActive().BDUSS)
 	info.SetUserAgent(pcsconfig.Config.UserAgent)
+	info.SetHTTPS(pcsconfig.Config.EnableHTTPS)
 }
 
 // ReloadIfInConsole 程序在 Console 模式下才会重载配置

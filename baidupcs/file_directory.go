@@ -11,9 +11,10 @@ import (
 	"strings"
 )
 
-type HandlePathFunc func(depth int, fd *FileDirectory)
+// HandleFileDirectoryFunc 处理文件或目录的元信息
+type HandleFileDirectoryFunc func(depth int, fd *FileDirectory)
 
-// FileDirectory 文件或目录的详细信息
+// FileDirectory 文件或目录的元信息
 type FileDirectory struct {
 	FsID        int64  // fs_id
 	Path        string // 路径
@@ -158,19 +159,19 @@ func (pcs *BaiduPCS) FilesDirectoriesList(path string) (data FileDirectoryList, 
 	return
 }
 
-func (pcs *BaiduPCS) recurseList(path string, depth int, handlePathFunc HandlePathFunc) (data FileDirectoryList, pcsError Error) {
+func (pcs *BaiduPCS) recurseList(path string, depth int, handleFileDirectoryFunc HandleFileDirectoryFunc) (data FileDirectoryList, pcsError Error) {
 	fdl, pcsError := pcs.FilesDirectoriesList(path)
 	if pcsError != nil {
 		return nil, pcsError
 	}
 
 	for k := range fdl {
-		handlePathFunc(depth+1, fdl[k])
+		handleFileDirectoryFunc(depth+1, fdl[k])
 		if !fdl[k].Isdir {
 			continue
 		}
 
-		fdl[k].Children, pcsError = pcs.recurseList(fdl[k].Path, depth+1, handlePathFunc)
+		fdl[k].Children, pcsError = pcs.recurseList(fdl[k].Path, depth+1, handleFileDirectoryFunc)
 		if pcsError != nil {
 			pcsverbose.Verboseln(pcsError)
 		}
@@ -180,8 +181,8 @@ func (pcs *BaiduPCS) recurseList(path string, depth int, handlePathFunc HandlePa
 }
 
 // FilesDirectoriesRecurseList 递归获取目录下的文件和目录列表
-func (pcs *BaiduPCS) FilesDirectoriesRecurseList(path string, handlePathFunc HandlePathFunc) (data FileDirectoryList, pcsError Error) {
-	return pcs.recurseList(path, 0, handlePathFunc)
+func (pcs *BaiduPCS) FilesDirectoriesRecurseList(path string, handleFileDirectoryFunc HandleFileDirectoryFunc) (data FileDirectoryList, pcsError Error) {
+	return pcs.recurseList(path, 0, handleFileDirectoryFunc)
 }
 
 func (f *FileDirectory) String() string {

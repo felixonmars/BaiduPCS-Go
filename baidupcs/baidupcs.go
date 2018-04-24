@@ -2,6 +2,7 @@
 package baidupcs
 
 import (
+	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"net/http"
 	"net/http/cookiejar"
@@ -34,10 +35,10 @@ const (
 	OperationUploadTmpFile = "分片上传—文件分片及上传"
 	// OperationUploadCreateSuperFile 分片上传—合并分片文件
 	OperationUploadCreateSuperFile = "分片上传—合并分片文件"
-	// OperationFileDownload 下载单个文件
-	OperationFileDownload = "下载单个文件"
-	// OperationStreamFileDownload 下载流式文件
-	OperationStreamFileDownload = "下载流式文件"
+	// OperationDownloadFile 下载单个文件
+	OperationDownloadFile = "下载单个文件"
+	// OperationDownloadStreamFile 下载流式文件
+	OperationDownloadStreamFile = "下载流式文件"
 	// OperationCloudDlAddTask 添加离线下载任务
 	OperationCloudDlAddTask = "添加离线下载任务"
 	// OperationCloudDlQueryTask 精确查询离线下载任务
@@ -48,6 +49,10 @@ const (
 	OperationCloudDlCancelTask = "取消离线下载任务"
 	// OperationCloudDlDeleteTask 删除离线下载任务
 	OperationCloudDlDeleteTask = "删除离线下载任务"
+)
+
+var (
+	baiduPCSVerbose = pcsverbose.New("BAIDUPCS")
 )
 
 // BaiduPCS 百度 PCS API 详情
@@ -122,7 +127,7 @@ func (pcs *BaiduPCS) SetUserAgent(ua string) {
 func (pcs *BaiduPCS) SetHTTPS(https bool) {
 	pcs.MustCheck()
 	pcs.isHTTPS = https
-	pcs.client.SetHTTPSecure(https)
+	pcs.client.SetHTTPSecure(true)
 }
 
 func (pcs *BaiduPCS) generatePCSURL(subPath, method string, param ...map[string]string) *url.URL {
@@ -154,6 +159,10 @@ func (pcs *BaiduPCS) generatePCSURL2(subPath, method string, param ...map[string
 		Scheme: "http",
 		Host:   "pan.baidu.com",
 		Path:   "/rest/2.0/" + subPath,
+	}
+
+	if pcs.isHTTPS {
+		pcsURL2.Scheme = "https"
 	}
 
 	uv := pcsURL2.Query()

@@ -22,7 +22,8 @@ type Downloader struct {
 	onCancel          func() //取消下载事件
 	monitorCancelFunc context.CancelFunc
 
-	sinceTime     time.Time
+	executeTime   time.Time
+	executed      bool
 	durl          string
 	writer        rio.WriteCloserAt
 	client        *requester.HTTPClient
@@ -96,6 +97,7 @@ func (der *Downloader) Execute() error {
 	if req != nil {
 		referer = req.Referer()
 		durl = req.URL.String()
+		pcsverbose.Verbosef("DEBUG: download task: URL: %s, Referer: %s\n", durl, referer)
 	}
 
 	//load breakpoint
@@ -139,7 +141,7 @@ func (der *Downloader) Execute() error {
 		der.config.cacheSize = int(blockSize)
 	}
 
-	pcsverbose.Verbosef("DEBUG: CREATED: parallel: %d, cache size: %d\n", der.config.parallel, der.config.cacheSize)
+	pcsverbose.Verbosef("DEBUG: download task CREATED: parallel: %d, cache size: %d\n", der.config.parallel, der.config.cacheSize)
 
 	der.monitor.InitMonitorCapacity(der.config.parallel)
 
@@ -191,6 +193,10 @@ func (der *Downloader) Execute() error {
 	der.monitorCancelFunc = moniterCancelFunc
 
 	der.monitor.SetInstanceState(der.instanceState)
+
+	// 开始执行
+	der.executeTime = time.Now()
+	der.executed = true
 	trigger(der.onExecute)
 	der.monitor.Execute(moniterCtx)
 	der.removeInstanceState()
@@ -212,7 +218,6 @@ func (der *Downloader) GetDownloadStatusChan() <-chan DlStatus {
 	}
 
 	c := make(chan DlStatus)
-	nowTime := time.Now()
 	go func() {
 		for {
 			select {
@@ -220,8 +225,10 @@ func (der *Downloader) GetDownloadStatusChan() <-chan DlStatus {
 				close(c)
 				return
 			default:
-				status.timeElapsed = time.Since(nowTime)
-				c <- status
+				if der.executed {
+					status.timeElapsed = time.Since(der.executeTime)
+					c <- status
+				}
 				time.Sleep(1 * time.Second)
 			}
 		}

@@ -3,7 +3,7 @@ package requester
 import (
 	"bytes"
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
+	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -36,9 +36,12 @@ func Fetch(method string, urlStr string, post interface{}, header map[string]str
 // post (post 数据), header (header 请求头数据), 进行网站访问。
 // 返回值分别为 *http.Response, 错误信息
 func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header map[string]string) (resp *http.Response, err error) {
+	h.lazyInit()
 	var (
-		req   *http.Request
-		obody io.Reader
+		req           *http.Request
+		obody         io.Reader
+		contentLength int64
+		contentType   string
 	)
 
 	if post != nil {
@@ -58,19 +61,37 @@ func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header 
 		default:
 			return nil, fmt.Errorf("requester.Req: unknown post type: %s", value)
 		}
+
+		switch value := post.(type) {
+		case ContentLength:
+			contentLength = value.ContentLength()
+		case rio.Lener:
+			contentLength = int64(value.Len())
+		case rio.Lener64:
+			contentLength = value.Len()
+		}
+
+		switch value := post.(type) {
+		case ContentType:
+			contentType = value.ContentType()
+		}
 	}
 	req, err = http.NewRequest(method, urlStr, obody)
 	if err != nil {
 		return nil, err
 	}
 
-	// 设置
-	if v, ok := post.(*multipartreader.MultipartReader); ok {
-		v.SetupHTTPRequest(req)
+	if req.ContentLength <= 0 && contentLength != 0 {
+		req.ContentLength = contentLength
 	}
 
 	// 设置浏览器标识
 	req.Header.Set("User-Agent", h.UserAgent)
+
+	// 设置Content-Type
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
 
 	if header != nil {
 		for key := range header {
@@ -86,6 +107,7 @@ func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header 
 // post (post 数据), header (header 请求头数据), 进行网站访问。
 // 返回值分别为 网站主体, 错误信息
 func (h *HTTPClient) Fetch(method string, urlStr string, post interface{}, header map[string]string) (body []byte, err error) {
+	h.lazyInit()
 	resp, err := h.Req(method, urlStr, post, header)
 	if resp != nil {
 		defer resp.Body.Close()

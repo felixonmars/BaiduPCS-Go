@@ -7,6 +7,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsweb"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
+	_ "github.com/iikira/BaiduPCS-Go/pcsinit"
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
@@ -34,6 +35,20 @@ var (
 		pcscommand.ReloadIfInConsole()
 		return nil
 	}
+
+	cryptoDescription = `
+	可用的方法 <method>:
+		aes-128-ctr, aes-192-ctr, aes-256-ctr,
+		aes-128-cfb, aes-192-cfb, aes-256-cfb,
+		aes-128-ofb, aes-192-ofb, aes-256-ofb.
+
+	密钥 <key>:
+		aes-128 对应key长度为16, aes-192 对应key长度为24, aes-256 对应key长度为32,
+		如果key长度不符合, 则自动修剪key, 舍弃超出长度的部分, 长度不足的部分用'\0'填充.
+
+	GZIP <disable-gzip>:
+		在文件加密之前, 启用GZIP压缩文件; 文件解密之后启用GZIP解压缩文件, 默认启用,
+		如果不启用, 则无法检测文件是否解密成功, 解密文件时会保留源文件, 避免解密失败造成文件数据丢失.`
 )
 
 func init() {
@@ -827,6 +842,7 @@ func main() {
 					Description: `
 	例子:
 		BaiduPCS-Go config set -appid=260149
+		BaiduPCS-Go config set -enable_https=false
 		BaiduPCS-Go config set -user_agent="chrome"
 		BaiduPCS-Go config set -cache_size 16384 -max_parallel 200 -savedir D:/download`,
 					Action: func(c *cli.Context) error {
@@ -851,6 +867,11 @@ func main() {
 							Usage:       "百度 PCS 应用ID",
 							Value:       pcsconfig.Config.AppID,
 							Destination: &pcsconfig.Config.AppID,
+						},
+						cli.BoolFlag{
+							Name:        "enable_https",
+							Usage:       "启用 https",
+							Destination: &pcsconfig.Config.EnableHTTPS,
 						},
 						cli.StringFlag{
 							Name:        "user_agent",

@@ -16,9 +16,11 @@ import (
 	"time"
 )
 
-var (
+const (
 	//DownloadSuffix 文件下载后缀
 	DownloadSuffix = ".BaiduPCS-Go-downloading"
+	//StrDownloadInitError 初始化下载发生错误
+	StrDownloadInitError = "初始化下载发生错误"
 )
 
 // dtask 下载任务
@@ -40,6 +42,7 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 		h.SetCookiejar(jar)
 		h.SetKeepAlive(true)
 		h.SetTimeout(10 * time.Minute)
+		h.SetHTTPSecure(pcsconfig.Config.EnableHTTPS)
 
 		var (
 			file     rio.WriteCloserAt
@@ -51,13 +54,23 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 			cfg.InstanceStatePath = savePath + DownloadSuffix
 
 			// 创建下载的目录
-			os.MkdirAll(filepath.Dir(savePath), 0777)
+			dir := filepath.Dir(savePath)
+			fileInfo, err := os.Stat(dir)
+			if err != nil {
+				err = os.MkdirAll(dir, 0777)
+				if err != nil {
+					return err
+				}
+			} else if !fileInfo.IsDir() {
+				return fmt.Errorf("%s, path %s: not a directory", StrDownloadInitError, dir)
+			}
+
 			file, err = os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY, 0777)
 			if file != nil {
 				defer file.Close()
 			}
 			if err != nil {
-				return err
+				return fmt.Errorf("%s, %s", StrDownloadInitError, err)
 			}
 		}
 
@@ -183,7 +196,7 @@ func RunDownload(isTest, isPrintStatus bool, parallel int, paths []string) {
 
 			// 不重试的情况
 			switch {
-			case strings.Compare(errManifest, "下载文件错误") == 0 && strings.Contains(err.Error(), "文件已存在"):
+			case strings.Compare(errManifest, "下载文件错误") == 0 && strings.Contains(err.Error(), StrDownloadInitError):
 				fmt.Printf("[%d] %s, %s\n", task.ID, errManifest, err)
 				return
 			}
@@ -253,8 +266,8 @@ func RunDownload(isTest, isPrintStatus bool, parallel int, paths []string) {
 			continue
 		}
 
-		savePath := pcsconfig.GetSavePath(task.path)
 		fmt.Printf("[%d] 准备下载: %s\n\n", task.ID, task.path)
+		savePath := pcsconfig.GetSavePath(task.path)
 		if !isTest && fileExist(savePath) {
 			fmt.Printf("[%d] 文件已经存在: %s, 跳过...\n", task.ID, savePath)
 			continue

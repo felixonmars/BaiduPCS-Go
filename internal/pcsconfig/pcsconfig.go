@@ -27,8 +27,9 @@ type PCSConfig struct {
 	CacheSize   int `json:"cache_size"`   // 下载缓存
 	MaxParallel int `json:"max_parallel"` // 最大下载并发量
 
-	UserAgent string `json:"user_agent"` // 浏览器标识
-	SaveDir   string `json:"savedir"`    // 下载储存路径
+	UserAgent   string `json:"user_agent"`   // 浏览器标识
+	SaveDir     string `json:"savedir"`      // 下载储存路径
+	EnableHTTPS bool   `json:"enable_https"` // 启用https
 }
 
 // NewConfig 返回 PCSConfig 指针对象
@@ -36,7 +37,7 @@ func NewConfig() *PCSConfig {
 	return &PCSConfig{
 		BaiduActiveUID: 0,
 		AppID:          defaultAppID,
-		CacheSize:      1024,
+		CacheSize:      30000,
 		MaxParallel:    100,
 		SaveDir:        pcsutil.ExecutablePathJoin("download"),
 	}

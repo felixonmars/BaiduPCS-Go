@@ -47,6 +47,7 @@ func handleRespStatusError(opreation string, resp *http.Response) Error {
 // PrepareQuotaInfo 获取当前用户空间配额信息, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareQuotaInfo() (dataReadCloser io.ReadCloser, pcsError Error) {
 	pcsURL := pcs.generatePCSURL("quota", "info")
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationQuotaInfo, pcsURL)
 
 	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, nil)
 	if err != nil {
@@ -69,10 +70,12 @@ func (pcs *BaiduPCS) PrepareFilesDirectoriesBatchMeta(paths ...string) (dataRead
 	}
 
 	pcsURL := pcs.generatePCSURL("file", "meta")
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationFilesDirectoriesMeta, pcsURL)
 
 	// 表单上传
 	mr := multipartreader.NewMultipartReader()
 	mr.AddFormFeild("param", bytes.NewReader(sendData))
+	mr.CloseMultipart()
 
 	resp, err := pcs.client.Req("POST", pcsURL.String(), mr, nil)
 	if err != nil {
@@ -99,6 +102,7 @@ func (pcs *BaiduPCS) PrepareFilesDirectoriesList(path string) (dataReadCloser io
 		"order": "asc", // 升序
 		"limit": "0-2147483647",
 	})
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationFilesDirectoriesList, pcsURL)
 
 	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, nil)
 	if err != nil {
@@ -121,10 +125,12 @@ func (pcs *BaiduPCS) PrepareRemove(paths ...string) (dataReadCloser io.ReadClose
 	}
 
 	pcsURL := pcs.generatePCSURL("file", "delete")
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationRemove, pcsURL)
 
 	// 表单上传
 	mr := multipartreader.NewMultipartReader()
 	mr.AddFormFeild("param", bytes.NewReader(sendData))
+	mr.CloseMultipart()
 
 	resp, err := pcs.client.Req("POST", pcsURL.String(), mr, nil)
 	if err != nil {
@@ -144,6 +150,7 @@ func (pcs *BaiduPCS) PrepareMkdir(pcspath string) (dataReadCloser io.ReadCloser,
 	pcsURL := pcs.generatePCSURL("file", "mkdir", map[string]string{
 		"path": pcspath,
 	})
+	baiduPCSVerbose.Infof("%s URL: %s", OperationMkdir, pcsURL)
 
 	resp, err := pcs.client.Req("POST", pcsURL.String(), nil, nil)
 	if err != nil {
@@ -181,10 +188,12 @@ func (pcs *BaiduPCS) prepareCpMvOp(op string, cpmvJSON ...*CpMvJSON) (dataReadCl
 	}
 
 	pcsURL := pcs.generatePCSURL("file", method)
+	baiduPCSVerbose.Infof("%s URL: %s\n", op, pcsURL)
 
 	// 表单上传
 	mr := multipartreader.NewMultipartReader()
 	mr.AddFormFeild("param", bytes.NewReader(sendData))
+	mr.CloseMultipart()
 
 	resp, err := pcs.client.Req("POST", pcsURL.String(), mr, nil)
 	if err != nil {
@@ -230,6 +239,7 @@ func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 
 		"content-crc32":  crc32,                         // 待秒传文件CRC32
 		"ondup":          "overwrite",                   // overwrite: 表示覆盖同名文件; newcopy: 表示生成文件副本并进行重命名，命名规则为“文件名_日期.后缀”
 	})
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationRapidUpload, pcsURL)
 
 	resp, err := pcs.client.Req("POST", pcsURL.String(), nil, nil)
 	if err != nil {
@@ -255,6 +265,7 @@ func (pcs *BaiduPCS) PrepareUpload(targetPath string, uploadFunc UploadFunc) (da
 		"path":  targetPath,
 		"ondup": "overwrite",
 	})
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationUpload, pcsURL)
 
 	resp, err := uploadFunc(pcsURL.String(), pcs.client.Jar.(*cookiejar.Jar))
 	if err != nil {
@@ -279,6 +290,7 @@ func (pcs *BaiduPCS) PrepareUploadTmpFile(uploadFunc UploadFunc) (dataReadCloser
 	pcsURL := pcs.generatePCSURL("file", "upload", map[string]string{
 		"type": "tmpfile",
 	})
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationUploadTmpFile, pcsURL)
 
 	resp, err := uploadFunc(pcsURL.String(), pcs.client.Jar.(*cookiejar.Jar))
 	if err != nil {
@@ -320,10 +332,12 @@ func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(targetPath string, blockList .
 		"path":  targetPath,
 		"ondup": "overwrite",
 	})
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationUploadCreateSuperFile, pcsURL)
 
 	// 表单上传
 	mr := multipartreader.NewMultipartReader()
 	mr.AddFormFeild("param", bytes.NewReader(sendData))
+	mr.CloseMultipart()
 
 	resp, err := pcs.client.Req("POST", pcsURL.String(), mr, nil)
 	if err != nil {
@@ -345,6 +359,7 @@ func (pcs *BaiduPCS) PrepareCloudDlAddTask(sourceURL, savePath string) (dataRead
 		"source_url": sourceURL,
 		"timeout":    "2147483647",
 	})
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationCloudDlAddTask, pcsURL2)
 
 	resp, err := pcs.client.Req("POST", pcsURL2.String(), nil, nil)
 	if err != nil {
@@ -365,10 +380,12 @@ func (pcs *BaiduPCS) PrepareCloudDlQueryTask(taskIDs string) (dataReadCloser io.
 	pcsURL2 := pcs.generatePCSURL2("services/cloud_dl", "query_task", map[string]string{
 		"op_type": "1",
 	})
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationCloudDlQueryTask, pcsURL2)
 
 	// 表单上传
 	mr := multipartreader.NewMultipartReader()
 	mr.AddFormFeild("task_ids", strings.NewReader(taskIDs))
+	mr.CloseMultipart()
 
 	resp, err := pcs.client.Req("POST", pcsURL2.String(), mr, nil)
 	if err != nil {
@@ -391,6 +408,7 @@ func (pcs *BaiduPCS) PrepareCloudDlListTask() (dataReadCloser io.ReadCloser, pcs
 		"start":          "0",
 		"limit":          "1000",
 	})
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationCloudDlListTask, pcsURL2)
 
 	resp, err := pcs.client.Req("POST", pcsURL2.String(), nil, nil)
 	if err != nil {
@@ -409,6 +427,7 @@ func (pcs *BaiduPCS) prepareCloudDlCDTask(opreation, method string, taskID int64
 	pcsURL2 := pcs.generatePCSURL2("services/cloud_dl", method, map[string]string{
 		"task_id": strconv.FormatInt(taskID, 10),
 	})
+	baiduPCSVerbose.Infof("%s URL: %s\n", opreation, pcsURL2)
 
 	resp, err := pcs.client.Req("POST", pcsURL2.String(), nil, nil)
 	if err != nil {

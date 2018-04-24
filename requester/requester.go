@@ -8,3 +8,13 @@ var (
 	// DefaultClient 默认 http 客户端
 	DefaultClient = NewHTTPClient()
 )
+
+// ContentType Content-Type 接口
+type ContentType interface {
+	ContentType() string
+}
+
+// ContentLength Content-Length 接口
+type ContentLength interface {
+	ContentLength() int64
+}

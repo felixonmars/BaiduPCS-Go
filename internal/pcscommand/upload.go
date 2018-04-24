@@ -11,7 +11,8 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
-	"github.com/iikira/BaiduPCS-Go/uploader"
+	"github.com/iikira/BaiduPCS-Go/requester/rio"
+	"github.com/iikira/BaiduPCS-Go/requester/uploader"
 	"hash"
 	"hash/crc32"
 	"io"
@@ -389,47 +390,48 @@ func RunUpload(localPaths []string, savePath string) {
 			h := requester.NewHTTPClient()
 			h.SetCookiejar(jar)
 
-			u := uploader.NewUploader(uploadURL, multipartreader.NewFileReadedLen64(task.uploadInfo.file), &uploader.Options{
-				IsMultiPart: true,
-				Client:      h,
+			mr := multipartreader.NewMultipartReader()
+			mr.AddFormFile("uploadedfile", "", rio.NewFileReaderLen64(task.uploadInfo.file))
+			mr.CloseMultipart()
+
+			u := uploader.NewUploader(uploadURL, mr)
+			u.SetClient(h)
+			u.SetContentType(mr.ContentType())
+			u.SetCheckFunc(func(upresp *http.Response, err error) {
+				resp = upresp
+				uperr = err
 			})
 
-			exit := make(chan struct{})
+			exitChan := make(chan struct{})
 
 			u.OnExecute(func() {
+				statusChan := u.GetStatusChan()
 				for {
 					select {
-					case v, ok := <-u.UploadStatus:
+					case <-exitChan:
+						return
+					case v, ok := <-statusChan:
 						if !ok {
 							return
 						}
 
-						if v.Length == 0 {
+						if v.TotalSize() == 0 {
 							fmt.Printf("\r[%d] Prepareing upload...", task.ID)
 							continue
 						}
 
 						fmt.Printf("\r[%d] ↑ %s/%s %s/s in %s ............", task.ID,
-							pcsutil.ConvertFileSize(v.Uploaded, 2),
-							pcsutil.ConvertFileSize(v.Length, 2),
-							pcsutil.ConvertFileSize(v.Speed, 2),
-							v.TimeElapsed,
+							pcsutil.ConvertFileSize(v.Uploaded(), 2),
+							pcsutil.ConvertFileSize(v.TotalSize(), 2),
+							pcsutil.ConvertFileSize(v.SpeedsPerSecond(), 2),
+							v.TimeElapsed(),
 						)
 					}
 				}
 			})
 
-			u.OnFinish(func() {
-				exit <- struct{}{}
-			})
-
-			<-u.Execute(func(upresp *http.Response, err error) {
-				resp = upresp
-				uperr = err
-			})
-
-			<-exit
-			close(exit)
+			u.Execute()
+			close(exitChan)
 			return
 		})
 

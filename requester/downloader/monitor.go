@@ -140,7 +140,7 @@ func (mt *Monitor) SetReloadWorker(b bool) {
 
 //IsLeftWorkersAllFailed 剩下的线程是否全部失败
 func (mt *Monitor) IsLeftWorkersAllFailed() bool {
-	reach := false
+	failedNum := 0
 	for _, worker := range mt.workers {
 		if worker == nil {
 			continue
@@ -149,12 +149,12 @@ func (mt *Monitor) IsLeftWorkersAllFailed() bool {
 			continue
 		}
 
-		reach = true
 		if !worker.Failed() {
+			failedNum++
 			return false
 		}
 	}
-	return !reach
+	return failedNum != 0
 }
 
 //AllCompleted 全部完成则发送消息
@@ -185,6 +185,26 @@ func (mt *Monitor) AllCompleted() <-chan struct{} {
 		}
 	}()
 	return c
+}
+
+//ResetAllNetErrorWorkers 重设所有网络错误的worker
+func (mt *Monitor) ResetAllNetErrorWorkers() {
+	var status Status
+	for k := range mt.workers {
+		if mt.workers[k] == nil {
+			continue
+		}
+
+		status = mt.workers[k].GetStatus()
+		if status == nil {
+			continue
+		}
+
+		if status.StatusCode() == StatusCodeNetError {
+			pcsverbose.Verbosef("DEBUG: monitor: ResetAllNetErrorWorkers: reset worker, id: %d\n", mt.workers[k].id)
+			mt.workers[k].Reset()
+		}
+	}
 }
 
 //RangeWorker 遍历worker
@@ -242,13 +262,21 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 		ranges           = mt.GetAllWorkersRange()
 		exitErr          = make(chan error)
 		maxReloadNumFunc = func() int32 {
-			num := int32(len(mt.workers) - mt.NumLeftWorkers())
-			if num > 32 {
-				return 32
-			}
+			total := len(mt.workers)
+			num := int32(32 * float64(total-mt.NumLeftWorkers()) / float64(total))
 			return num + 5
 		}
 		reloadNum int32
+		// 重设所有网络错误的worker, 30s间隔
+		nowTime                 = time.Now()
+		resetAllNetErrorWorkers = func() {
+			if time.Since(nowTime) < 30*time.Second {
+				return
+			}
+			pcsverbose.Verbosef("DEBUG: monitor: resetAllNetErrorWorkers start\n")
+			nowTime = time.Now()
+			mt.ResetAllNetErrorWorkers()
+		}
 	)
 
 	//开始监控
@@ -275,6 +303,8 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 		default:
 			time.Sleep(1 * time.Second)
 
+			// 初始化监控工作
+			resetAllNetErrorWorkers()
 			atomic.StoreInt32(&reloadNum, 0)
 			mt.status.updateSpeeds()
 			if mt.instanceState != nil {
@@ -313,6 +343,10 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 				for _, worker := range mt.workers {
 					// 重设长时间无响应, 和下载速度为 0 的线程
 					go func(worker *Worker) {
+						if atomic.LoadInt32(&reloadNum) > maxReloadNumFunc() { //达到最大重载次数
+							return
+						}
+
 						if worker.Completed() {
 							return
 						}
@@ -335,10 +369,7 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 							return
 						}
 
-						n := atomic.AddInt32(&reloadNum, 1)
-						if n > maxReloadNumFunc() { //达到最大重载次数
-							return
-						}
+						atomic.AddInt32(&reloadNum, 1) // 增加重载次数
 
 						// 重设连接
 						pcsverbose.Verbosef("MONITER: worker reload, worker id: %d\n", worker.ID())
@@ -387,7 +418,7 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 
 							wrange.StoreEnd(middle)
 
-							pcsverbose.Verbosef("MONITER: thread duplicated: %d <- %d\n", avaliableWorker.ID(), worker.ID())
+							pcsverbose.Verbosef("MONITER: worker duplicated: %d <- %d\n", avaliableWorker.ID(), worker.ID())
 							go avaliableWorker.Execute()
 							time.Sleep(10 * time.Microsecond)
 						}(mt.workers[k])

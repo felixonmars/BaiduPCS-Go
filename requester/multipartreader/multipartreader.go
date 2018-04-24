@@ -3,12 +3,11 @@
 package multipartreader
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"io"
 	"mime/multipart"
-	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -16,6 +15,7 @@ import (
 
 // MultipartReader MIME multipart format
 type MultipartReader struct {
+	length      int64
 	contentType string
 	boundary    string
 
@@ -24,11 +24,9 @@ type MultipartReader struct {
 	part64s   []*part64
 	formClose string
 
-	once        sync.Once
+	mu          sync.Mutex
+	closed      bool
 	multiReader io.Reader
-
-	_      bool  // alignmemt
-	readed int64 // 已读取的数据量
 }
 
 type part struct {
@@ -43,111 +41,88 @@ type part64 struct {
 
 // NewMultipartReader 返回初始化的 *MultipartReader
 func NewMultipartReader() (mr *MultipartReader) {
-	buf := bytes.NewBuffer(nil)
-	writer := multipart.NewWriter(buf)
+	builder := &strings.Builder{}
+	writer := multipart.NewWriter(builder)
 
 	mr = &MultipartReader{
 		contentType: writer.FormDataContentType(),
 		boundary:    writer.Boundary(),
 	}
 
-	mr.formBody = buf.String()
-	mr.formClose = "\r\n--" + mr.boundary + "--\r\n"
+	mr.length += int64(builder.Len())
+	mr.formBody = builder.String()
 	return
-}
-
-// ContentType 返回 Content-Type
-func (mr *MultipartReader) ContentType() string {
-	return mr.contentType
 }
 
 // AddFormFeild 增加 form 表单
 func (mr *MultipartReader) AddFormFeild(fieldname string, readerlen rio.ReaderLen) {
-	mr.parts = append(mr.parts, &part{
+	mpart := &part{
 		form:      fmt.Sprintf("--%s\r\nContent-Disposition: form-data; name=\"%s\"\r\n\r\n", mr.boundary, fieldname),
 		readerlen: readerlen,
-	})
+	}
+	atomic.AddInt64(&mr.length, int64(len(mpart.form)+mpart.readerlen.Len()))
+	mr.parts = append(mr.parts, mpart)
 }
 
 // AddFormFile 增加 form 文件表单
 func (mr *MultipartReader) AddFormFile(fieldname, filename string, readerlen64 rio.ReaderLen64) {
-	mr.part64s = append(mr.part64s, &part64{
+	mpart64 := &part64{
 		form:        fmt.Sprintf("--%s\r\nContent-Disposition: form-data; name=\"%s\"; filename=\"%s\"\r\n\r\n", mr.boundary, fieldname, filename),
 		readerlen64: readerlen64,
-	})
+	}
+	atomic.AddInt64(&mr.length, int64(len(mpart64.form))+mpart64.readerlen64.Len())
+	mr.part64s = append(mr.part64s, mpart64)
 }
 
-// SetupHTTPRequest 为 *http.Request 配置
-func (mr *MultipartReader) SetupHTTPRequest(req *http.Request) {
-	req.Header.Add("Content-Type", mr.contentType)
+//CloseMultipart 关闭multipartreader
+func (mr *MultipartReader) CloseMultipart() error {
+	mr.mu.Lock()
+	defer mr.mu.Unlock()
+	if mr.closed {
+		return errors.New("multipartreader already closed")
+	}
 
-	// 设置 Content-Length 不然请求会卡住不动!!!
-	req.ContentLength = mr.Len()
+	mr.formClose = "\r\n--" + mr.boundary + "--\r\n"
+	atomic.AddInt64(&mr.length, int64(len(mr.formClose)))
+
+	numReaders := 0
+	if mr.formBody != "" {
+		numReaders++
+	}
+	numReaders += 2*len(mr.parts) + 2*len(mr.part64s)
+	if mr.formClose != "" {
+		numReaders++
+	}
+
+	readers := make([]io.Reader, 0, numReaders)
+	readers = append(readers, strings.NewReader(mr.formBody))
+	for k := range mr.parts {
+		readers = append(readers, strings.NewReader(mr.parts[k].form), mr.parts[k].readerlen)
+	}
+	for k := range mr.part64s {
+		readers = append(readers, strings.NewReader(mr.part64s[k].form), mr.part64s[k].readerlen64)
+	}
+	readers = append(readers, strings.NewReader(mr.formClose))
+	mr.multiReader = io.MultiReader(readers...)
+
+	mr.closed = true
+	return nil
+}
+
+//ContentType 返回Content-Type
+func (mr *MultipartReader) ContentType() string {
+	return mr.contentType
 }
 
 func (mr *MultipartReader) Read(p []byte) (n int, err error) {
-	mr.once.Do(func() {
-		readers := []io.Reader{
-			strings.NewReader(mr.formBody),
-		}
-
-		for _, part := range mr.parts {
-			if part == nil {
-				continue
-			}
-			readers = append(readers, strings.NewReader(part.form), part.readerlen)
-		}
-
-		for _, part64 := range mr.part64s {
-			if part64 == nil {
-				continue
-			}
-			readers = append(readers, strings.NewReader(part64.form), part64.readerlen64)
-		}
-
-		readers = append(readers, strings.NewReader(mr.formClose))
-
-		mr.multiReader = io.MultiReader(readers...)
-	})
-
+	if !mr.closed {
+		return 0, errors.New("multipartreader not closed")
+	}
 	n, err = mr.multiReader.Read(p)
-	mr.addReaded(int64(n))
 	return n, err
 }
 
 // Len 返回表单内容总长度
 func (mr *MultipartReader) Len() int64 {
-	var (
-		i32 int
-		i64 int64
-	)
-
-	i32 += len(mr.formBody)
-	for _, part := range mr.parts {
-		if part == nil {
-			continue
-		}
-		i32 += len(part.form) + part.readerlen.Len()
-	}
-
-	for _, part64 := range mr.part64s {
-		if part64 == nil {
-			continue
-		}
-		i32 += len(part64.form)
-		i64 += part64.readerlen64.Len()
-	}
-
-	i32 += len(mr.formClose)
-
-	return int64(i32) + i64
-}
-
-// Readed 返回 form 表单已读取的数据量, 用于计算上传速度等
-func (mr *MultipartReader) Readed() int64 {
-	return atomic.LoadInt64(&mr.readed)
-}
-
-func (mr *MultipartReader) addReaded(i int64) int64 {
-	return atomic.AddInt64(&mr.readed, i)
+	return atomic.LoadInt64(&mr.length)
 }
