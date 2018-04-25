@@ -259,7 +259,6 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 	mt.completed = mt.AllCompleted()
 
 	var (
-		ranges           = mt.GetAllWorkersRange()
 		exitErr          = make(chan error)
 		maxReloadNumFunc = func() int32 {
 			total := len(mt.workers)
@@ -270,7 +269,7 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 		// 重设所有网络错误的worker, 30s间隔
 		nowTime                 = time.Now()
 		resetAllNetErrorWorkers = func() {
-			if time.Since(nowTime) < 30*time.Second {
+			if time.Since(nowTime) < 10*time.Second {
 				return
 			}
 			pcsverbose.Verbosef("DEBUG: monitor: resetAllNetErrorWorkers start\n")
@@ -310,7 +309,7 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 			if mt.instanceState != nil {
 				mt.instanceState.Put(&InstanceInfo{
 					DlStatus: mt.status,
-					Ranges:   ranges,
+					Ranges:   mt.GetAllWorkersRange(),
 				})
 			}
 
@@ -410,7 +409,7 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 							}
 
 							// 折半
-							avaliableWorker.wrange = &Range{
+							avaliableWorker.wrange = Range{
 								Begin: middle + 1,
 								End:   end,
 							}
@@ -434,11 +433,10 @@ func (mt *Monitor) ShowWorkers() string {
 	var (
 		builder = &strings.Builder{}
 		tb      = pcstable.NewTable(builder)
-		wrange  *Range
 	)
 	tb.SetHeader([]string{"#", "status", "range", "left", "speeds", "error"})
 	mt.RangeWorker(func(key int, worker *Worker) bool {
-		wrange = worker.GetRange()
+		wrange := worker.GetRange()
 		tb.Append([]string{fmt.Sprint(worker.ID()), worker.GetStatus().StatusText(), wrange.String(), strconv.FormatInt(wrange.Len(), 10), strconv.FormatInt(worker.GetSpeedsPerSecond(), 10), fmt.Sprint(worker.Err())})
 		return true
 	})

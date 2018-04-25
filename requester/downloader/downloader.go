@@ -13,13 +13,16 @@ import (
 	"time"
 )
 
+//Event 下载任务运行时事件
+type Event func()
+
 // Downloader 下载
 type Downloader struct {
-	onExecute         func() //开始下载事件
-	onFinish          func() //结束下载事件
-	onPause           func() //暂停下载事件
-	onResume          func() //恢复下载事件
-	onCancel          func() //取消下载事件
+	onExecuteEvent    Event //开始下载事件
+	onFinishEvent     Event //结束下载事件
+	onPauseEvent      Event //暂停下载事件
+	onResumeEvent     Event //恢复下载事件
+	onCancelEvent     Event //取消下载事件
 	monitorCancelFunc context.CancelFunc
 
 	executeTime   time.Time
@@ -149,7 +152,6 @@ func (der *Downloader) Execute() error {
 	var (
 		begin, end int64
 		writeMu    = &sync.Mutex{}
-		worker     *Worker
 		writerAt   io.WriterAt
 	)
 	if der.writer == nil {
@@ -166,15 +168,15 @@ func (der *Downloader) Execute() error {
 	}
 
 	for i := 0; i < der.config.parallel; i++ {
-		worker = NewWorker(int32(i), durl, writerAt)
+		worker := NewWorker(int32(i), durl, writerAt)
 		workerInit(worker)
 
 		// 分配线程
 		if isRange {
-			worker.SetRange(acceptRanges, ranges[i])
+			worker.SetRange(acceptRanges, *ranges[i])
 		} else {
 			end = int64(i+1) * blockSize
-			worker.SetRange(acceptRanges, &Range{
+			worker.SetRange(acceptRanges, Range{
 				Begin: begin,
 				End:   end,
 			})
@@ -197,10 +199,12 @@ func (der *Downloader) Execute() error {
 	// 开始执行
 	der.executeTime = time.Now()
 	der.executed = true
-	trigger(der.onExecute)
+	trigger(der.onExecuteEvent)
 	der.monitor.Execute(moniterCtx)
+
+	// 执行结束
 	der.removeInstanceState()
-	trigger(der.onFinish)
+	trigger(der.onFinishEvent)
 	return nil
 }
 
@@ -241,7 +245,7 @@ func (der *Downloader) Pause() {
 	if der.monitor == nil {
 		return
 	}
-	trigger(der.onPause)
+	trigger(der.onPauseEvent)
 	der.monitor.Pause()
 }
 
@@ -250,7 +254,7 @@ func (der *Downloader) Resume() {
 	if der.monitor == nil {
 		return
 	}
-	trigger(der.onResume)
+	trigger(der.onResumeEvent)
 	der.monitor.Resume()
 }
 
@@ -259,7 +263,7 @@ func (der *Downloader) Cancel() {
 	if der.monitor == nil {
 		return
 	}
-	trigger(der.onCancel)
+	trigger(der.onCancelEvent)
 	trigger(der.monitorCancelFunc)
 }
 
@@ -272,26 +276,26 @@ func (der *Downloader) PrintAllWorkers() {
 }
 
 //OnExecute 设置开始下载事件
-func (der *Downloader) OnExecute(fn func()) {
-	der.onExecute = fn
+func (der *Downloader) OnExecute(onExecuteEvent Event) {
+	der.onExecuteEvent = onExecuteEvent
 }
 
 //OnFinish 设置结束下载事件
-func (der *Downloader) OnFinish(fn func()) {
-	der.onFinish = fn
+func (der *Downloader) OnFinish(onFinishEvent Event) {
+	der.onFinishEvent = onFinishEvent
 }
 
 //OnPause 设置暂停下载事件
-func (der *Downloader) OnPause(fn func()) {
-	der.onPause = fn
+func (der *Downloader) OnPause(onPauseEvent Event) {
+	der.onPauseEvent = onPauseEvent
 }
 
 //OnResume 设置恢复下载事件
-func (der *Downloader) OnResume(fn func()) {
-	der.onResume = fn
+func (der *Downloader) OnResume(onResumeEvent Event) {
+	der.onResumeEvent = onResumeEvent
 }
 
 //OnCancel 设置取消下载事件
-func (der *Downloader) OnCancel(fn func()) {
-	der.onCancel = fn
+func (der *Downloader) OnCancel(onCancelEvent Event) {
+	der.onCancelEvent = onCancelEvent
 }

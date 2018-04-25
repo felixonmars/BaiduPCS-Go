@@ -192,7 +192,7 @@ func (lp *LocalPathInfo) Crc32Sum() {
 func RunRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) {
 	targetPath, err := getAbsPath(targetPath)
 	if err != nil {
-		fmt.Printf("警告: 尝试秒传文件, 获取网盘路径 %s 错误, %s\n", targetPath, err)
+		fmt.Printf("警告: %s, 获取网盘路径 %s 错误, %s\n", baidupcs.OperationRapidUpload, targetPath, err)
 	}
 
 	if sliceMD5 == "" {
@@ -201,11 +201,28 @@ func RunRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64
 
 	err = info.RapidUpload(targetPath, contentMD5, sliceMD5, crc32, length)
 	if err != nil {
-		fmt.Printf("秒传失败, 消息: %s\n", err)
+		fmt.Printf("%s失败, 消息: %s\n", baidupcs.OperationRapidUpload, err)
 		return
 	}
 
-	fmt.Printf("秒传成功, 保存到网盘路径: %s\n", targetPath)
+	fmt.Printf("%s成功, 保存到网盘路径: %s\n", baidupcs.OperationRapidUpload, targetPath)
+	return
+}
+
+// RunCreateSuperFile 执行分片上传—合并分片文件
+func RunCreateSuperFile(targetPath string, blockList ...string) {
+	targetPath, err := getAbsPath(targetPath)
+	if err != nil {
+		fmt.Printf("警告: %s, 获取网盘路径 %s 错误, %s\n", baidupcs.OperationUploadCreateSuperFile, targetPath, err)
+	}
+
+	err = info.UploadCreateSuperFile(targetPath, blockList...)
+	if err != nil {
+		fmt.Printf("%s失败, 消息: %s\n", baidupcs.OperationUploadCreateSuperFile, err)
+		return
+	}
+
+	fmt.Printf("%s成功, 保存到网盘路径: %s\n", baidupcs.OperationUploadCreateSuperFile, targetPath)
 	return
 }
 
@@ -282,8 +299,6 @@ func RunUpload(localPaths []string, savePath string) {
 	}
 
 	var (
-		e             *list.Element
-		task          *utask
 		handleTaskErr = func(task *utask, errManifest string, pcsError baidupcs.Error) {
 			if task == nil {
 				panic("task is nil")
@@ -316,14 +331,14 @@ func RunUpload(localPaths []string, savePath string) {
 	)
 
 	for {
-		e = ulist.Front()
+		e := ulist.Front()
 		if e == nil { // 结束
 			break
 		}
 
 		ulist.Remove(e) // 载入任务后, 移除队列
 
-		task = e.Value.(*utask)
+		task := e.Value.(*utask)
 		if task == nil {
 			continue
 		}

@@ -98,7 +98,7 @@ func GetStatusText(sc StatusCode) string {
 	case StatusCodeCanceled:
 		return "已取消"
 	default:
-		return "未知错误码"
+		return "未知状态码"
 	}
 }
 

@@ -188,9 +188,8 @@ func (pcs *BaiduPCS) prepareCpMvOp(op string, cpmvJSON ...*CpMvJSON) (dataReadCl
 		List: cpmvJSON,
 	}).JSON()
 	if err != nil {
-		errInfo.errType = ErrTypeJSONEncodeError
-		errInfo.err = err
-		return nil, errInfo
+		//json 数据生成失败
+		panic(err)
 	}
 
 	pcsURL := pcs.generatePCSURL("file", method)
@@ -335,7 +334,7 @@ func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(targetPath string, blockList .
 
 	sendData, err := jsoniter.Marshal(bl)
 	if err != nil {
-		panic(OperationUploadCreateSuperFile + " 发生错误, " + err.Error())
+		panic(err)
 	}
 
 	pcsURL := pcs.generatePCSURL("file", "createsuperfile", map[string]string{

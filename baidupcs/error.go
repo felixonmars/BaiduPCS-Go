@@ -22,8 +22,6 @@ const (
 	StrSuccess = "操作成功"
 	// StrRemoteError 远端服务器返回错误
 	StrRemoteError = "远端服务器返回错误"
-	// StrJSONEncodeError json 数据生成失败
-	StrJSONEncodeError = "json 数据生成失败"
 	// StrJSONParseError json 数据解析失败
 	StrJSONParseError = "json 数据解析失败"
 
@@ -33,8 +31,6 @@ const (
 	ErrTypeRemoteError
 	// ErrTypeNetError 网络错误
 	ErrTypeNetError
-	// ErrTypeJSONEncodeError json 数据生成失败
-	ErrTypeJSONEncodeError
 	// ErrTypeJSONParseError json 数据解析失败
 	ErrTypeJSONParseError
 	// ErrTypeOthers 其他错误
@@ -79,10 +75,6 @@ func (e *ErrInfo) Error() string {
 	switch e.errType {
 	case ErrTypeInternalError:
 		return fmt.Sprintf("%s, %s, %s", e.operation, "内部错误", e.err)
-	case ErrTypeJSONEncodeError:
-		return fmt.Sprintf("%s, %s, %s", e.operation, StrJSONEncodeError, e.err)
-	case ErrTypeJSONParseError:
-		return fmt.Sprintf("%s, %s, %s", e.operation, StrJSONParseError, e.err)
 	case ErrTypeNetError:
 		return fmt.Sprintf("%s, %s, %s", e.operation, "网络错误", e.err)
 	case ErrTypeRemoteError:

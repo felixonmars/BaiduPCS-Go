@@ -14,24 +14,20 @@ type Readed64 interface {
 // NewReaded64 实现Readed64接口
 func NewReaded64(rl rio.ReaderLen64) Readed64 {
 	return &readed64{
-		readed: 0,
-		rl:     rl,
+		readed:      0,
+		ReaderLen64: rl,
 	}
 }
 
 type readed64 struct {
 	readed int64
-	rl     rio.ReaderLen64
+	rio.ReaderLen64
 }
 
 func (r64 *readed64) Read(p []byte) (n int, err error) {
-	n, err = r64.rl.Read(p)
+	n, err = r64.ReaderLen64.Read(p)
 	atomic.AddInt64(&r64.readed, int64(n))
 	return n, err
-}
-
-func (r64 *readed64) Len() int64 {
-	return r64.rl.Len()
 }
 
 func (r64 *readed64) Readed() int64 {

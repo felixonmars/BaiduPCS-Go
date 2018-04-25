@@ -553,7 +553,13 @@ func main() {
 					return nil
 				}
 
-				pcscommand.RunDownload(c.Bool("test"), c.Bool("state"), c.Int("p"), c.Args())
+				pcscommand.RunDownload(c.Args(), pcscommand.DownloadOption{
+					IsTest:                c.Bool("test"),
+					IsPrintStatus:         c.Bool("status"),
+					IsSaveToWorkDirectory: c.Bool("save"),
+					IsExecutedPermission:  c.Bool("x") && runtime.GOOS != "windows",
+					Parallel:              c.Int("p"),
+				})
 				return nil
 			},
 			Flags: []cli.Flag{
@@ -562,8 +568,16 @@ func main() {
 					Usage: "测试下载, 此操作不会保存文件到本地",
 				},
 				cli.BoolFlag{
-					Name:  "state",
+					Name:  "status",
 					Usage: "输出所有线程的工作状态",
+				},
+				cli.BoolFlag{
+					Name:  "save",
+					Usage: "将下载的文件保存到当前工作目录",
+				},
+				cli.BoolFlag{
+					Name:  "x",
+					Usage: "为文件加上执行权限, (windows系统无效)",
 				},
 				cli.IntFlag{
 					Name:  "p",
@@ -635,6 +649,38 @@ func main() {
 			},
 		},
 		{
+			Name:      "createsuperfile",
+			Aliases:   []string{"csf"},
+			Usage:     "手动分片上传—合并分片文件",
+			UsageText: fmt.Sprintf("%s createsuperfile -path=<保存的网盘路径, 需包含文件名> block1 block2 ... ", app.Name),
+			Description: `
+	block1, block2 ... 为文件分片的md5值
+	上传的文件将会保存到网盘的目标目录.
+	遇到同名文件将会自动覆盖! 
+
+	例子:
+	BaiduPCS-Go createsuperfile -path=1.mp4 ec87a838931d4d5d2e94a04644788a55 ec87a838931d4d5d2e94a04644788a55
+`,
+			Category: "百度网盘",
+			Before:   reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() < 1 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+
+				pcscommand.RunCreateSuperFile(c.String("path"), c.Args()...)
+				return nil
+			},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "path",
+					Usage: "保存的网盘路径",
+					Value: "superfile",
+				},
+			},
+		},
+		{
 			Name:        "sumfile",
 			Aliases:     []string{"sf"},
 			Usage:       "获取文件的秒传信息",
@@ -647,10 +693,6 @@ func main() {
 					cli.ShowCommandHelp(c, c.Command.Name)
 					return nil
 				}
-
-				var (
-					fileName, strLength, strMd5, strSliceMd5, strCrc32 string
-				)
 
 				for k, filePath := range c.Args() {
 					lp, err := pcscommand.GetFileSum(filePath, &pcscommand.SumOption{
@@ -665,8 +707,8 @@ func main() {
 
 					fmt.Printf("[%d] - [%s]:\n", k+1, filePath)
 
-					strLength, strMd5, strSliceMd5, strCrc32 = strconv.FormatInt(lp.Length, 10), hex.EncodeToString(lp.MD5), hex.EncodeToString(lp.SliceMD5), strconv.FormatUint(uint64(lp.CRC32), 10)
-					fileName = filepath.Base(filePath)
+					strLength, strMd5, strSliceMd5, strCrc32 := strconv.FormatInt(lp.Length, 10), hex.EncodeToString(lp.MD5), hex.EncodeToString(lp.SliceMD5), strconv.FormatUint(uint64(lp.CRC32), 10)
+					fileName := filepath.Base(filePath)
 
 					tb := pcstable.NewTable(os.Stdout)
 					tb.SetColumnAlignment([]int{tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})

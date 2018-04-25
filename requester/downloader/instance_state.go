@@ -71,8 +71,8 @@ func (ii *instanceInfo) Render(eii *InstanceInfo) {
 			}
 
 			ii.Ranges = append(ii.Ranges, &rangeInfo{
-				Begin: eii.Ranges[k].Begin,
-				End:   eii.Ranges[k].End,
+				Begin: eii.Ranges[k].LoadBegin(),
+				End:   eii.Ranges[k].LoadEnd(),
 			})
 		}
 	}

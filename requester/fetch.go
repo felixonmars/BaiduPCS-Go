@@ -63,7 +63,7 @@ func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header 
 		}
 
 		switch value := post.(type) {
-		case ContentLength:
+		case ContentLengther:
 			contentLength = value.ContentLength()
 		case rio.Lener:
 			contentLength = int64(value.Len())
@@ -72,7 +72,7 @@ func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header 
 		}
 
 		switch value := post.(type) {
-		case ContentType:
+		case ContentTyper:
 			contentType = value.ContentType()
 		}
 	}

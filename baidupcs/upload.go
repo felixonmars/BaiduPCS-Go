@@ -71,9 +71,9 @@ func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (pcsError 
 }
 
 // UploadTmpFile 分片上传—文件分片及上传
-func (pcs *BaiduPCS) UploadTmpFile(uploadFunc UploadFunc) (md5 string, err error) {
-	dataReadCloser, err := pcs.PrepareUploadTmpFile(uploadFunc)
-	if err != nil {
+func (pcs *BaiduPCS) UploadTmpFile(uploadFunc UploadFunc) (md5 string, pcsError Error) {
+	dataReadCloser, pcsError := pcs.PrepareUploadTmpFile(uploadFunc)
+	if pcsError != nil {
 		return
 	}
 
@@ -89,7 +89,7 @@ func (pcs *BaiduPCS) UploadTmpFile(uploadFunc UploadFunc) (md5 string, err error
 
 	d := jsoniter.NewDecoder(dataReadCloser)
 
-	err = d.Decode(jsonData)
+	err := d.Decode(jsonData)
 	if err != nil {
 		jsonData.ErrInfo.jsonError(err)
 		return "", jsonData.ErrInfo
@@ -101,14 +101,16 @@ func (pcs *BaiduPCS) UploadTmpFile(uploadFunc UploadFunc) (md5 string, err error
 
 	// 未找到md5
 	if jsonData.MD5 == "" {
-		return "", fmt.Errorf("%s, unknown response data, md5 not found", OperationUpload)
+		jsonData.ErrInfo.errType = ErrTypeInternalError
+		jsonData.ErrInfo.err = fmt.Errorf("unknown response data, md5 not found, error: %s", err)
+		return "", jsonData.ErrInfo
 	}
 
 	return jsonData.MD5, nil
 }
 
 // UploadCreateSuperFile 分片上传—合并分片文件
-func (pcs *BaiduPCS) UploadCreateSuperFile(targetPath string, blockList ...string) (err error) {
+func (pcs *BaiduPCS) UploadCreateSuperFile(targetPath string, blockList ...string) (pcsError Error) {
 	dataReadCloser, err := pcs.PrepareUploadCreateSuperFile(targetPath, blockList...)
 	if err != nil {
 		return

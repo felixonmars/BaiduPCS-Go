@@ -11,7 +11,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"net/http/cookiejar"
 	"os"
-	"path/filepath"
+	"path"
 	"strings"
 	"time"
 )
@@ -27,10 +27,20 @@ const (
 type dtask struct {
 	ListTask
 	path         string                  // 下载的路径
+	savePath     string                  // 保存的路径
 	downloadInfo *baidupcs.FileDirectory // 文件或目录详情
 }
 
-func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintStatus bool) baidupcs.DownloadFunc {
+//DownloadOption 下载可选参数
+type DownloadOption struct {
+	IsTest                bool
+	IsPrintStatus         bool
+	IsSaveToWorkDirectory bool
+	IsExecutedPermission  bool
+	Parallel              int
+}
+
+func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintStatus, isExecutedPermission bool) baidupcs.DownloadFunc {
 	if cfg == nil {
 		cfg = downloader.NewConfig()
 	}
@@ -43,16 +53,17 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 		setupHTTPClient(h)
 
 		var (
-			file     rio.WriteCloserAt
-			err      error
-			exitChan chan struct{}
+			file          *os.File
+			writeCloserAt rio.WriteCloserAt
+			err           error
+			exitChan      chan struct{}
 		)
 
 		if !cfg.IsTest {
 			cfg.InstanceStatePath = savePath + DownloadSuffix
 
 			// 创建下载的目录
-			dir := filepath.Dir(savePath)
+			dir := path.Dir(savePath)
 			fileInfo, err := os.Stat(dir)
 			if err != nil {
 				err = os.MkdirAll(dir, 0777)
@@ -63,16 +74,21 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 				return fmt.Errorf("%s, path %s: not a directory", StrDownloadInitError, dir)
 			}
 
-			file, err = os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY, 0777)
+			file, err = os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY, 0666)
 			if file != nil {
 				defer file.Close()
 			}
 			if err != nil {
 				return fmt.Errorf("%s, %s", StrDownloadInitError, err)
 			}
+
+			// 空指针和空接口不等价
+			if file != nil {
+				writeCloserAt = file
+			}
 		}
 
-		download := downloader.NewDownloader(downloadURL, file, cfg)
+		download := downloader.NewDownloader(downloadURL, writeCloserAt, cfg)
 		download.SetClient(h)
 
 		exitChan = make(chan struct{})
@@ -132,6 +148,13 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 			return err
 		}
 
+		if isExecutedPermission {
+			err = file.Chmod(0766)
+			if err != nil {
+				fmt.Printf("\n\n[%d] 警告, 加执行权限错误: %s\n\n", id, err)
+			}
+		}
+
 		if !cfg.IsTest {
 			fmt.Printf("\n\n[%d] 下载完成, 保存位置: %s\n\n", id, savePath)
 		} else {
@@ -143,18 +166,18 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 }
 
 // RunDownload 执行下载网盘内文件
-func RunDownload(isTest, isPrintStatus bool, parallel int, paths []string) {
+func RunDownload(paths []string, option DownloadOption) {
 	// 设置下载配置
 	cfg := &downloader.Config{
-		IsTest:    isTest,
+		IsTest:    option.IsTest,
 		CacheSize: pcsconfig.Config.CacheSize,
 	}
 
 	// 设置下载最大并发量
-	if parallel == 0 {
-		parallel = pcsconfig.Config.MaxParallel
+	if option.Parallel == 0 {
+		option.Parallel = pcsconfig.Config.MaxParallel
 	}
-	cfg.MaxParallel = parallel
+	cfg.MaxParallel = option.Parallel
 
 	paths, err := getAllAbsPaths(paths...)
 	if err != nil {
@@ -170,19 +193,23 @@ func RunDownload(isTest, isPrintStatus bool, parallel int, paths []string) {
 
 	for k := range paths {
 		lastID++
-		dlist.PushBack(&dtask{
+		ptask := &dtask{
 			ListTask: ListTask{
 				ID:       lastID,
 				MaxRetry: 3,
 			},
 			path: paths[k],
-		})
+		}
+		if option.IsSaveToWorkDirectory {
+			ptask.savePath = path.Base(paths[k])
+		} else {
+			ptask.savePath = pcsconfig.GetSavePath(paths[k])
+		}
+		dlist.PushBack(ptask)
 		fmt.Printf("[%d] 加入下载队列: %s\n", lastID, paths[k])
 	}
 
 	var (
-		e             *list.Element
-		task          *dtask
 		handleTaskErr = func(task *dtask, errManifest string, err error) {
 			if task == nil {
 				panic("task is nil")
@@ -212,14 +239,14 @@ func RunDownload(isTest, isPrintStatus bool, parallel int, paths []string) {
 	)
 
 	for {
-		e = dlist.Front()
+		e := dlist.Front()
 		if e == nil { // 结束
 			break
 		}
 
 		dlist.Remove(e) // 载入任务后, 移除队列
 
-		task = e.Value.(*dtask)
+		task := e.Value.(*dtask)
 		if task == nil {
 			continue
 		}
@@ -238,8 +265,8 @@ func RunDownload(isTest, isPrintStatus bool, parallel int, paths []string) {
 
 		// 如果是一个目录, 将子文件和子目录加入队列
 		if task.downloadInfo.Isdir {
-			if !isTest { // 测试下载, 不建立空目录
-				os.MkdirAll(pcsconfig.GetSavePath(task.path), 0777) // 首先在本地创建目录, 保证空目录也能被保存
+			if !option.IsTest { // 测试下载, 不建立空目录
+				os.MkdirAll(task.savePath, 0777) // 首先在本地创建目录, 保证空目录也能被保存
 			}
 
 			fileList, err := info.FilesDirectoriesList(task.path)
@@ -251,27 +278,37 @@ func RunDownload(isTest, isPrintStatus bool, parallel int, paths []string) {
 
 			for k := range fileList {
 				lastID++
-				dlist.PushBack(&dtask{
+				subTask := &dtask{
 					ListTask: ListTask{
 						ID:       lastID,
 						MaxRetry: 3,
 					},
 					path:         fileList[k].Path,
 					downloadInfo: fileList[k],
-				})
+				}
+
+				if option.IsSaveToWorkDirectory {
+					subTask.savePath = path.Join(task.savePath, fileList[k].Filename)
+				} else {
+					subTask.savePath = pcsconfig.GetSavePath(subTask.path)
+				}
+
+				dlist.PushBack(subTask)
 				fmt.Printf("[%d] 加入下载队列: %s\n", lastID, fileList[k].Path)
 			}
 			continue
 		}
 
-		fmt.Printf("[%d] 准备下载: %s\n\n", task.ID, task.path)
-		savePath := pcsconfig.GetSavePath(task.path)
-		if !isTest && fileExist(savePath) {
-			fmt.Printf("[%d] 文件已经存在: %s, 跳过...\n", task.ID, savePath)
+		fmt.Printf("[%d] 准备下载: %s\n", task.ID, task.path)
+
+		if !option.IsTest && fileExist(task.savePath) {
+			fmt.Printf("[%d] 文件已经存在: %s, 跳过...\n", task.ID, task.savePath)
 			continue
 		}
 
-		err = info.DownloadFile(task.path, getDownloadFunc(task.ID, savePath, cfg, isPrintStatus))
+		fmt.Printf("[%d] 将会下载到路径: %s\n\n", task.ID, task.savePath)
+
+		err = info.DownloadFile(task.path, getDownloadFunc(task.ID, task.savePath, cfg, option.IsPrintStatus, option.IsExecutedPermission))
 		if err != nil {
 			handleTaskErr(task, "下载文件错误", err)
 			continue

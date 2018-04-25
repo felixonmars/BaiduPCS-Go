@@ -9,12 +9,12 @@ var (
 	DefaultClient = NewHTTPClient()
 )
 
-// ContentType Content-Type 接口
-type ContentType interface {
+// ContentTyper Content-Type 接口
+type ContentTyper interface {
 	ContentType() string
 }
 
-// ContentLength Content-Length 接口
-type ContentLength interface {
+// ContentLengther Content-Length 接口
+type ContentLengther interface {
 	ContentLength() int64
 }

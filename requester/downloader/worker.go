@@ -18,7 +18,7 @@ import (
 //Worker 工作单元
 type Worker struct {
 	speedsPerSecond int64 //速度
-	wrange          *Range
+	wrange          Range
 	speedsStat      speeds.Speeds
 	id              int32  //id
 	cacheSize       int    //下载缓存
@@ -37,7 +37,6 @@ type Worker struct {
 	readRespBodyCancelFunc func()
 	err                    error //错误信息
 	status                 WorkerStatus
-	totalDownloaded        *int64
 	downloadStatus         *DownloadStatus //总的下载状态
 }
 
@@ -55,13 +54,6 @@ func (wer *Worker) ID() int32 {
 	return wer.id
 }
 
-//MustCheck 遇到错误则panic
-func (wer *Worker) MustCheck() {
-	if wer.client == nil {
-		panic("client is nil")
-	}
-}
-
 func (wer *Worker) lazyInit() {
 	if wer.client == nil {
 		wer.client = requester.NewHTTPClient()
@@ -69,13 +61,14 @@ func (wer *Worker) lazyInit() {
 	if wer.writeMu == nil {
 		wer.writeMu = &sync.Mutex{}
 	}
+	if wer.pauseChan == nil {
+		wer.pauseChan = make(chan struct{})
+	}
 }
 
 //SetClient 设置http客户端
 func (wer *Worker) SetClient(c *requester.HTTPClient) {
-	if c != nil {
-		wer.client = c
-	}
+	wer.client = c
 }
 
 //SetCacheSize 设置下载缓存
@@ -85,7 +78,7 @@ func (wer *Worker) SetCacheSize(size int) {
 }
 
 //SetRange 设置请求范围
-func (wer *Worker) SetRange(acceptRanges string, r *Range) {
+func (wer *Worker) SetRange(acceptRanges string, r Range) {
 	wer.acceptRanges = acceptRanges
 	wer.wrange = r
 }
@@ -113,7 +106,7 @@ func (wer *Worker) GetStatus() Status {
 
 //GetRange 返回worker范围
 func (wer *Worker) GetRange() *Range {
-	return wer.wrange
+	return &wer.wrange
 }
 
 //GetSpeedsPerSecond 获取每秒的速度
@@ -123,6 +116,7 @@ func (wer *Worker) GetSpeedsPerSecond() int64 {
 
 //Pause 暂停下载
 func (wer *Worker) Pause() {
+	wer.lazyInit()
 	if wer.acceptRanges == "" {
 		pcsverbose.Verbosef("WARNING: worker unsupport pause")
 		return
@@ -131,7 +125,6 @@ func (wer *Worker) Pause() {
 	if wer.paused {
 		return
 	}
-	wer.pauseChan = make(chan struct{}, 1)
 	wer.pauseChan <- struct{}{}
 	wer.paused = true
 }
@@ -250,7 +243,7 @@ func (wer *Worker) Execute() {
 		header["Referer"] = wer.referer
 	}
 	//检测是否支持range
-	if wer.acceptRanges != "" && wer.wrange != nil {
+	if wer.acceptRanges != "" && wer.wrange.Len() >= 0 {
 		header["Range"] = fmt.Sprintf("%s=%d-%d", wer.acceptRanges, wer.wrange.LoadBegin(), wer.wrange.LoadEnd())
 	}
 
@@ -311,7 +304,6 @@ func (wer *Worker) Execute() {
 		buf                         = cache.Bytes()
 		n, nn                       int
 		n64, nn64                   int64
-		readErr                     error
 	)
 
 	wer.updateSpeeds(speedsCtx)
@@ -335,9 +327,10 @@ func (wer *Worker) Execute() {
 			wer.status.statusCode = StatusCodeDownloading
 
 			// 初始化数据
-			n, readErr = 0, nil
+			var readErr error
+			n = 0
 			// 线程未被分配
-			for n < len(buf) && readErr == nil && wer.wrange.Len() > 0 {
+			for n < len(buf) && readErr == nil && (single || wer.wrange.Len() > 0) {
 				nn, readErr = resp.Body.Read(buf[n:])
 				nn64 = int64(nn)
 
@@ -348,9 +341,8 @@ func (wer *Worker) Execute() {
 				wer.speedsStat.Add(nn64)
 				n += nn
 			}
-			if n >= len(buf) {
-				readErr = nil
-			} else if n > 0 && readErr == io.EOF {
+
+			if n > 0 && readErr == io.EOF {
 				readErr = io.ErrUnexpectedEOF
 			}
 
