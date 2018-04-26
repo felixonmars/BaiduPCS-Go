@@ -75,6 +75,8 @@ func (e *ErrInfo) Error() string {
 	switch e.errType {
 	case ErrTypeInternalError:
 		return fmt.Sprintf("%s, %s, %s", e.operation, "内部错误", e.err)
+	case ErrTypeJSONParseError:
+		return fmt.Sprintf("%s, %s, %s", e.operation, StrJSONParseError, e.err)
 	case ErrTypeNetError:
 		return fmt.Sprintf("%s, %s, %s", e.operation, "网络错误", e.err)
 	case ErrTypeRemoteError:

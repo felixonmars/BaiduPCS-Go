@@ -14,10 +14,12 @@ import (
 // HTTPGet 简单实现 http 访问 GET 请求
 func HTTPGet(urlStr string) (body []byte, err error) {
 	resp, err := DefaultClient.Get(urlStr)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
 }
 

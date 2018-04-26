@@ -55,12 +55,17 @@ func DoDownload(durl string, savePath string, cfg *Config) {
 	})
 
 	download.OnFinish(func() {
-		exitDownloadFunc <- struct{}{}
+		close(exitDownloadFunc)
 	})
 
 	go func() {
 		for {
-			download.PrintAllWorkers()
+			select {
+			case <-exitDownloadFunc:
+				return
+			default:
+				download.PrintAllWorkers()
+			}
 			time.Sleep(1e9)
 		}
 	}()

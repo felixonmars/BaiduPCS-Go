@@ -17,7 +17,7 @@ func RunLs(path string) {
 		return
 	}
 
-	files, err := info.FilesDirectoriesList(path)
+	files, err := GetBaiduPCS().FilesDirectoriesList(path)
 	if err != nil {
 		fmt.Println(err)
 		return

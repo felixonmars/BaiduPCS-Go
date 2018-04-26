@@ -4,30 +4,14 @@ package pcscommand
 import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
-	"os"
 )
 
-var (
-	info *baidupcs.BaiduPCS
-)
-
-// GetPCSInfo 重载并返回 PCS 配置信息
-func GetPCSInfo() *baidupcs.BaiduPCS {
-	ReloadInfo()
-	return info
+// GetActiveUser 获取当前登录的百度帐号
+func GetActiveUser() *pcsconfig.Baidu {
+	return pcsconfig.Config.ActiveUser()
 }
 
-// ReloadInfo 重载配置
-func ReloadInfo() {
-	pcsconfig.Reload()
-	info = baidupcs.NewPCS(pcsconfig.Config.AppID, pcsconfig.Config.MustGetActive().BDUSS)
-	info.SetUserAgent(pcsconfig.Config.UserAgent)
-	info.SetHTTPS(pcsconfig.Config.EnableHTTPS)
-}
-
-// ReloadIfInConsole 程序在 Console 模式下才会重载配置
-func ReloadIfInConsole() {
-	if len(os.Args) == 1 {
-		ReloadInfo()
-	}
+// GetBaiduPCS 从配置读取BaiduPCS
+func GetBaiduPCS() *baidupcs.BaiduPCS {
+	return pcsconfig.Config.ActiveUserBaiduPCS()
 }

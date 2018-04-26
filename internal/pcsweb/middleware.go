@@ -14,8 +14,7 @@ func middleware(next http.HandlerFunc) http.HandlerFunc {
 func activeAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	next2 := middleware(next)
 
-	err := activeAPIInit()
-	checkErr(err) // TODO web登录
+	// TODO web登录
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		next2.ServeHTTP(w, r)

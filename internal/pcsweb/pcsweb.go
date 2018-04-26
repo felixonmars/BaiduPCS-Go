@@ -4,13 +4,10 @@ package pcsweb
 import (
 	"fmt"
 	"github.com/GeertJohan/go.rice"
-	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"net/http"
 )
 
 var (
-	activeAPI    *baidupcs.BaiduPCS
 	staticBox    *rice.Box // go.rice 文件盒子
 	templatesBox *rice.Box // go.rice 文件盒子
 )
@@ -26,17 +23,6 @@ func boxInit() (err error) {
 		return
 	}
 
-	return nil
-}
-
-func activeAPIInit() (err error) {
-	// 获取当前登录的用户
-	activeUser, err := pcsconfig.Config.GetActive()
-	if err != nil {
-		return err
-	}
-
-	activeAPI = baidupcs.NewPCS(pcsconfig.Config.AppID, activeUser.BDUSS)
 	return nil
 }
 

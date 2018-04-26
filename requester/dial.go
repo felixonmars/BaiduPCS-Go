@@ -15,12 +15,21 @@ var (
 	}
 )
 
+func getServerName(address string) string {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return address
+	}
+	return host
+}
+
 func dialContext(ctx context.Context, network, address string) (conn net.Conn, err error) {
+	serverName := getServerName(address)
 	switch network {
 	case "tcp", "tcp4", "tcp6":
 		// 检测缓存
-		if TCPAddrCache.Existed(address) {
-			return net.DialTCP(network, nil, TCPAddrCache.Get(address))
+		if TCPAddrCache.Existed(serverName) {
+			return net.DialTCP(network, nil, TCPAddrCache.Get(serverName))
 		}
 
 		var (
@@ -43,7 +52,7 @@ func dialContext(ctx context.Context, network, address string) (conn net.Conn, e
 			}
 
 			// 加入缓存
-			TCPAddrCache.Set(address, ta)
+			TCPAddrCache.Set(serverName, ta)
 			return net.DialTCP(network, nil, ta)
 		}
 	}
@@ -63,5 +72,8 @@ func dialTLS(network, address string) (tlsConn net.Conn, err error) {
 		return nil, err
 	}
 
-	return tls.Client(conn, TLSConfig), nil
+	return tls.Client(conn, &tls.Config{
+		ServerName:         getServerName(address),
+		InsecureSkipVerify: TLSConfig.InsecureSkipVerify,
+	}), nil
 }

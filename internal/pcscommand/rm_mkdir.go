@@ -2,7 +2,6 @@ package pcscommand
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcspath"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"os"
@@ -26,7 +25,7 @@ func RunRemove(paths ...string) {
 		tb.Render()
 	}
 
-	err = info.Remove(paths...)
+	err = GetBaiduPCS().Remove(paths...)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("操作失败, 以下文件/目录删除失败: ")
@@ -40,9 +39,10 @@ func RunRemove(paths ...string) {
 
 // RunMkdir 执行 创建目录
 func RunMkdir(path string) {
-	pcsPath := pcspath.NewPCSPath(&pcsconfig.Config.MustGetActive().Workdir, path)
+	activeUser := GetActiveUser()
+	pcsPath := pcspath.NewPCSPath(&activeUser.Workdir, path)
 
-	err := info.Mkdir(pcsPath.AbsPathNoMatch())
+	err := GetBaiduPCS().Mkdir(pcsPath.AbsPathNoMatch())
 	if err != nil {
 		fmt.Printf("创建目录 %s 失败, %s\n", path, err)
 		return

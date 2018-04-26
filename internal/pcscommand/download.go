@@ -33,11 +33,11 @@ type dtask struct {
 
 //DownloadOption 下载可选参数
 type DownloadOption struct {
-	IsTest                bool
-	IsPrintStatus         bool
-	IsSaveToWorkDirectory bool
-	IsExecutedPermission  bool
-	Parallel              int
+	IsTest               bool
+	IsPrintStatus        bool
+	IsExecutedPermission bool
+	SaveTo               string
+	Parallel             int
 }
 
 func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintStatus, isExecutedPermission bool) baidupcs.DownloadFunc {
@@ -170,12 +170,12 @@ func RunDownload(paths []string, option DownloadOption) {
 	// 设置下载配置
 	cfg := &downloader.Config{
 		IsTest:    option.IsTest,
-		CacheSize: pcsconfig.Config.CacheSize,
+		CacheSize: pcsconfig.Config.CacheSize(),
 	}
 
 	// 设置下载最大并发量
 	if option.Parallel == 0 {
-		option.Parallel = pcsconfig.Config.MaxParallel
+		option.Parallel = pcsconfig.Config.MaxParallel()
 	}
 	cfg.MaxParallel = option.Parallel
 
@@ -188,8 +188,11 @@ func RunDownload(paths []string, option DownloadOption) {
 	fmt.Printf("\n")
 	fmt.Printf("[0] 提示: 当前下载最大并发量为: %d, 下载缓存为: %d\n", cfg.MaxParallel, cfg.CacheSize)
 
-	dlist := list.New()
-	lastID := 0
+	var (
+		pcs    = GetBaiduPCS()
+		dlist  = list.New()
+		lastID = 0
+	)
 
 	for k := range paths {
 		lastID++
@@ -200,10 +203,10 @@ func RunDownload(paths []string, option DownloadOption) {
 			},
 			path: paths[k],
 		}
-		if option.IsSaveToWorkDirectory {
-			ptask.savePath = path.Base(paths[k])
+		if option.SaveTo != "" {
+			ptask.savePath = path.Join(option.SaveTo, path.Base(paths[k]))
 		} else {
-			ptask.savePath = pcsconfig.GetSavePath(paths[k])
+			ptask.savePath = GetActiveUser().GetSavePath(paths[k])
 		}
 		dlist.PushBack(ptask)
 		fmt.Printf("[%d] 加入下载队列: %s\n", lastID, paths[k])
@@ -252,7 +255,7 @@ func RunDownload(paths []string, option DownloadOption) {
 		}
 
 		if task.downloadInfo == nil {
-			task.downloadInfo, err = info.FilesDirectoriesMeta(task.path)
+			task.downloadInfo, err = pcs.FilesDirectoriesMeta(task.path)
 			if err != nil {
 				// 不重试
 				fmt.Printf("[%d] 获取路径信息错误, %s\n", task.ID, err)
@@ -269,7 +272,7 @@ func RunDownload(paths []string, option DownloadOption) {
 				os.MkdirAll(task.savePath, 0777) // 首先在本地创建目录, 保证空目录也能被保存
 			}
 
-			fileList, err := info.FilesDirectoriesList(task.path)
+			fileList, err := pcs.FilesDirectoriesList(task.path)
 			if err != nil {
 				// 不重试
 				fmt.Printf("[%d] 获取目录信息错误, %s\n", task.ID, err)
@@ -287,10 +290,10 @@ func RunDownload(paths []string, option DownloadOption) {
 					downloadInfo: fileList[k],
 				}
 
-				if option.IsSaveToWorkDirectory {
+				if option.SaveTo != "" {
 					subTask.savePath = path.Join(task.savePath, fileList[k].Filename)
 				} else {
-					subTask.savePath = pcsconfig.GetSavePath(subTask.path)
+					subTask.savePath = GetActiveUser().GetSavePath(subTask.path)
 				}
 
 				dlist.PushBack(subTask)
@@ -308,7 +311,7 @@ func RunDownload(paths []string, option DownloadOption) {
 
 		fmt.Printf("[%d] 将会下载到路径: %s\n\n", task.ID, task.savePath)
 
-		err = info.DownloadFile(task.path, getDownloadFunc(task.ID, task.savePath, cfg, option.IsPrintStatus, option.IsExecutedPermission))
+		err = pcs.DownloadFile(task.path, getDownloadFunc(task.ID, task.savePath, cfg, option.IsPrintStatus, option.IsExecutedPermission))
 		if err != nil {
 			handleTaskErr(task, "下载文件错误", err)
 			continue

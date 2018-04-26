@@ -32,7 +32,17 @@ var (
 
 	historyFilePath = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
-		pcscommand.ReloadIfInConsole()
+		err := pcsconfig.Config.Reload()
+		if err != nil {
+			fmt.Printf("重载配置错误: %s\n", err)
+		}
+		return nil
+	}
+	saveFunc = func(c *cli.Context) error {
+		err := pcsconfig.Config.Save()
+		if err != nil {
+			fmt.Printf("保存配置错误: %s\n", err)
+		}
 		return nil
 	}
 
@@ -52,8 +62,15 @@ var (
 )
 
 func init() {
-	pcsconfig.Init()
-	pcscommand.ReloadInfo()
+	err := pcsconfig.Config.Init()
+	switch err {
+	case nil:
+	case pcsconfig.ErrConfigFileNoPermission, pcsconfig.ErrConfigContentsParseError:
+		fmt.Printf("FATAL ERROR: config file error: %s\n", err)
+		os.Exit(1)
+	default:
+		fmt.Printf("WARNING: config init error: %s\n", err)
+	}
 
 	// 启动缓存回收
 	pcscache.DirCache.GC()
@@ -61,10 +78,13 @@ func init() {
 }
 
 func main() {
+	defer pcsconfig.Config.Close()
+
 	app := cli.NewApp()
 	app.Name = "BaiduPCS-Go"
 	app.Version = Version
 	app.Author = "iikira/BaiduPCS-Go: https://github.com/iikira/BaiduPCS-Go"
+	app.Copyright = "(c) 2016-2018 iikira."
 	app.Usage = "百度网盘客户端 for " + runtime.GOOS + "/" + runtime.GOARCH
 	app.Description = `BaiduPCS-Go 使用 Go语言编写, 为操作百度网盘, 提供实用功能.
 	具体功能, 参见 COMMANDS 列表
@@ -123,14 +143,14 @@ func main() {
 
 		for {
 			var (
-				prompt          string
-				activeBaiduUser = pcsconfig.Config.MustGetActive()
+				prompt     string
+				activeUser = pcsconfig.Config.ActiveUser()
 			)
 
-			if activeBaiduUser.Name != "" {
+			if activeUser != nil {
 				// 格式: BaiduPCS-Go:<工作目录> <百度ID>$
 				// 工作目录太长的话会自动缩略
-				prompt = app.Name + ":" + pcsutil.ShortDisplay(path.Base(activeBaiduUser.Workdir), 20) + " " + activeBaiduUser.Name + "$ "
+				prompt = app.Name + ":" + pcsutil.ShortDisplay(path.Base(activeUser.Workdir), 20) + " " + activeUser.Name + "$ "
 			} else {
 				// BaiduPCS-Go >
 				prompt = app.Name + " > "
@@ -222,7 +242,7 @@ func main() {
 		或者百度搜索: 获取百度BDUSS`,
 			Category: "百度帐号",
 			Before:   reloadFn,
-			After:    reloadFn,
+			After:    saveFunc,
 			Action: func(c *cli.Context) error {
 				var bduss, ptoken, stoken string
 				if c.IsSet("bduss") {
@@ -239,13 +259,13 @@ func main() {
 					return nil
 				}
 
-				username, err := pcsconfig.Config.SetBDUSS(bduss, ptoken, stoken)
+				baidu, err := pcsconfig.Config.SetupUserByBDUSS(bduss, ptoken, stoken)
 				if err != nil {
 					fmt.Println(err)
 					return nil
 				}
 
-				fmt.Println("百度帐号登录成功:", username)
+				fmt.Println("百度帐号登录成功:", baidu.Name)
 				return nil
 			},
 			Flags: []cli.Flag{
@@ -269,31 +289,35 @@ func main() {
 			Usage:   "切换已登录的百度帐号",
 			Description: fmt.Sprintf("%s\n   示例:\n\n      %s\n      %s\n",
 				"如果运行该条命令没有提供参数, 程序将会列出所有的百度帐号, 供选择切换",
-				app.Name+" su <uid>",
+				app.Name+" su <uid or name>",
 				app.Name+" su",
 			),
 			Category: "百度帐号",
 			Before:   reloadFn,
-			After:    reloadFn,
+			After:    saveFunc,
 			Action: func(c *cli.Context) error {
 				if c.NArg() >= 2 {
 					cli.ShowCommandHelp(c, c.Command.Name)
 					return nil
 				}
 
-				if len(pcsconfig.Config.BaiduUserList) == 0 {
+				numLogins := pcsconfig.Config.NumLogins()
+
+				if numLogins == 0 {
 					fmt.Printf("未设置任何百度帐号, 不能切换\n")
 					return nil
 				}
 
-				var uid uint64
+				var (
+					inputData = c.Args().Get(0)
+					uid       uint64
+				)
+
 				if c.NArg() == 1 {
-					uid, _ = strconv.ParseUint(c.Args().Get(0), 10, 64)
-					if !pcsconfig.Config.CheckUIDExist(uid) {
-						fmt.Printf("切换用户失败, uid 不存在\n")
-						return nil
-					}
+					// 直接切换
+					uid, _ = strconv.ParseUint(inputData, 10, 64)
 				} else if c.NArg() == 0 {
+					// 输出所有帐号供选择切换
 					cli.HandleAction(app.Command("loglist").Action, c)
 
 					// 提示输入 index
@@ -304,8 +328,8 @@ func main() {
 						return nil
 					}
 
-					if n, err := strconv.Atoi(index); err == nil && n >= 0 && n < len(pcsconfig.Config.BaiduUserList) {
-						uid = pcsconfig.Config.BaiduUserList[n].UID
+					if n, err := strconv.Atoi(index); err == nil && n >= 0 && n < numLogins {
+						uid = pcsconfig.Config.BaiduUserList()[n].UID
 					} else {
 						fmt.Printf("切换用户失败, 请检查 # 值是否正确\n")
 						return nil
@@ -314,13 +338,29 @@ func main() {
 					cli.ShowCommandHelp(c, c.Command.Name)
 				}
 
-				pcsconfig.Config.BaiduActiveUID = uid
-				if err := pcsconfig.Config.Save(); err != nil {
-					fmt.Printf("%s\n", err)
+				var (
+					switchedUser *pcsconfig.Baidu
+					err          error
+				)
+				switchedUser, err = pcsconfig.Config.SwitchUser(&pcsconfig.BaiduBase{
+					UID: uid,
+				})
+				if err != nil {
+					switchedUser, err = pcsconfig.Config.SwitchUser(&pcsconfig.BaiduBase{
+						Name: inputData,
+					})
+					if err != nil {
+						fmt.Printf("切换用户失败, %s\n", err)
+						return nil
+					}
+				}
+
+				if err = pcsconfig.Config.Save(); err != nil {
+					fmt.Printf("保存配置错误: %s\n", err)
 					return nil
 				}
 
-				fmt.Printf("切换用户成功, %s\n", pcsconfig.Config.MustGetActive().Name)
+				fmt.Printf("切换用户成功, %s\n", switchedUser.Name)
 				return nil
 			},
 		},
@@ -329,32 +369,34 @@ func main() {
 			Usage:    "退出当前登录的百度帐号",
 			Category: "百度帐号",
 			Before:   reloadFn,
-			After:    reloadFn,
+			After:    saveFunc,
 			Action: func(c *cli.Context) error {
-				if len(pcsconfig.Config.BaiduUserList) == 0 {
+				if pcsconfig.Config.NumLogins() == 0 {
 					fmt.Println("未设置任何百度帐号, 不能退出")
 					return nil
 				}
 
 				var (
-					au      = pcsconfig.Config.MustGetActive()
-					confirm string
+					confirm    string
+					activeUser = pcsconfig.Config.ActiveUser()
 				)
 
 				if !c.Bool("y") {
-					fmt.Printf("确认退出百度帐号: %s ? (y/n) > ", au.Name)
+					fmt.Printf("确认退出百度帐号: %s ? (y/n) > ", activeUser.Name)
 					_, err := fmt.Scanln(&confirm)
 					if err != nil || (confirm != "y" && confirm != "Y") {
 						return err
 					}
 				}
 
-				err := pcsconfig.Config.DeleteBaiduUserByUID(au.UID)
+				deletedUser, err := pcsconfig.Config.DeleteUser(&pcsconfig.BaiduBase{
+					UID: activeUser.UID,
+				})
 				if err != nil {
-					fmt.Printf("退出用户 %s, 失败, 错误: %s\n", au.Name, err)
+					fmt.Printf("退出用户 %s, 失败, 错误: %s\n", activeUser.Name, err)
 				}
 
-				fmt.Printf("退出用户成功, %s\n", au.Name)
+				fmt.Printf("退出用户成功, %s\n", deletedUser.Name)
 				return nil
 			},
 			Flags: []cli.Flag{
@@ -370,12 +412,11 @@ func main() {
 			Category: "百度帐号",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
-				au := pcsconfig.Config.MustGetActive()
+				activeUser := pcsconfig.Config.ActiveUser()
+				fmt.Printf("\n当前帐号 uid: %d, 用户名: %s\n\n", activeUser.UID, activeUser.Name)
 
-				fmt.Printf("\n当前帐号 uid: %d, 用户名: %s\n\n", au.UID, au.Name)
-
-				fmt.Println(pcsconfig.Config.BaiduUserList.String())
-
+				list := pcsconfig.Config.BaiduUserList()
+				fmt.Println(list.String())
 				return nil
 			},
 		},
@@ -395,7 +436,7 @@ func main() {
 			Usage:     "切换工作目录",
 			UsageText: app.Name + "%s cd <目录 绝对路径或相对路径>",
 			Before:    reloadFn,
-			After:     reloadFn,
+			After:     saveFunc,
 			Action: func(c *cli.Context) error {
 				if c.NArg() == 0 {
 					cli.ShowCommandHelp(c, c.Command.Name)
@@ -444,7 +485,7 @@ func main() {
 			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
-				fmt.Println(pcsconfig.Config.MustGetActive().Workdir)
+				fmt.Println(pcsconfig.Config.ActiveUser().Workdir)
 				return nil
 			},
 		},
@@ -553,12 +594,20 @@ func main() {
 					return nil
 				}
 
+				var saveTo string
+
+				if c.Bool("save") {
+					saveTo = "."
+				} else if c.String("saveto") != "" {
+					saveTo = filepath.Clean(c.String("saveto"))
+				}
+
 				pcscommand.RunDownload(c.Args(), pcscommand.DownloadOption{
-					IsTest:                c.Bool("test"),
-					IsPrintStatus:         c.Bool("status"),
-					IsSaveToWorkDirectory: c.Bool("save"),
-					IsExecutedPermission:  c.Bool("x") && runtime.GOOS != "windows",
-					Parallel:              c.Int("p"),
+					IsTest:               c.Bool("test"),
+					IsPrintStatus:        c.Bool("status"),
+					IsExecutedPermission: c.Bool("x") && runtime.GOOS != "windows",
+					SaveTo:               saveTo,
+					Parallel:             c.Int("p"),
 				})
 				return nil
 			},
@@ -573,7 +622,11 @@ func main() {
 				},
 				cli.BoolFlag{
 					Name:  "save",
-					Usage: "将下载的文件保存到当前工作目录",
+					Usage: "将下载的文件直接保存到当前工作目录",
+				},
+				cli.StringFlag{
+					Name:  "saveto",
+					Usage: "将下载的文件直接保存到指定的目录",
 				},
 				cli.BoolFlag{
 					Name:  "x",
@@ -846,7 +899,7 @@ func main() {
 			Usage:    "修改程序配置项",
 			Category: "配置",
 			Before:   reloadFn,
-			After:    reloadFn,
+			After:    saveFunc,
 			Action: func(c *cli.Context) error {
 				fmt.Printf("请使用 BaiduPCS-Go config set 修改程序配置项\n")
 				return nil
@@ -860,21 +913,10 @@ func main() {
 			Description: "显示和修改程序配置项",
 			Category:    "配置",
 			Before:      reloadFn,
-			After:       reloadFn,
+			After:       saveFunc,
 			Action: func(c *cli.Context) error {
 				fmt.Printf("----\n运行 %s config set 可进行设置配置\n\n当前配置:\n", app.Name)
-				tb := pcstable.NewTable(os.Stdout)
-				tb.SetHeader([]string{"名称", "值", "建议值", "描述"})
-				tb.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_LEFT})
-				tb.AppendBulk([][]string{
-					[]string{"appid", fmt.Sprint(pcsconfig.Config.AppID), "", "百度 PCS 应用ID"},
-					[]string{"enable_https", fmt.Sprint(pcsconfig.Config.EnableHTTPS), "true", "启用 https"},
-					[]string{"user_agent", pcsconfig.Config.UserAgent, "", "浏览器标识"},
-					[]string{"cache_size", strconv.Itoa(pcsconfig.Config.CacheSize), "1024 ~ 262144", "下载缓存, 如果硬盘占用高或下载速度慢, 请尝试调大此值"},
-					[]string{"max_parallel", strconv.Itoa(pcsconfig.Config.MaxParallel), "50 ~ 500", "下载最大并发量"},
-					[]string{"savedir", pcsconfig.Config.SaveDir, "", "下载文件的储存目录"},
-				})
-				tb.Render()
+				pcsconfig.Config.PrintTable()
 				return nil
 			},
 			Subcommands: []cli.Command{
@@ -894,51 +936,60 @@ func main() {
 							return nil
 						}
 
+						if c.IsSet("appid") {
+							pcsconfig.Config.SetAppID(c.Int("appid"))
+						}
+						if c.IsSet("enable_https") {
+							pcsconfig.Config.SetEnableHTTPS(c.Bool("enable_https"))
+						}
+						if c.IsSet("user_agent") {
+							pcsconfig.Config.SetUserAgent(c.String("user_agent"))
+						}
+						if c.IsSet("cache_size") {
+							pcsconfig.Config.SetCacheSize(c.Int("cache_size"))
+						}
+						if c.IsSet("max_parallel") {
+							pcsconfig.Config.SetMaxParallel(c.Int("max_parallel"))
+						}
+						if c.IsSet("savedir") {
+							pcsconfig.Config.SetSaveDir(c.String("savedir"))
+						}
+
 						err := pcsconfig.Config.Save()
 						if err != nil {
 							fmt.Println(err)
 							return err
 						}
 
-						fmt.Printf("保存配置成功\n")
+						pcsconfig.Config.PrintTable()
+						fmt.Printf("\n保存配置成功!\n\n")
 
 						return nil
 					},
 					Flags: []cli.Flag{
 						cli.IntFlag{
-							Name:        "appid",
-							Usage:       "百度 PCS 应用ID",
-							Value:       pcsconfig.Config.AppID,
-							Destination: &pcsconfig.Config.AppID,
+							Name:  "appid",
+							Usage: "百度 PCS 应用ID",
 						},
 						cli.BoolFlag{
-							Name:        "enable_https",
-							Usage:       "启用 https",
-							Destination: &pcsconfig.Config.EnableHTTPS,
+							Name:  "enable_https",
+							Usage: "启用 https",
 						},
 						cli.StringFlag{
-							Name:        "user_agent",
-							Usage:       "浏览器标识",
-							Value:       pcsconfig.Config.UserAgent,
-							Destination: &pcsconfig.Config.UserAgent,
+							Name:  "user_agent",
+							Usage: "浏览器标识",
 						},
 						cli.IntFlag{
-							Name:        "cache_size",
-							Usage:       "下载缓存",
-							Value:       pcsconfig.Config.CacheSize,
-							Destination: &pcsconfig.Config.CacheSize,
+							Name:  "cache_size",
+							Usage: "下载缓存",
 						},
 						cli.IntFlag{
-							Name:        "max_parallel",
-							Usage:       "下载最大并发量",
-							Value:       pcsconfig.Config.MaxParallel,
-							Destination: &pcsconfig.Config.MaxParallel,
+							Name:  "max_parallel",
+							Usage: "下载最大并发量",
 						},
 						cli.StringFlag{
-							Name:        "savedir",
-							Usage:       "下载文件的储存目录",
-							Value:       pcsconfig.Config.SaveDir,
-							Destination: &pcsconfig.Config.SaveDir,
+							Name:  "savedir",
+							Usage: "下载文件的储存目录",
 						},
 					},
 				},

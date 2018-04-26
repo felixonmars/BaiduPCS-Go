@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
@@ -12,12 +13,18 @@ import (
 	"time"
 )
 
+var (
+	//ErrNoWokers no workers
+	ErrNoWokers = errors.New("no workers")
+)
+
 //Monitor 线程监控器
 type Monitor struct {
 	workers        []*Worker
 	status         *DownloadStatus
 	instanceState  *InstanceState
 	completed      <-chan struct{}
+	err            error
 	dymanicMu      sync.Mutex
 	isReloadWorker bool //是否重载worker
 }
@@ -68,6 +75,11 @@ func (mt *Monitor) SetInstanceState(instanceState *InstanceState) {
 //Status 返回DownloadStatus
 func (mt *Monitor) Status() *DownloadStatus {
 	return mt.status
+}
+
+//Err 返回遇到的错误
+func (mt *Monitor) Err() error {
+	return mt.err
 }
 
 //CompletedChan 获取completed chan
@@ -173,7 +185,12 @@ func (mt *Monitor) AllCompleted() <-chan struct{} {
 					continue
 				}
 
-				if worker.Completed() {
+				switch worker.GetStatus().StatusCode() {
+				case StatusCodeInternalError:
+					mt.err = fmt.Errorf("ERROR: fatal internal error: %s", worker.Err())
+					close(c)
+					return
+				case StatusCodeSuccessed, StatusCodeCanceled:
 					completeNum++
 				}
 			}
@@ -187,21 +204,19 @@ func (mt *Monitor) AllCompleted() <-chan struct{} {
 	return c
 }
 
-//ResetAllNetErrorWorkers 重设所有网络错误的worker
-func (mt *Monitor) ResetAllNetErrorWorkers() {
-	var status Status
+//ResetAllFailedAndNetErrorWorkers 重设所有网络错误的worker
+func (mt *Monitor) ResetAllFailedAndNetErrorWorkers() {
 	for k := range mt.workers {
 		if mt.workers[k] == nil {
 			continue
 		}
 
-		status = mt.workers[k].GetStatus()
-		if status == nil {
-			continue
-		}
-
-		if status.StatusCode() == StatusCodeNetError {
-			pcsverbose.Verbosef("DEBUG: monitor: ResetAllNetErrorWorkers: reset worker, id: %d\n", mt.workers[k].id)
+		switch mt.workers[k].GetStatus().StatusCode() {
+		case StatusCodeNetError:
+			pcsverbose.Verbosef("DEBUG: monitor: ResetAllFailedAndNetErrorWorkers: reset StatusCodeNetError worker, id: %d\n", mt.workers[k].id)
+			mt.workers[k].Reset()
+		case StatusCodeFailed:
+			pcsverbose.Verbosef("DEBUG: monitor: ResetAllFailedAndNetErrorWorkers: reset StatusCodeFailed worker, id: %d\n", mt.workers[k].id)
 			mt.workers[k].Reset()
 		}
 	}
@@ -244,6 +259,7 @@ func (mt *Monitor) Resume() {
 //Execute 执行任务
 func (mt *Monitor) Execute(cancelCtx context.Context) {
 	if len(mt.workers) == 0 {
+		mt.err = ErrNoWokers
 		return
 	}
 
@@ -259,7 +275,6 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 	mt.completed = mt.AllCompleted()
 
 	var (
-		exitErr          = make(chan error)
 		maxReloadNumFunc = func() int32 {
 			total := len(mt.workers)
 			num := int32(32 * float64(total-mt.NumLeftWorkers()) / float64(total))
@@ -267,31 +282,27 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 		}
 		reloadNum int32
 		// 重设所有网络错误的worker, 30s间隔
-		nowTime                 = time.Now()
-		resetAllNetErrorWorkers = func() {
+		nowTime                          = time.Now()
+		resetAllFailedAndNetErrorWorkers = func() {
 			if time.Since(nowTime) < 10*time.Second {
 				return
 			}
-			pcsverbose.Verbosef("DEBUG: monitor: resetAllNetErrorWorkers start\n")
+			pcsverbose.Verbosef("DEBUG: monitor: resetAllFailedAndNetErrorWorkers start\n")
 			nowTime = time.Now()
-			mt.ResetAllNetErrorWorkers()
+			mt.ResetAllFailedAndNetErrorWorkers()
 		}
 	)
 
 	//开始监控
 	for {
 		select {
-		case err := <-exitErr:
-			pcsverbose.Verbosef("ERROR: fatal error: %s\n", err)
-			return
 		case <-cancelCtx.Done():
-			var err error
 			for _, worker := range mt.workers {
 				if worker == nil {
 					continue
 				}
 
-				err = worker.Cancel()
+				err := worker.Cancel()
 				if err != nil {
 					pcsverbose.Verbosef("DEBUG: cancel failed, worker id: %d, err: %s\n", worker.ID(), err)
 				}
@@ -303,26 +314,15 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 			time.Sleep(1 * time.Second)
 
 			// 初始化监控工作
-			resetAllNetErrorWorkers()
+			resetAllFailedAndNetErrorWorkers()
 			atomic.StoreInt32(&reloadNum, 0)
 			mt.status.updateSpeeds()
+
 			if mt.instanceState != nil {
 				mt.instanceState.Put(&InstanceInfo{
 					DlStatus: mt.status,
 					Ranges:   mt.GetAllWorkersRange(),
 				})
-			}
-
-			for _, worker := range mt.workers {
-				if worker == nil {
-					continue
-				}
-
-				switch worker.GetStatus().StatusCode() {
-				case StatusCodeInternalError:
-					exitErr <- worker.Err()
-					return
-				}
 			}
 
 			// 不重载worker
@@ -399,23 +399,24 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 								return
 							}
 
-							wrange := worker.GetRange()
+							workerRange := worker.GetRange()
 
-							end := wrange.LoadEnd()
-							middle := (wrange.LoadBegin() + end) / 2
+							end := workerRange.LoadEnd()
+							middle := (workerRange.LoadBegin() + end) / 2
 
 							if end-middle < MinParallelSize/5 { // 如果线程剩余的下载量太少, 不分配空闲线程
 								return
 							}
 
 							// 折半
-							avaliableWorker.wrange = Range{
-								Begin: middle + 1,
-								End:   end,
-							}
+
+							avaliableWorkerRange := avaliableWorker.GetRange()
+							avaliableWorkerRange.StoreBegin(middle + 1)
+							avaliableWorkerRange.StoreEnd(end)
+
 							avaliableWorker.CleanStatus()
 
-							wrange.StoreEnd(middle)
+							workerRange.StoreEnd(middle)
 
 							pcsverbose.Verbosef("MONITER: worker duplicated: %d <- %d\n", avaliableWorker.ID(), worker.ID())
 							go avaliableWorker.Execute()

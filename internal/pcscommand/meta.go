@@ -12,7 +12,7 @@ func RunGetMeta(path string) {
 		return
 	}
 
-	data, err := info.FilesDirectoriesMeta(p)
+	data, err := GetBaiduPCS().FilesDirectoriesMeta(p)
 	if err != nil {
 		fmt.Println(err)
 		return

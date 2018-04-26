@@ -199,7 +199,7 @@ func RunRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64
 		sliceMD5 = "ec87a838931d4d5d2e94a04644788a55" // 长度为32
 	}
 
-	err = info.RapidUpload(targetPath, contentMD5, sliceMD5, crc32, length)
+	err = GetBaiduPCS().RapidUpload(targetPath, contentMD5, sliceMD5, crc32, length)
 	if err != nil {
 		fmt.Printf("%s失败, 消息: %s\n", baidupcs.OperationRapidUpload, err)
 		return
@@ -216,7 +216,7 @@ func RunCreateSuperFile(targetPath string, blockList ...string) {
 		fmt.Printf("警告: %s, 获取网盘路径 %s 错误, %s\n", baidupcs.OperationUploadCreateSuperFile, targetPath, err)
 	}
 
-	err = info.UploadCreateSuperFile(targetPath, blockList...)
+	err = GetBaiduPCS().UploadCreateSuperFile(targetPath, blockList...)
 	if err != nil {
 		fmt.Printf("%s失败, 消息: %s\n", baidupcs.OperationUploadCreateSuperFile, err)
 		return
@@ -240,6 +240,7 @@ func RunUpload(localPaths []string, savePath string) {
 	}
 
 	var (
+		pcs           = GetBaiduPCS()
 		ulist         = list.New()
 		lastID        int
 		globedPathDir string
@@ -355,7 +356,7 @@ func RunUpload(localPaths []string, savePath string) {
 
 		// 设置缓存
 		if !pcscache.DirCache.Existed(panDir) {
-			fdl, err := info.FilesDirectoriesList(panDir)
+			fdl, err := pcs.FilesDirectoriesList(panDir)
 			if err == nil {
 				pcscache.DirCache.Set(panDir, &fdl)
 			}
@@ -389,7 +390,7 @@ func RunUpload(localPaths []string, savePath string) {
 		// 经测试, 文件的 crc32 值并非秒传文件所必需
 		// task.uploadInfo.crc32Sum()
 
-		err := info.RapidUpload(task.savePath, hex.EncodeToString(task.uploadInfo.MD5), hex.EncodeToString(task.uploadInfo.SliceMD5), fmt.Sprint(task.uploadInfo.CRC32), task.uploadInfo.Length)
+		err := pcs.RapidUpload(task.savePath, hex.EncodeToString(task.uploadInfo.MD5), hex.EncodeToString(task.uploadInfo.SliceMD5), fmt.Sprint(task.uploadInfo.CRC32), task.uploadInfo.Length)
 		if err == nil {
 			fmt.Printf("[%d] 秒传成功, 保存到网盘路径: %s\n\n", task.ID, task.savePath)
 
@@ -401,7 +402,7 @@ func RunUpload(localPaths []string, savePath string) {
 		fmt.Printf("[%d] 秒传失败, 开始上传文件...\n\n", task.ID)
 
 		// 秒传失败, 开始上传文件
-		pcsError := info.Upload(task.savePath, func(uploadURL string, jar *cookiejar.Jar) (resp *http.Response, uperr error) {
+		pcsError := pcs.Upload(task.savePath, func(uploadURL string, jar *cookiejar.Jar) (resp *http.Response, uperr error) {
 			h := requester.NewHTTPClient()
 			h.SetCookiejar(jar)
 			setupHTTPClient(h)

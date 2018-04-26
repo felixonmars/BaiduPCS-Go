@@ -25,6 +25,7 @@ captcha.png
 pcs_config.json
 test/
 download/
+*-downloading
 
 # GoLand
 .idea/

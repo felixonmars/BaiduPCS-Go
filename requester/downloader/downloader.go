@@ -19,6 +19,7 @@ type Event func()
 // Downloader 下载
 type Downloader struct {
 	onExecuteEvent    Event //开始下载事件
+	onSuccessEvent    Event //成功下载事件
 	onFinishEvent     Event //结束下载事件
 	onPauseEvent      Event //暂停下载事件
 	onResumeEvent     Event //恢复下载事件
@@ -202,10 +203,16 @@ func (der *Downloader) Execute() error {
 	trigger(der.onExecuteEvent)
 	der.monitor.Execute(moniterCtx)
 
+	// 检查错误
+	err = der.monitor.Err()
+	if err == nil {
+		trigger(der.onSuccessEvent)
+	}
+
 	// 执行结束
 	der.removeInstanceState()
 	trigger(der.onFinishEvent)
-	return nil
+	return err
 }
 
 //GetDownloadStatusChan 获取下载统计信息
@@ -278,6 +285,11 @@ func (der *Downloader) PrintAllWorkers() {
 //OnExecute 设置开始下载事件
 func (der *Downloader) OnExecute(onExecuteEvent Event) {
 	der.onExecuteEvent = onExecuteEvent
+}
+
+//OnSuccess 设置成功下载事件
+func (der *Downloader) OnSuccess(onSuccessEvent Event) {
+	der.onSuccessEvent = onSuccessEvent
 }
 
 //OnFinish 设置结束下载事件

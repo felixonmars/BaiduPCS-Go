@@ -13,7 +13,7 @@ func RunChangeDirectory(path string, isList bool) {
 		return
 	}
 
-	data, err := info.FilesDirectoriesMeta(path)
+	data, err := GetBaiduPCS().FilesDirectoriesMeta(path)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -24,7 +24,7 @@ func RunChangeDirectory(path string, isList bool) {
 		return
 	}
 
-	pcsconfig.Config.MustGetActive().Workdir = path
+	GetActiveUser().Workdir = path
 	pcsconfig.Config.Save()
 
 	fmt.Printf("改变工作目录: %s\n", path)

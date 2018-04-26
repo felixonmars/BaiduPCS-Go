@@ -202,7 +202,7 @@ func (f *FileDirectory) String() string {
 			[]string{"文件路径", f.Path},
 			[]string{"文件名称", f.Filename},
 			[]string{"文件大小", strconv.FormatInt(f.Size, 10) + ", " + pcsutil.ConvertFileSize(f.Size)},
-			[]string{"md5", f.MD5},
+			[]string{"md5 (截图请打码)", f.MD5},
 		})
 	}
 

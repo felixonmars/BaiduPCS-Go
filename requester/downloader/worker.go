@@ -64,6 +64,11 @@ func (wer *Worker) lazyInit() {
 	if wer.pauseChan == nil {
 		wer.pauseChan = make(chan struct{})
 	}
+	if wer.wrange.LoadBegin() == 0 && wer.wrange.LoadEnd() == 0 {
+		// 取消多线程下载
+		wer.acceptRanges = ""
+		wer.wrange.StoreEnd(-2)
+	}
 }
 
 //SetClient 设置http客户端

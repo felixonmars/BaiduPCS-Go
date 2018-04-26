@@ -84,6 +84,7 @@ func (h *HTTPClient) ResetCookiejar() {
 func (h *HTTPClient) SetHTTPSecure(b bool) {
 	h.lazyInit()
 	if b {
+		TLSConfig.InsecureSkipVerify = b
 		h.transport.TLSClientConfig = nil
 	} else {
 		h.transport.TLSClientConfig = TLSConfig

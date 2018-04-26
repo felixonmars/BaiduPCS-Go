@@ -74,7 +74,7 @@ func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (pcsError 
 func (pcs *BaiduPCS) UploadTmpFile(uploadFunc UploadFunc) (md5 string, pcsError Error) {
 	dataReadCloser, pcsError := pcs.PrepareUploadTmpFile(uploadFunc)
 	if pcsError != nil {
-		return
+		return "", pcsError
 	}
 
 	defer dataReadCloser.Close()
@@ -111,9 +111,9 @@ func (pcs *BaiduPCS) UploadTmpFile(uploadFunc UploadFunc) (md5 string, pcsError 
 
 // UploadCreateSuperFile 分片上传—合并分片文件
 func (pcs *BaiduPCS) UploadCreateSuperFile(targetPath string, blockList ...string) (pcsError Error) {
-	dataReadCloser, err := pcs.PrepareUploadCreateSuperFile(targetPath, blockList...)
-	if err != nil {
-		return
+	dataReadCloser, pcsError := pcs.PrepareUploadCreateSuperFile(targetPath, blockList...)
+	if pcsError != nil {
+		return pcsError
 	}
 
 	defer dataReadCloser.Close()

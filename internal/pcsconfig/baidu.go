@@ -1,24 +1,68 @@
 package pcsconfig
 
 import (
+	"errors"
+	"fmt"
+	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/baidu-tools/tieba"
+	"github.com/olekukonko/tablewriter"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
 
+var (
+	//ErrBaiduUserNotExist 百度帐号不存在
+	ErrBaiduUserNotExist = errors.New("baidu user not exist")
+	//ErrNoSuchBaiduUser 未登录任何百度帐号
+	ErrNoSuchBaiduUser = errors.New("no such baidu user")
+	//ErrBaiduUserNotFound 未找到百度帐号
+	ErrBaiduUserNotFound = errors.New("baidu user not found")
+)
+
+//BaiduBase Baidu基
+type BaiduBase struct {
+	UID  uint64 `json:"uid"`  // 百度ID对应的uid
+	Name string `json:"name"` // 真实ID
+}
+
 // Baidu 百度帐号对象
 type Baidu struct {
-	UID  uint64  `json:"uid"`  // 百度ID对应的uid
-	Name string  `json:"name"` // 真实ID
-	Sex  string  `json:"sex"`  // 性别
-	Age  float64 `json:"age"`  // 帐号年龄
+	BaiduBase
+	Sex string  `json:"sex"` // 性别
+	Age float64 `json:"age"` // 帐号年龄
 
 	BDUSS  string `json:"bduss"`
 	PTOKEN string `json:"ptoken"`
 	STOKEN string `json:"stoken"`
 
 	Workdir string `json:"workdir"` // 工作目录
+}
+
+// BaiduPCS 初始化*baidupcs.BaiduPCS
+func (baidu *Baidu) BaiduPCS() *baidupcs.BaiduPCS {
+	pcs := baidupcs.NewPCS(Config.appID, baidu.BDUSS)
+	pcs.SetHTTPS(Config.enableHTTPS)
+	pcs.SetUserAgent(Config.userAgent)
+	return pcs
+}
+
+// GetSavePath 根据提供的网盘文件路径 path, 返回本地储存路径,
+// 返回绝对路径, 获取绝对路径出错时才返回相对路径...
+func (baidu *Baidu) GetSavePath(path string) string {
+	dirStr := fmt.Sprintf("%s/%d_%s%s/.",
+		Config.saveDir,
+		baidu.UID,
+		baidu.Name,
+		path,
+	)
+
+	dir, err := filepath.Abs(dirStr)
+	if err != nil {
+		dir = filepath.Clean(dirStr)
+	}
+	return dir
 }
 
 // BaiduUserList 百度帐号列表
@@ -32,8 +76,10 @@ func NewUserInfoByBDUSS(bduss string) (b *Baidu, err error) {
 	}
 
 	b = &Baidu{
-		UID:     t.Baidu.UID,
-		Name:    t.Baidu.Name,
+		BaiduBase: BaiduBase{
+			UID:  t.Baidu.UID,
+			Name: t.Baidu.Name,
+		},
 		Sex:     t.Baidu.Sex,
 		Age:     t.Baidu.Age,
 		BDUSS:   t.Baidu.Auth.BDUSS,
@@ -47,10 +93,11 @@ func (bl *BaiduUserList) String() string {
 	builder := &strings.Builder{}
 
 	tb := pcstable.NewTable(builder)
-	tb.SetHeader([]string{"#", "uid", "用户名"})
+	tb.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_CENTER})
+	tb.SetHeader([]string{"#", "uid", "用户名", "性别", "age"})
 
 	for k, baiduInfo := range *bl {
-		tb.Append([]string{strconv.Itoa(k), strconv.FormatUint(baiduInfo.UID, 10), baiduInfo.Name})
+		tb.Append([]string{strconv.Itoa(k), strconv.FormatUint(baiduInfo.UID, 10), baiduInfo.Name, baiduInfo.Sex, fmt.Sprint(baiduInfo.Age)})
 	}
 
 	tb.Render()

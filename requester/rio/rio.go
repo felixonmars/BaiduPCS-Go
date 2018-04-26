@@ -33,11 +33,13 @@ type WriterLen64 interface {
 	Lener64
 }
 
+// WriteCloserAt 实现io.WriteCloser和io.WriterAt接口
 type WriteCloserAt interface {
 	io.WriteCloser
 	io.WriterAt
 }
 
+// WriteCloserLen64At 实现rio.WriteCloserAt和64-bit长度接口
 type WriteCloserLen64At interface {
 	WriteCloserAt
 	Lener64
