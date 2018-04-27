@@ -15,8 +15,6 @@ var (
 
 	// Config 配置信息, 由外部调用
 	Config = NewConfig(configFilePath)
-
-	defaultAppID = 260149
 )
 
 // PCSConfig 配置详情
@@ -154,6 +152,17 @@ func (c *PCSConfig) loadConfigFromFile() (err error) {
 		return err
 	}
 
+	// 未初始化
+	info, err := c.configFile.Stat()
+	if err != nil {
+		return err
+	}
+
+	if info.Size() == 0 {
+		err = c.Save()
+		return err
+	}
+
 	c.fileMu.Lock()
 	defer c.fileMu.Unlock()
 
@@ -172,7 +181,7 @@ func (c *PCSConfig) loadConfigFromFile() (err error) {
 
 func (c *PCSConfig) defaultConfig() {
 	if c.appID == 0 {
-		c.appID = defaultAppID
+		c.appID = 260149
 	}
 	if c.cacheSize == 0 {
 		c.cacheSize = 30000

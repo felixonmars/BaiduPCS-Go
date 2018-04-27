@@ -1,5 +1,9 @@
 package pcsconfig
 
+import (
+	"strings"
+)
+
 const (
 	opDelete = "delete"
 	opSwitch = "switch"
@@ -9,7 +13,7 @@ const (
 func (c *PCSConfig) manipUser(op string, baiduBase *BaiduBase) (*Baidu, error) {
 	// empty baiduBase
 	if baiduBase == nil || (baiduBase.UID == 0 && baiduBase.Name == "") {
-		return nil, ErrBaiduUserNotFound
+		return &Baidu{}, nil
 	}
 	if len(c.baiduUserList) == 0 {
 		return nil, ErrNoSuchBaiduUser
@@ -22,12 +26,14 @@ func (c *PCSConfig) manipUser(op string, baiduBase *BaiduBase) (*Baidu, error) {
 
 		switch {
 		case baiduBase.UID != 0 && baiduBase.Name != "":
-			if user.UID == baiduBase.UID && user.Name == baiduBase.Name {
+			// 不区分大小写
+			if user.UID == baiduBase.UID && strings.Compare(strings.ToUpper(user.Name), strings.ToUpper(baiduBase.Name)) == 0 {
 				goto handle
 			}
 			continue
 		case baiduBase.UID == 0 && baiduBase.Name != "":
-			if user.Name == baiduBase.Name {
+			// 不区分大小写
+			if strings.Compare(strings.ToUpper(user.Name), strings.ToUpper(baiduBase.Name)) == 0 {
 				goto handle
 			}
 			continue

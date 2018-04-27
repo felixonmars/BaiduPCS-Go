@@ -11,7 +11,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"net/http/cookiejar"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -63,7 +63,7 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 			cfg.InstanceStatePath = savePath + DownloadSuffix
 
 			// 创建下载的目录
-			dir := path.Dir(savePath)
+			dir := filepath.Dir(savePath)
 			fileInfo, err := os.Stat(dir)
 			if err != nil {
 				err = os.MkdirAll(dir, 0777)
@@ -204,7 +204,7 @@ func RunDownload(paths []string, option DownloadOption) {
 			path: paths[k],
 		}
 		if option.SaveTo != "" {
-			ptask.savePath = path.Join(option.SaveTo, path.Base(paths[k]))
+			ptask.savePath = filepath.Join(option.SaveTo, filepath.Base(paths[k]))
 		} else {
 			ptask.savePath = GetActiveUser().GetSavePath(paths[k])
 		}
@@ -291,7 +291,7 @@ func RunDownload(paths []string, option DownloadOption) {
 				}
 
 				if option.SaveTo != "" {
-					subTask.savePath = path.Join(task.savePath, fileList[k].Filename)
+					subTask.savePath = filepath.Join(task.savePath, fileList[k].Filename)
 				} else {
 					subTask.savePath = GetActiveUser().GetSavePath(subTask.path)
 				}
@@ -309,7 +309,9 @@ func RunDownload(paths []string, option DownloadOption) {
 			continue
 		}
 
-		fmt.Printf("[%d] 将会下载到路径: %s\n\n", task.ID, task.savePath)
+		if !option.IsTest {
+			fmt.Printf("[%d] 将会下载到路径: %s\n\n", task.ID, task.savePath)
+		}
 
 		err = pcs.DownloadFile(task.path, getDownloadFunc(task.ID, task.savePath, cfg, option.IsPrintStatus, option.IsExecutedPermission))
 		if err != nil {

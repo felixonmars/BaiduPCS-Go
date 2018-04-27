@@ -16,8 +16,8 @@ type Adder interface {
 // Speeds 统计下载速度
 type Speeds struct {
 	readed      int64
-	inited      bool
 	timeElapsed time.Duration
+	inited      bool
 	nowTime     time.Time
 	once        sync.Once
 }

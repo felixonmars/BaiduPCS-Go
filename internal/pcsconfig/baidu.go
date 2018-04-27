@@ -13,8 +13,6 @@ import (
 )
 
 var (
-	//ErrBaiduUserNotExist 百度帐号不存在
-	ErrBaiduUserNotExist = errors.New("baidu user not exist")
 	//ErrNoSuchBaiduUser 未登录任何百度帐号
 	ErrNoSuchBaiduUser = errors.New("no such baidu user")
 	//ErrBaiduUserNotFound 未找到百度帐号

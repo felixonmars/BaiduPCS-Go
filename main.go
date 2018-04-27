@@ -147,7 +147,7 @@ func main() {
 				activeUser = pcsconfig.Config.ActiveUser()
 			)
 
-			if activeUser != nil {
+			if activeUser.Name != "" {
 				// 格式: BaiduPCS-Go:<工作目录> <百度ID>$
 				// 工作目录太长的话会自动缩略
 				prompt = app.Name + ":" + pcsutil.ShortDisplay(path.Base(activeUser.Workdir), 20) + " " + activeUser.Name + "$ "
@@ -225,14 +225,13 @@ func main() {
 			},
 		},
 		{
-			Name:      "login",
-			Usage:     "登录百度账号",
-			UsageText: app.Name + " login [command options]",
+			Name:  "login",
+			Usage: "登录百度账号",
 			Description: `
 	示例:
 		BaiduPCS-Go login
-		BaiduPCS-Go login --username=liuhua
-		BaiduPCS-Go login --bduss=123456789
+		BaiduPCS-Go login -username=liuhua
+		BaiduPCS-Go login -bduss=123456789
 
 	常规登录:
 		按提示一步一步来即可.
@@ -286,12 +285,15 @@ func main() {
 		{
 			Name:    "su",
 			Aliases: []string{"chuser"}, // 兼容旧版本
-			Usage:   "切换已登录的百度帐号",
-			Description: fmt.Sprintf("%s\n   示例:\n\n      %s\n      %s\n",
-				"如果运行该条命令没有提供参数, 程序将会列出所有的百度帐号, 供选择切换",
-				app.Name+" su <uid or name>",
-				app.Name+" su",
-			),
+			Usage:   "切换百度帐号",
+			Description: `
+	切换已登录的百度帐号:
+	如果运行该条命令没有提供参数, 程序将会列出所有的百度帐号, 供选择切换.
+
+	示例:
+	BaiduPCS-Go su
+	BaiduPCS-Go su <uid or name>
+`,
 			Category: "百度帐号",
 			Before:   reloadFn,
 			After:    saveFunc,
@@ -338,16 +340,12 @@ func main() {
 					cli.ShowCommandHelp(c, c.Command.Name)
 				}
 
-				var (
-					switchedUser *pcsconfig.Baidu
-					err          error
-				)
-				switchedUser, err = pcsconfig.Config.SwitchUser(&pcsconfig.BaiduBase{
-					UID: uid,
+				switchedUser, err := pcsconfig.Config.SwitchUser(&pcsconfig.BaiduBase{
+					Name: inputData,
 				})
 				if err != nil {
 					switchedUser, err = pcsconfig.Config.SwitchUser(&pcsconfig.BaiduBase{
-						Name: inputData,
+						UID: uid,
 					})
 					if err != nil {
 						fmt.Printf("切换用户失败, %s\n", err)
@@ -365,11 +363,12 @@ func main() {
 			},
 		},
 		{
-			Name:     "logout",
-			Usage:    "退出当前登录的百度帐号",
-			Category: "百度帐号",
-			Before:   reloadFn,
-			After:    saveFunc,
+			Name:        "logout",
+			Usage:       "退出百度帐号",
+			Description: "退出当前登录的百度帐号",
+			Category:    "百度帐号",
+			Before:      reloadFn,
+			After:       saveFunc,
 			Action: func(c *cli.Context) error {
 				if pcsconfig.Config.NumLogins() == 0 {
 					fmt.Println("未设置任何百度帐号, 不能退出")
@@ -407,10 +406,11 @@ func main() {
 			},
 		},
 		{
-			Name:     "loglist",
-			Usage:    "获取当前帐号, 和所有已登录的百度帐号",
-			Category: "百度帐号",
-			Before:   reloadFn,
+			Name:        "loglist",
+			Usage:       "列出帐号列表",
+			Description: "获取当前帐号, 和所有已登录的百度帐号",
+			Category:    "百度帐号",
+			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
 				activeUser := pcsconfig.Config.ActiveUser()
 				fmt.Printf("\n当前帐号 uid: %d, 用户名: %s\n\n", activeUser.UID, activeUser.Name)
@@ -421,22 +421,42 @@ func main() {
 			},
 		},
 		{
-			Name:     "quota",
-			Usage:    "获取配额, 即获取网盘的总储存空间, 和已使用的储存空间",
-			Category: "百度网盘",
-			Before:   reloadFn,
+			Name:        "quota",
+			Usage:       "获取网盘配额",
+			Description: "获取网盘的总储存空间, 和已使用的储存空间",
+			Category:    "百度网盘",
+			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
 				pcscommand.RunGetQuota()
 				return nil
 			},
 		},
 		{
-			Name:      "cd",
-			Category:  "百度网盘",
-			Usage:     "切换工作目录",
-			UsageText: app.Name + "%s cd <目录 绝对路径或相对路径>",
-			Before:    reloadFn,
-			After:     saveFunc,
+			Name:     "cd",
+			Category: "百度网盘",
+			Usage:    "切换工作目录",
+			Description: `
+	BaiduPCS-Go cd <目录, 绝对路径或相对路径>
+
+	示例:
+
+	切换 /我的资源 工作目录:
+	BaiduPCS-Go cd /我的资源
+
+	切换上级目录:
+	BaiduPCS-Go cd ..
+
+	切换根目录:
+	BaiduPCS-Go cd /
+
+	切换 /我的资源 工作目录, 并自动列出 /我的资源 下的文件和目录
+	BaiduPCS-Go cd -l 我的资源
+
+	使用通配符:
+	BaiduPCS-Go cd /我的*
+`,
+			Before: reloadFn,
+			After:  saveFunc,
 			Action: func(c *cli.Context) error {
 				if c.NArg() == 0 {
 					cli.ShowCommandHelp(c, c.Command.Name)
@@ -457,10 +477,24 @@ func main() {
 		{
 			Name:      "ls",
 			Aliases:   []string{"l", "ll"},
-			Usage:     "列出当前工作目录内的文件和目录 或 指定目录内的文件和目录",
-			UsageText: fmt.Sprintf("%s ls <目录 绝对路径或相对路径>", app.Name),
-			Category:  "百度网盘",
-			Before:    reloadFn,
+			Usage:     "列出目录",
+			UsageText: app.Name + " ls <目录>",
+			Description: `
+	列出当前工作目录内的文件和目录, 或指定目录内的文件和目录
+
+	示例:
+
+	相对路径:
+	BaiduPCS-Go ls 我的资源
+
+	绝对路径:
+	BaiduPCS-Go ls /我的资源
+
+	使用通配符:
+	BaiduPCS-Go ls /我的*
+`,
+			Category: "百度网盘",
+			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				pcscommand.RunLs(c.Args().Get(0))
 				return nil
@@ -469,8 +503,8 @@ func main() {
 		{
 			Name:      "tree",
 			Aliases:   []string{"t"},
-			Usage:     "列出文件树",
-			UsageText: fmt.Sprintf("%s tree <目录 绝对路径或相对路径>", app.Name),
+			Usage:     "列出目录的树形图",
+			UsageText: app.Name + " tree <目录>",
 			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -480,8 +514,8 @@ func main() {
 		},
 		{
 			Name:      "pwd",
-			Usage:     "输出当前所在目录 (工作目录)",
-			UsageText: fmt.Sprintf("%s pwd", app.Name),
+			Usage:     "输出工作目录",
+			UsageText: app.Name + " pwd",
 			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -490,11 +524,12 @@ func main() {
 			},
 		},
 		{
-			Name:      "meta",
-			Usage:     "获取单个文件/目录的元信息 (详细信息)",
-			UsageText: fmt.Sprintf("%s meta <文件/目录 绝对路径或相对路径>", app.Name),
-			Category:  "百度网盘",
-			Before:    reloadFn,
+			Name:        "meta",
+			Usage:       "获取单个文件/目录的元信息",
+			UsageText:   app.Name + " meta <文件/目录>",
+			Description: "默认获取工作目录元信息",
+			Category:    "百度网盘",
+			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
 				pcscommand.RunGetMeta(c.Args().Get(0))
 				return nil
@@ -502,12 +537,26 @@ func main() {
 		},
 		{
 			Name:      "rm",
-			Usage:     "删除 单个/多个 文件/目录",
-			UsageText: fmt.Sprintf("%s rm <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", app.Name),
-			Description: fmt.Sprintf("\n   %s\n   %s\n",
-				"注意: 删除多个文件和目录时, 请确保每一个文件和目录都存在, 否则删除操作会失败.",
-				"被删除的文件或目录可在网盘文件回收站找回.",
-			),
+			Usage:     "删除文件/目录",
+			UsageText: app.Name + " rm <文件/目录的路径1> <文件/目录2> <文件/目录3> ...",
+			Description: `
+	注意: 删除多个文件和目录时, 请确保每一个文件和目录都存在, 否则删除操作会失败.
+	被删除的文件或目录可在网盘文件回收站找回.
+
+	示例:
+
+	删除 /我的资源/1.mp4
+	BaiduPCS-Go rm /我的资源/1.mp4
+
+	删除 /我的资源/1.mp4 和 /我的资源/2.mp4
+	BaiduPCS-Go rm /我的资源/1.mp4 /我的资源/2.mp4
+
+	删除 /我的资源 内的所有文件和目录, 但不删除该目录
+	BaiduPCS-Go rm /我的资源/*
+
+	删除 /我的资源 整个目录 !!
+	BaiduPCS-Go rm /我的资源
+`,
 			Category: "百度网盘",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
@@ -523,7 +572,7 @@ func main() {
 		{
 			Name:      "mkdir",
 			Usage:     "创建目录",
-			UsageText: fmt.Sprintf("%s mkdir <目录 绝对路径或相对路径> ...", app.Name),
+			UsageText: app.Name + " mkdir <目录>",
 			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -538,12 +587,20 @@ func main() {
 		},
 		{
 			Name:  "cp",
-			Usage: "拷贝(复制) 文件/目录",
-			UsageText: fmt.Sprintf(
-				"%s cp <文件/目录> <目标 文件/目录>\n   %s cp <文件/目录1> <文件/目录2> <文件/目录3> ... <目标目录>",
-				app.Name,
-				app.Name,
-			),
+			Usage: "拷贝文件/目录",
+			UsageText: `BaiduPCS-Go cp <文件/目录> <目标文件/目录>
+	BaiduPCS-Go cp <文件/目录1> <文件/目录2> <文件/目录3> ... <目标目录>`,
+			Description: `
+	注意: 拷贝多个文件和目录时, 请确保每一个文件和目录都存在, 否则拷贝操作会失败.
+
+	示例:
+
+	将 /我的资源/1.mp4 复制到 根目录 /
+	BaiduPCS-Go cp /我的资源/1.mp4 /
+
+	将 /我的资源/1.mp4 和 /我的资源/2.mp4 复制到 根目录 /
+	BaiduPCS-Go cp /我的资源/1.mp4 /我的资源/2.mp4 /
+`,
 			Category: "百度网盘",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
@@ -558,12 +615,23 @@ func main() {
 		},
 		{
 			Name:  "mv",
-			Usage: "移动/重命名 文件/目录",
-			UsageText: fmt.Sprintf(
-				"移动\t: %s mv <文件/目录1> <文件/目录2> <文件/目录3> ... <目标目录>\n   重命名: %s mv <文件/目录> <重命名的文件/目录>",
-				app.Name,
-				app.Name,
-			),
+			Usage: "移动/重命名文件/目录",
+			UsageText: `移动:
+	BaiduPCS-Go mv <文件/目录1> <文件/目录2> <文件/目录3> ... <目标目录>
+
+	重命名:
+	BaiduPCS-Go mv <文件/目录> <重命名的文件/目录>`,
+			Description: `
+	注意: 移动多个文件和目录时, 请确保每一个文件和目录都存在, 否则移动操作会失败.
+
+	示例:
+
+	将 /我的资源/1.mp4 移动到 根目录 /
+	BaiduPCS-Go mv /我的资源/1.mp4 /
+
+	将 /我的资源/1.mp4 重命名为 /我的资源/3.mp4
+	BaiduPCS-Go mv /我的资源/1.mp4 /我的资源/3.mp4
+`,
 			Category: "百度网盘",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
@@ -579,13 +647,33 @@ func main() {
 		{
 			Name:      "download",
 			Aliases:   []string{"d"},
-			Usage:     "下载文件或目录",
-			UsageText: fmt.Sprintf("%s download <网盘文件或目录的路径1> <文件或目录2> <文件或目录3> ...", app.Name),
-			Description: `下载的文件默认保存到, 程序所在目录的 download/ 目录.
+			Usage:     "下载文件/目录",
+			UsageText: app.Name + " download <文件/目录路径1> <文件/目录2> <文件/目录3> ...",
+			Description: `
+	下载的文件默认保存到, 程序所在目录的 download/ 目录.
 	通过 BaiduPCS-Go config set -savedir <savedir>, 自定义保存的目录.
 	已支持目录下载.
 	已支持多个文件或目录下载.
-	自动跳过下载重名的文件!`,
+	自动跳过下载重名的文件!
+
+	示例:
+
+	设置保存目录, 保存到 D:\Downloads
+	注意区别反斜杠 "\" 和 斜杠 "/" !!!
+	BaiduPCS-Go config set -savedir D:\\Downloads
+	或者
+	BaiduPCS-Go config set -savedir D:/Downloads
+
+	下载 /我的资源/1.mp4
+	BaiduPCS-Go d /我的资源/1.mp4
+
+	下载 /我的资源 整个目录!!
+	BaiduPCS-Go d /我的资源
+
+	下载网盘内的全部文件!!
+	BaiduPCS-Go d /
+	BaiduPCS-Go d *
+`,
 			Category: "百度网盘",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
@@ -641,11 +729,27 @@ func main() {
 		{
 			Name:      "upload",
 			Aliases:   []string{"u"},
-			Usage:     "上传文件或目录",
-			UsageText: fmt.Sprintf("%s upload <本地文件或目录的路径1> <文件或目录2> <文件或目录3> ... <网盘的目标目录>", app.Name),
-			Description: `上传的文件将会保存到, 网盘的目标目录.
+			Usage:     "上传文件/目录",
+			UsageText: app.Name + " upload <本地文件/目录的路径1> <文件/目录2> <文件/目录3> ... <目标目录>",
+			Description: `
+	上传的文件将会保存到, <目标目录>.
 	遇到同名文件将会自动覆盖!!
 	当上传的文件名和网盘的目录名称相同时, 不会覆盖目录, 防止丢失数据.
+
+	示例:
+
+	1. 将本地的 C:\Users\Administrator\Desktop\1.mp4 上传到网盘 /视频 目录
+	注意区别反斜杠 "\" 和 斜杠 "/" !!!
+	BaiduPCS-Go upload C:/Users/Administrator/Desktop/1.mp4 /视频
+
+	2. 将本地的 C:\Users\Administrator\Desktop\1.mp4 和 C:\Users\Administrator\Desktop\2.mp4 上传到网盘 /视频 目录
+	BaiduPCS-Go upload C:/Users/Administrator/Desktop/1.mp4 C:/Users/Administrator/Desktop/2.mp4 /视频
+
+	3. 将本地的 C:\Users\Administrator\Desktop 整个目录上传到网盘 /视频 目录
+	BaiduPCS-Go upload C:/Users/Administrator/Desktop /视频
+
+	4. 使用相对路径
+	BaiduPCS-Go upload 1.mp4 /视频
 `,
 			Category: "百度网盘",
 			Before:   reloadFn,
@@ -670,6 +774,14 @@ func main() {
 	使用此功能秒传文件, 前提是知道文件的大小, md5, 前256KB切片的 md5 (可选), crc32 (可选), 且百度网盘中存在一模一样的文件.
 	上传的文件将会保存到网盘的目标目录.
 	遇到同名文件将会自动覆盖! 
+
+	示例:
+
+	1. 如果秒传成功, 则保存到网盘路径 /test
+	BaiduPCS-Go rapidupload -length=56276137 -md5=fbe082d80e90f90f0fb1f94adbbcfa7f -slicemd5=38c6a75b0ec4499271d4ea38a667ab61 -crc32=314332359 /test
+
+	2. 精简一下, 如果秒传成功, 则保存到网盘路径 /test
+	BaiduPCS-Go rapidupload -length=56276137 -md5=fbe082d80e90f90f0fb1f94adbbcfa7f /test
 `,
 			Category: "百度网盘",
 			Before:   reloadFn,
@@ -711,7 +823,8 @@ func main() {
 	上传的文件将会保存到网盘的目标目录.
 	遇到同名文件将会自动覆盖! 
 
-	例子:
+	示例:
+
 	BaiduPCS-Go createsuperfile -path=1.mp4 ec87a838931d4d5d2e94a04644788a55 ec87a838931d4d5d2e94a04644788a55
 `,
 			Category: "百度网盘",
@@ -734,13 +847,20 @@ func main() {
 			},
 		},
 		{
-			Name:        "sumfile",
-			Aliases:     []string{"sf"},
-			Usage:       "获取文件的秒传信息",
-			UsageText:   app.Name + " sumfile <本地文件的路径1> <本地文件的路径2> ...",
-			Description: "获取文件的大小, md5, 前256KB切片的md5, crc32, 可用于秒传文件.",
-			Category:    "其他",
-			Before:      reloadFn,
+			Name:      "sumfile",
+			Aliases:   []string{"sf"},
+			Usage:     "获取文件的秒传信息",
+			UsageText: app.Name + " sumfile <本地文件的路径1> <本地文件的路径2> ...",
+			Description: `
+	获取文件的大小, md5, 前256KB切片的md5, crc32, 可用于秒传文件.
+
+	示例:
+
+	获取 C:\Users\Administrator\Desktop\1.mp4 的秒传信息
+	BaiduPCS-Go sumfile C:/Users/Administrator/Desktop/1.mp4
+`,
+			Category: "其他",
+			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() <= 0 {
 					cli.ShowCommandHelp(c, c.Command.Name)
@@ -781,12 +901,26 @@ func main() {
 			},
 		},
 		{
-			Name:        "offlinedl",
-			Aliases:     []string{"clouddl", "od"},
-			Usage:       "离线下载",
-			Description: `支持http/https/ftp/电驴/磁力链协议`,
-			Category:    "百度网盘",
-			Before:      reloadFn,
+			Name:    "offlinedl",
+			Aliases: []string{"clouddl", "od"},
+			Usage:   "离线下载",
+			Description: `支持http/https/ftp/电驴/磁力链协议
+
+	示例:
+
+	1. 将百度和腾讯主页, 离线下载到根目录 /
+	BaiduPCS-Go offlinedl add -path=/ http://baidu.com http://qq.com
+
+	2. 添加磁力链接任务
+	BaiduPCS-Go offlinedl add magnet:?xt=urn:btih:xxx
+
+	3. 查询任务ID为 12345 的离线下载任务状态
+	BaiduPCS-Go offlinedl query 12345
+
+	4. 取消任务ID为 12345 的离线下载任务
+	BaiduPCS-Go offlinedl cancel 12345`,
+			Category: "百度网盘",
+			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NumFlags() <= 0 || c.NArg() <= 0 {
 					cli.ShowCommandHelp(c, c.Command.Name)
@@ -892,20 +1026,6 @@ func main() {
 					},
 				},
 			},
-		},
-		{
-			// 兼容旧版本
-			Name:     "set",
-			Usage:    "修改程序配置项",
-			Category: "配置",
-			Before:   reloadFn,
-			After:    saveFunc,
-			Action: func(c *cli.Context) error {
-				fmt.Printf("请使用 BaiduPCS-Go config set 修改程序配置项\n")
-				return nil
-			},
-			Hidden:   true,
-			HideHelp: true,
 		},
 		{
 			Name:        "config",
