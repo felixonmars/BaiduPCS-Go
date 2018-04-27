@@ -3,7 +3,8 @@ package baidupcs
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/pcstime"
 	"github.com/json-iterator/go"
 	"io"
 	"strconv"
@@ -58,16 +59,16 @@ type cloudDlTaskInfo struct {
 
 func (ci *cloudDlTaskInfo) convert() *CloudDlTaskInfo {
 	ci2 := &CloudDlTaskInfo{
-		Status:       pcsutil.MustInt(ci.Status),
-		FileSize:     pcsutil.MustInt64(ci.FileSize),
-		FinishedSize: pcsutil.MustInt64(ci.FinishedSize),
-		CreateTime:   pcsutil.MustInt64(ci.CreateTime),
-		StartTime:    pcsutil.MustInt64(ci.StartTime),
-		FinishTime:   pcsutil.MustInt64(ci.FinishTime),
+		Status:       converter.MustInt(ci.Status),
+		FileSize:     converter.MustInt64(ci.FileSize),
+		FinishedSize: converter.MustInt64(ci.FinishedSize),
+		CreateTime:   converter.MustInt64(ci.CreateTime),
+		StartTime:    converter.MustInt64(ci.StartTime),
+		FinishTime:   converter.MustInt64(ci.FinishTime),
 		SavePath:     ci.SavePath,
 		SourceURL:    ci.SourceURL,
 		TaskName:     ci.TaskName,
-		OdType:       pcsutil.MustInt(ci.OdType),
+		OdType:       converter.MustInt(ci.OdType),
 		Result:       ci.Result,
 	}
 
@@ -79,7 +80,7 @@ func (ci *cloudDlTaskInfo) convert() *CloudDlTaskInfo {
 
 		ci2.FileList = append(ci2.FileList, &CloudDlFileInfo{
 			FileName: v.FileName,
-			FileSize: pcsutil.MustInt64(v.FileSize),
+			FileSize: converter.MustInt64(v.FileSize),
 		})
 	}
 
@@ -294,7 +295,7 @@ func (cl CloudDlTaskList) String() string {
 	tb := pcstable.NewTable(builder)
 	tb.SetHeader([]string{"#", "任务ID", "任务名称", "文件大小", "创建日期", "保存路径", "资源地址", "状态"})
 	for k, v := range cl {
-		tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(v.TaskID, 10), v.TaskName, pcsutil.ConvertFileSize(v.FileSize), pcsutil.FormatTime(v.CreateTime), v.SavePath, v.SourceURL, v.StatusText})
+		tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(v.TaskID, 10), v.TaskName, converter.ConvertFileSize(v.FileSize), pcstime.FormatTime(v.CreateTime), v.SavePath, v.SourceURL, v.StatusText})
 	}
 	tb.Render()
 	return builder.String()

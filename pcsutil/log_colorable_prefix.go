@@ -3,6 +3,7 @@ package pcsutil
 import (
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/pcstime"
 	"log"
 )
 
@@ -15,7 +16,7 @@ var (
 type logWriter struct{}
 
 func (logWriter) Write(bytes []byte) (int, error) {
-	return fmt.Fprint(color.Output, "["+BeijingTimeOption("Refer")+"] "+string(bytes))
+	return fmt.Fprint(color.Output, "["+pcstime.BeijingTimeOption("Refer")+"] "+string(bytes))
 }
 
 // SetLogPrefix 设置日志输出的时间前缀

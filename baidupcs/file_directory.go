@@ -3,7 +3,8 @@ package baidupcs
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/pcstime"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/json-iterator/go"
 	"github.com/olekukonko/tablewriter"
@@ -56,8 +57,8 @@ func (fj *fdJSON) convert() *FileDirectory {
 		Mtime:       fj.Mtime,
 		MD5:         fj.MD5,
 		Size:        fj.Size,
-		Isdir:       pcsutil.IntToBool(fj.IsdirInt),
-		Ifhassubdir: pcsutil.IntToBool(fj.IfhassubdirInt),
+		Isdir:       converter.IntToBool(fj.IsdirInt),
+		Ifhassubdir: converter.IntToBool(fj.IfhassubdirInt),
 	}
 }
 
@@ -201,15 +202,15 @@ func (f *FileDirectory) String() string {
 			[]string{"类型", "文件"},
 			[]string{"文件路径", f.Path},
 			[]string{"文件名称", f.Filename},
-			[]string{"文件大小", strconv.FormatInt(f.Size, 10) + ", " + pcsutil.ConvertFileSize(f.Size)},
+			[]string{"文件大小", strconv.FormatInt(f.Size, 10) + ", " + converter.ConvertFileSize(f.Size)},
 			[]string{"md5 (截图请打码)", f.MD5},
 		})
 	}
 
 	tb.Append([]string{"fs_id", strconv.FormatInt(f.FsID, 10)})
 	tb.AppendBulk([][]string{
-		[]string{"创建日期", pcsutil.FormatTime(f.Ctime)},
-		[]string{"修改日期", pcsutil.FormatTime(f.Mtime)},
+		[]string{"创建日期", pcstime.FormatTime(f.Ctime)},
+		[]string{"修改日期", pcstime.FormatTime(f.Mtime)},
 	})
 
 	if f.Ifhassubdir {

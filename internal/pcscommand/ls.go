@@ -3,7 +3,8 @@ package pcscommand
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/pcstime"
 	"github.com/olekukonko/tablewriter"
 	"os"
 	"strconv"
@@ -32,15 +33,15 @@ func RunLs(path string) {
 
 	for k, file := range files {
 		if file.Isdir {
-			tb.Append([]string{strconv.Itoa(k), "-", pcsutil.FormatTime(file.Ctime), file.Filename + "/"})
+			tb.Append([]string{strconv.Itoa(k), "-", pcstime.FormatTime(file.Ctime), file.Filename + "/"})
 			continue
 		}
 
-		tb.Append([]string{strconv.Itoa(k), pcsutil.ConvertFileSize(file.Size), pcsutil.FormatTime(file.Ctime), file.Filename})
+		tb.Append([]string{strconv.Itoa(k), converter.ConvertFileSize(file.Size), pcstime.FormatTime(file.Ctime), file.Filename})
 	}
 
 	fN, dN := files.Count()
-	tb.Append([]string{"", "总: " + pcsutil.ConvertFileSize(files.TotalSize()), "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
+	tb.Append([]string{"", "总: " + converter.ConvertFileSize(files.TotalSize()), "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
 
 	tb.Render()
 

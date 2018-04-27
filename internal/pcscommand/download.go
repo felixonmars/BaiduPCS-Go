@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
@@ -120,9 +120,9 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 					}
 
 					fmt.Printf("\r[%d] ↓ %s/%s %s/s in %s, left %s ............", id,
-						pcsutil.ConvertFileSize(v.Downloaded(), 2),
-						pcsutil.ConvertFileSize(v.TotalSize(), 2),
-						pcsutil.ConvertFileSize(v.SpeedsPerSecond(), 2),
+						converter.ConvertFileSize(v.Downloaded(), 2),
+						converter.ConvertFileSize(v.TotalSize(), 2),
+						converter.ConvertFileSize(v.SpeedsPerSecond(), 2),
 						v.TimeElapsed()/1e7*1e7, leftStr,
 					)
 				}
@@ -322,7 +322,7 @@ func RunDownload(paths []string, option DownloadOption) {
 		totalSize += task.downloadInfo.Size
 	}
 
-	fmt.Printf("任务结束, 数据总量: %s\n", pcsutil.ConvertFileSize(totalSize))
+	fmt.Printf("任务结束, 数据总量: %s\n", converter.ConvertFileSize(totalSize))
 }
 
 // fileExist 检查文件是否存在,

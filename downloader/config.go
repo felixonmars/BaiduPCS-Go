@@ -1,7 +1,7 @@
 package downloader
 
 import (
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/requester"
 )
 
@@ -10,7 +10,7 @@ var (
 	DownloadingFileSuffix = ".downloader_downloading"
 
 	// MinParallelSize 单个线程最小的数据量
-	MinParallelSize = 128 * pcsutil.KB
+	MinParallelSize = 128 * converter.KB
 )
 
 // Config 下载配置

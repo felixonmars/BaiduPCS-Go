@@ -11,6 +11,9 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/getip"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/pcstime"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/args"
@@ -150,7 +153,7 @@ func main() {
 			if activeUser.Name != "" {
 				// 格式: BaiduPCS-Go:<工作目录> <百度ID>$
 				// 工作目录太长的话会自动缩略
-				prompt = app.Name + ":" + pcsutil.ShortDisplay(path.Base(activeUser.Workdir), 20) + " " + activeUser.Name + "$ "
+				prompt = app.Name + ":" + converter.ShortDisplay(path.Base(activeUser.Workdir), 20) + " " + activeUser.Name + "$ "
 			} else {
 				// BaiduPCS-Go >
 				prompt = app.Name + " > "
@@ -960,7 +963,7 @@ func main() {
 							return nil
 						}
 
-						taskIDs := pcsutil.SliceStringToInt64(c.Args())
+						taskIDs := converter.SliceStringToInt64(c.Args())
 
 						if len(taskIDs) == 0 {
 							fmt.Printf("未找到合法的任务ID, task_id\n")
@@ -992,7 +995,7 @@ func main() {
 							return nil
 						}
 
-						taskIDs := pcsutil.SliceStringToInt64(c.Args())
+						taskIDs := converter.SliceStringToInt64(c.Args())
 
 						if len(taskIDs) == 0 {
 							fmt.Printf("未找到合法的任务ID, task_id\n")
@@ -1014,7 +1017,7 @@ func main() {
 							return nil
 						}
 
-						taskIDs := pcsutil.SliceStringToInt64(c.Args())
+						taskIDs := converter.SliceStringToInt64(c.Args())
 
 						if len(taskIDs) == 0 {
 							fmt.Printf("未找到合法的任务ID, task_id\n")
@@ -1127,7 +1130,16 @@ func main() {
 					Name:  "showtime",
 					Usage: "显示当前时间(北京时间)",
 					Action: func(c *cli.Context) error {
-						fmt.Printf(pcsutil.BeijingTimeOption("printLog"))
+						fmt.Printf(pcstime.BeijingTimeOption("printLog"))
+						return nil
+					},
+				},
+				{
+					Name:  "getip",
+					Usage: "获取IP地址和IP位置",
+					Action: func(c *cli.Context) error {
+						ipAddr, location := getip.IPInfo()
+						fmt.Printf("IP地址: %s, IP位置: %s\n", ipAddr, location)
 						return nil
 					},
 				},

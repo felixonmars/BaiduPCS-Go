@@ -9,6 +9,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
@@ -25,7 +26,7 @@ import (
 	"time"
 )
 
-const requiredSliceLen = 256 * pcsutil.KB // 256 KB
+const requiredSliceLen = 256 * converter.KB // 256 KB
 
 type utask struct {
 	ListTask
@@ -362,7 +363,7 @@ func RunUpload(localPaths []string, savePath string) {
 			}
 		}
 
-		if task.uploadInfo.Length >= 128*pcsutil.MB {
+		if task.uploadInfo.Length >= 128*converter.MB {
 			fmt.Printf("[%d] 检测秒传中, 请稍候...\n", task.ID)
 		}
 
@@ -438,9 +439,9 @@ func RunUpload(localPaths []string, savePath string) {
 						}
 
 						fmt.Printf("\r[%d] ↑ %s/%s %s/s in %s ............", task.ID,
-							pcsutil.ConvertFileSize(v.Uploaded(), 2),
-							pcsutil.ConvertFileSize(v.TotalSize(), 2),
-							pcsutil.ConvertFileSize(v.SpeedsPerSecond(), 2),
+							converter.ConvertFileSize(v.Uploaded(), 2),
+							converter.ConvertFileSize(v.TotalSize(), 2),
+							converter.ConvertFileSize(v.SpeedsPerSecond(), 2),
 							v.TimeElapsed(),
 						)
 					}
@@ -465,7 +466,7 @@ func RunUpload(localPaths []string, savePath string) {
 	}
 
 	fmt.Printf("\n")
-	fmt.Printf("全部上传完毕, 总大小: %s\n", pcsutil.ConvertFileSize(totalSize))
+	fmt.Printf("全部上传完毕, 总大小: %s\n", converter.ConvertFileSize(totalSize))
 }
 
 // GetFileSum 获取文件的大小, md5, 前256KB切片的 md5, crc32

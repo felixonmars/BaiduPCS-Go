@@ -1,4 +1,4 @@
-package pcsutil
+package pcstime
 
 import (
 	"fmt"

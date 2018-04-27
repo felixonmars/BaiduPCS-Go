@@ -1,5 +1,5 @@
 // go test -test.bench=".*"
-package pcsutil
+package converter
 
 import (
 	"testing"

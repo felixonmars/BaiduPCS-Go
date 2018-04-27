@@ -8,11 +8,12 @@ import (
 	"github.com/iikira/baidu-tools"
 	"github.com/iikira/baidu-tools/tieba/tiebautil"
 	"strconv"
+	"time"
 )
 
 // NewUserInfoByBDUSS 检测BDUSS有效性, 同时获取百度详细信息
 func NewUserInfoByBDUSS(bduss string) (*Tieba, error) {
-	timestamp := pcsutil.BeijingTimeOption("")
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	post := map[string]string{
 		"bdusstoken":  bduss + "|null",
 		"channel_id":  "",

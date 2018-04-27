@@ -2,7 +2,7 @@ package downloader
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 )
 
 // DoDownload 执行下载
@@ -27,15 +27,15 @@ func DoDownload(url string, cfg Config) {
 				}
 
 				if v.TotalSize <= 0 {
-					ts = pcsutil.ConvertFileSize(v.Downloaded, 2)
+					ts = converter.ConvertFileSize(v.Downloaded, 2)
 				} else {
-					ts = pcsutil.ConvertFileSize(v.TotalSize, 2)
+					ts = converter.ConvertFileSize(v.TotalSize, 2)
 				}
 
 				fmt.Printf("\r↓ %s/%s %s/s in %s ............",
-					pcsutil.ConvertFileSize(v.Downloaded, 2),
+					converter.ConvertFileSize(v.Downloaded, 2),
 					ts,
-					pcsutil.ConvertFileSize(v.Speeds, 2),
+					converter.ConvertFileSize(v.Speeds, 2),
 					v.TimeElapsed,
 				)
 			}

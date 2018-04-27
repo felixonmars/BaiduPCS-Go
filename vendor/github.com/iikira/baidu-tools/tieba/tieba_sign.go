@@ -7,11 +7,13 @@ import (
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/baidu-tools/tieba/tiebautil"
 	"strconv"
+	"time"
+	"unsafe"
 )
 
 // TiebaSign 贴吧签到
 func (user *Tieba) TiebaSign(fid, name string) (errorCode, errorMsg string, bonusExp int, err error) {
-	timestamp := pcsutil.BeijingTimeOption("")
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	post := map[string]string{
 		"BDUSS":       user.Baidu.Auth.BDUSS,
 		"_client_id":  "wappc_" + timestamp + "150_607",
@@ -57,7 +59,7 @@ func (user *Tieba) TiebaSign(fid, name string) (errorCode, errorMsg string, bonu
 	}
 
 	if errorMsg == "" {
-		return errorCode, errorMsg, 0, fmt.Errorf("贴吧签到时发生错误, 未能找到错误原因, 请检查：" + pcsutil.ToString(body))
+		return errorCode, errorMsg, 0, fmt.Errorf("贴吧签到时发生错误, 未能找到错误原因, 请检查：" + *(*string)(unsafe.Pointer(&body)))
 	}
 
 	return errorCode, errorMsg, 0, nil

@@ -2,7 +2,7 @@ package uploader
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
 )
 
@@ -25,9 +25,9 @@ func DoUpload(uploadURL string, readerlen64 rio.ReaderLen64, checkFunc CheckFunc
 				}
 
 				fmt.Printf("\r ↑ %s/%s %s/s in %s ............",
-					pcsutil.ConvertFileSize(v.Uploaded(), 2),
-					pcsutil.ConvertFileSize(v.TotalSize(), 2),
-					pcsutil.ConvertFileSize(v.SpeedsPerSecond(), 2),
+					converter.ConvertFileSize(v.Uploaded(), 2),
+					converter.ConvertFileSize(v.TotalSize(), 2),
+					converter.ConvertFileSize(v.SpeedsPerSecond(), 2),
 					v.TimeElapsed(),
 				)
 			}

@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/iikira/Baidu-Login/bdcrypto"
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/json-iterator/go"
 	"net/http/cookiejar"
 	"regexp"
+	"strconv"
+	"time"
 )
 
 // BaiduClient 记录登录百度所使用的信息
@@ -64,7 +65,7 @@ func (bc *BaiduClient) BaiduLogin(username, password, verifycode, vcodestr strin
 		return lj
 	}
 
-	timestampStr := pcsutil.BeijingTimeOption("") + "773_357"
+	timestampStr := strconv.FormatInt(time.Now().Unix(), 10) + "773_357"
 	post := map[string]string{
 		"username":     username,
 		"password":     enpass,
@@ -145,7 +146,7 @@ func (bc *BaiduClient) VerifyCode(verifyType, token, vcode, u string) (lj *Login
 		"Upgrade-Insecure-Requests": "1",
 	}
 
-	timestampStr := pcsutil.BeijingTimeOption("") + "994"
+	timestampStr := strconv.FormatInt(time.Now().Unix(), 10) + "773_357" + "994"
 	url := fmt.Sprintf("https://wappass.baidu.com/passport/authwidget?v="+timestampStr+"&vcode=%s&token=%s&u=%s&action=check&type=%s&tpl=&skin=&clientfrom=&adapter=2&updatessn=&bindToSmsLogin=&isnew=&card_no=&finance=&callback=%s", vcode, token, u, verifyType, "jsonp1")
 	body, err := bc.Fetch("GET", url, nil, header)
 	if err != nil {

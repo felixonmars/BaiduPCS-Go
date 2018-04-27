@@ -51,7 +51,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
   * [6. 设置下载最大并发量](#6-设置下载最大并发量)
   * [7. 退出程序](#7-退出程序)
 - [常见问题](#常见问题)
-- [TODO](#TODO)
+- [TODO](#todo)
 - [交流反馈](#交流反馈)
 - [捐助](#捐助)
 

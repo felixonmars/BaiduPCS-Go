@@ -45,7 +45,7 @@
     "bdcrypto",
     "bdcrypto/ecb"
   ]
-  revision = "51a6b8ab01d21a81c2c89072784009336cab2f03"
+  revision = "ecf146973528ebe6cc85a677fd5781ec7f919b3a"
 
 [[projects]]
   branch = "master"
@@ -62,7 +62,7 @@
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "263d43ac4b3e0021f3ec5a584b4d563aeb3de877"
+  revision = "dcc8327d688d9e5696615c2386b90f7b641775c2"
 
 [[projects]]
   name = "github.com/json-iterator/go"
