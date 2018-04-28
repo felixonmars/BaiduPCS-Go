@@ -56,6 +56,18 @@ func (h *HTTPClient) Req(method string, urlStr string, post interface{}, header 
 				query.Set(k, value[k])
 			}
 			obody = strings.NewReader(query.Encode())
+		case map[string]interface{}:
+			query := url.Values{}
+			for k := range value {
+				query.Set(k, fmt.Sprint(value[k]))
+			}
+			obody = strings.NewReader(query.Encode())
+		case map[interface{}]interface{}:
+			query := url.Values{}
+			for k := range value {
+				query.Set(fmt.Sprint(k), fmt.Sprint(value[k]))
+			}
+			obody = strings.NewReader(query.Encode())
 		case string:
 			obody = strings.NewReader(value)
 		case []byte:

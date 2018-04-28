@@ -25,6 +25,16 @@ func init() {
 	PipeInput = (fileInfo.Mode() & os.ModeNamedPipe) == os.ModeNamedPipe
 }
 
+// ContainsString 检测字符串是否在字符串数组里
+func ContainsString(ss []string, s string) bool {
+	for k := range ss {
+		if strings.Compare(ss[k], s) == 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // GetURLCookieString 返回cookie字串
 func GetURLCookieString(urlString string, jar *cookiejar.Jar) string {
 	url, _ := url.Parse(urlString)

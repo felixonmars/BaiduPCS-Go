@@ -99,7 +99,12 @@ func main() {
 	---------------------------------------------------
 	前往 https://github.com/iikira/BaiduPCS-Go 以获取更多帮助信息!
 	前往 https://github.com/iikira/BaiduPCS-Go/releases 以获取程序更新信息!
-	---------------------------------------------------`
+	---------------------------------------------------
+
+	交流反馈:
+		提交Issue: https://github.com/iikira/BaiduPCS-Go/issues
+		邮箱: i@mail.iikira.com
+		QQ群: 178324706`
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
@@ -133,15 +138,116 @@ func main() {
 
 		// tab 自动补全命令
 		line.State.SetCompleter(func(line string) (s []string) {
-			cmds := cli.CommandsByName(app.Commands)
+			var (
+				lineArgs                   = args.GetArgs(line)
+				numArgs                    = len(lineArgs)
+				acceptCompleteFileCommands = []string{
+					"cd", "cp", "download", "ls", "meta", "mkdir", "mv", "rapidupload", "rm", "tree", "upload",
+				}
+				closed = strings.LastIndex(line, " ") == len(line)-1
+			)
 
-			for k := range cmds {
-				if !strings.HasPrefix(cmds[k].FullName(), line) {
+			for _, cmd := range app.Commands {
+				for _, name := range cmd.Names() {
+					if !strings.HasPrefix(name, line) {
+						continue
+					}
+
+					s = append(s, name+" ")
+				}
+			}
+
+			switch numArgs {
+			case 0:
+				return
+			case 1:
+				if !closed {
+					return
+				}
+			default:
+				thisCmd := app.Command(lineArgs[0])
+				if thisCmd == nil {
+					return
+				}
+
+				if !pcsutil.ContainsString(acceptCompleteFileCommands, thisCmd.FullName()) {
+					return
+				}
+			}
+
+			var (
+				activeUser = pcsconfig.Config.ActiveUser()
+				pcs        = pcsconfig.Config.ActiveUserBaiduPCS()
+				targetPath string
+			)
+
+			if !closed {
+				targetPath = lineArgs[numArgs-1]
+			}
+
+			var (
+				targetDir string
+				isAbs     = path.IsAbs(targetPath)
+				isDir     = strings.LastIndex(targetPath, "/") == len(targetPath)-1
+			)
+
+			if isAbs {
+				targetDir = path.Dir(targetPath)
+			} else {
+				targetDir = path.Join(activeUser.Workdir, targetPath)
+				if !isDir {
+					targetDir = path.Dir(targetDir)
+				}
+			}
+			filesPtr := pcscache.DirCache.Get(targetDir)
+
+			if filesPtr == nil {
+				files, err := pcs.FilesDirectoriesList(targetDir)
+				if err != nil {
+					return
+				}
+				pcscache.DirCache.Set(targetDir, &files)
+				filesPtr = &files
+			}
+
+			for _, file := range *filesPtr {
+				if file == nil {
 					continue
 				}
-				s = append(s, cmds[k].FullName()+" ")
+
+				var (
+					cleanedPath string
+					appendLine  string
+				)
+
+				if isAbs {
+					cleanedPath = file.Path
+				} else {
+					cleanedPath = strings.TrimPrefix(file.Path, path.Clean(activeUser.Workdir+"/"))
+				}
+
+				// 已经有的情况
+				if !closed {
+					if !strings.HasPrefix(cleanedPath, targetPath) {
+						continue
+					}
+					appendLine = strings.Join(append(lineArgs[:len(lineArgs)-1], cleanedPath), " ")
+					goto handle
+				}
+				// 没有的情况
+				appendLine = strings.Join(append(lineArgs, cleanedPath), " ")
+				goto handle
+
+			handle:
+				if file.Isdir {
+					s = append(s, appendLine+"/")
+					continue
+				}
+				s = append(s, appendLine+" ")
+				continue
 			}
-			return s
+
+			return
 		})
 
 		for {

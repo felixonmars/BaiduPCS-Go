@@ -265,7 +265,7 @@ func (fl FileDirectoryList) Count() (fileN, directoryN int64) {
 // AllFilePaths 返回所有的网盘路径, 包括子目录
 func (fl FileDirectoryList) AllFilePaths() (pcspaths []string) {
 	fN, dN := fl.Count()
-	pcspaths = make([]string, fN+dN)
+	pcspaths = make([]string, 0, fN+dN)
 	for k := range fl {
 		if fl[k] == nil {
 			continue
