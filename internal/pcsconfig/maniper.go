@@ -13,7 +13,12 @@ const (
 func (c *PCSConfig) manipUser(op string, baiduBase *BaiduBase) (*Baidu, error) {
 	// empty baiduBase
 	if baiduBase == nil || (baiduBase.UID == 0 && baiduBase.Name == "") {
-		return &Baidu{}, nil
+		switch op {
+		case opGet:
+			return &Baidu{}, nil
+		default:
+			return nil, ErrBaiduUserNotFound
+		}
 	}
 	if len(c.baiduUserList) == 0 {
 		return nil, ErrNoSuchBaiduUser

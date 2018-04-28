@@ -9,6 +9,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	_ "github.com/iikira/BaiduPCS-Go/pcsinit"
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
+	"github.com/iikira/BaiduPCS-Go/pcspath"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
@@ -185,6 +186,15 @@ func main() {
 				targetPath = lineArgs[numArgs-1]
 			}
 
+			switch {
+			case strings.HasSuffix(targetPath, "."):
+				s = append(s, line+"/")
+				return
+			case strings.HasSuffix(targetPath, ".."):
+				s = append(s, line+"/")
+				return
+			}
+
 			var (
 				targetDir string
 				isAbs     = path.IsAbs(targetPath)
@@ -210,32 +220,35 @@ func main() {
 				filesPtr = &files
 			}
 
+			// fmt.Println("-", targetDir, targetPath, "-")
+
 			for _, file := range *filesPtr {
 				if file == nil {
 					continue
 				}
 
 				var (
-					cleanedPath string
-					appendLine  string
+					appendLine string
 				)
-
-				if isAbs {
-					cleanedPath = file.Path
-				} else {
-					cleanedPath = strings.TrimPrefix(file.Path, path.Clean(activeUser.Workdir+"/"))
-				}
 
 				// 已经有的情况
 				if !closed {
-					if !strings.HasPrefix(cleanedPath, targetPath) {
+					if !strings.HasPrefix(file.Path, path.Clean(path.Join(targetDir, path.Base(targetPath)))) {
+						if path.Base(targetDir) == path.Base(targetPath) {
+							appendLine = strings.Join(append(lineArgs[:numArgs-1], pcspath.EscapeBlank(path.Join(targetPath, file.Filename))), " ")
+							goto handle
+						}
+						// fmt.Println(file.Path, targetDir, targetPath)
 						continue
 					}
-					appendLine = strings.Join(append(lineArgs[:len(lineArgs)-1], cleanedPath), " ")
+					// fmt.Println(path.Clean(path.Join(path.Dir(targetPath), file.Filename)), targetPath, file.Filename)
+					pcspath.EscapeStringsBlank(lineArgs[:numArgs-1])
+					appendLine = strings.Join(append(lineArgs[:numArgs-1], pcspath.EscapeBlank(path.Clean(path.Join(path.Dir(targetPath), file.Filename)))), " ")
 					goto handle
 				}
 				// 没有的情况
-				appendLine = strings.Join(append(lineArgs, cleanedPath), " ")
+				pcspath.EscapeStringsBlank(lineArgs)
+				appendLine = strings.Join(append(lineArgs, pcspath.EscapeBlank(file.Filename)), " ")
 				goto handle
 
 			handle:
@@ -958,10 +971,10 @@ func main() {
 		{
 			Name:      "sumfile",
 			Aliases:   []string{"sf"},
-			Usage:     "获取文件的秒传信息",
+			Usage:     "获取本地文件的秒传信息",
 			UsageText: app.Name + " sumfile <本地文件的路径1> <本地文件的路径2> ...",
 			Description: `
-	获取文件的大小, md5, 前256KB切片的md5, crc32, 可用于秒传文件.
+	获取本地文件的大小, md5, 前256KB切片的md5, crc32, 可用于秒传文件.
 
 	示例:
 

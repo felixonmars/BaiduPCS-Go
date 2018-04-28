@@ -67,3 +67,38 @@ func SplitAll(pcspath string) (elem []string) {
 
 	return
 }
+
+func EscapeBlank(pcspath string) string {
+	if !strings.Contains(pcspath, " ") {
+		return pcspath
+	}
+
+	var (
+		builder = &strings.Builder{}
+		isSlash bool
+	)
+	for _, s := range pcspath {
+		switch s {
+		case '\\':
+			isSlash = !isSlash
+			if !isSlash {
+				builder.WriteRune('\\')
+			}
+			continue
+		case ' ':
+			builder.WriteString("\\ ")
+			isSlash = false
+			continue
+		default:
+			isSlash = false
+			builder.WriteRune(s)
+		}
+	}
+	return builder.String()
+}
+
+func EscapeStringsBlank(ss []string) {
+	for k := range ss {
+		ss[k] = EscapeBlank(ss[k])
+	}
+}
