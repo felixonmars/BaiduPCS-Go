@@ -165,15 +165,15 @@ func main() {
 				if !closed {
 					return
 				}
-			default:
-				thisCmd := app.Command(lineArgs[0])
-				if thisCmd == nil {
-					return
-				}
+			}
 
-				if !pcsutil.ContainsString(acceptCompleteFileCommands, thisCmd.FullName()) {
-					return
-				}
+			thisCmd := app.Command(lineArgs[0])
+			if thisCmd == nil {
+				return
+			}
+
+			if !pcsutil.ContainsString(acceptCompleteFileCommands, thisCmd.FullName()) {
+				return
 			}
 
 			var (

@@ -33,8 +33,8 @@ ArmBuild() {
     echo "Building $1..."
     export GOOS=$2 GOARCH=$3 GOARM=$4 CGO_ENABLED=1
     go build -ldflags '-s -w -linkmode=external -extldflags=-pie' -o "$output/$1/$name"
-    if (( $2 = "darwin" )) && (( $3 = "arm" || $3 = "arm64" ));then
-    echo 1;
+    if [ $2 = "darwin" ] && [ $3 = "arm" -o $3 = "arm64" ];then
+        cp Info.plist "$output/$1"
         ldid -S "$output/$1/$name"
     fi
 
