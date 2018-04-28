@@ -1,3 +1,4 @@
+// Package converter 格式, 类型转换包
 package converter
 
 import (

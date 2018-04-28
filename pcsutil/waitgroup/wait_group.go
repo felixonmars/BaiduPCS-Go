@@ -1,3 +1,4 @@
+// Package waitgroup sync.WaitGroup extension
 package waitgroup
 
 import "sync"
@@ -25,7 +26,7 @@ func NewWaitGroup(parallel int) (w *WaitGroup) {
 	return
 }
 
-// AddDelta 在 sync.WaitGroup 的基础上, 新增线程控制功能
+// AddDelta sync.WaitGroup.Add(1)
 func (w *WaitGroup) AddDelta() {
 	if w.p != nil {
 		w.p <- struct{}{}
@@ -34,7 +35,7 @@ func (w *WaitGroup) AddDelta() {
 	w.wg.Add(1)
 }
 
-// Done 在 sync.WaitGroup 的基础上, 新增线程控制功能
+// Done sync.WaitGroup.Done()
 func (w *WaitGroup) Done() {
 	w.wg.Done()
 

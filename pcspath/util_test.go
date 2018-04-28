@@ -6,7 +6,8 @@ import (
 )
 
 func TestEscapeBlank(t *testing.T) {
-	fmt.Println(EscapeBlank("asdfjalsfdjlsf"))
-	fmt.Println(EscapeBlank("asdfjal\\\\\\ sfdj lsf"))
-	fmt.Println(EscapeBlank("asdfjal\\\\ sfdj lsf"))
+	fmt.Println(Escape("asdfj(alsf)djlsf"))
+	fmt.Println(Escape("asdfjal\\\\\\ sfdj lsf"))
+	fmt.Println(Escape("asdfjal\\\\ sfdj lsf"))
+	fmt.Println(Escape("asdfjal\\ s (asdfa) [asf] fdj lsf"))
 }

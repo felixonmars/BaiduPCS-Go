@@ -1,6 +1,7 @@
 # BaiduPCS-Go 百度网盘客户端
 
 [![Build status](https://ci.appveyor.com/api/projects/status/nhx92nqyrfq9su7y?svg=true)](https://ci.appveyor.com/project/iikira/baidupcs-go)
+[![GoDoc](https://godoc.org/github.com/iikira/BaiduPCS-Go?status.svg)](https://godoc.org/github.com/iikira/BaiduPCS-Go)
 
 仿 Linux 文件处理命令的百度网盘命令行客户端.
 
@@ -63,9 +64,9 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 百度帐号多用户支持;
 
-通配符匹配网盘路径, [通配符_百度百科](https://baike.baidu.com/item/通配符);
+通配符匹配网盘路径和 Tab 自动补齐命令和路径, [通配符_百度百科](https://baike.baidu.com/item/通配符);
 
-[下载](#下载文件或目录)网盘内文件, 支持多个文件或目录下载, 支持断点续传和高并发下载;
+[下载](#下载文件或目录)网盘内文件, 支持多个文件或目录下载, 支持断点续传和单文件并行下载;
 
 [上传](#上传文件或目录)2GB以内的文件, 支持多个文件或目录上传;
 
@@ -76,7 +77,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 # 下载/运行 说明
 
-Go语言程序, 可直接下载使用, [点此查看发布页面 / 下载汇总](https://github.com/iikira/BaiduPCS-Go/releases).
+Go语言程序, 可直接在[发布页](https://github.com/iikira/BaiduPCS-Go/releases)下载使用.
 
 如果程序运行时输出乱码, 请检查下终端的编码方式是否为 `UTF-8`.
 
@@ -104,7 +105,7 @@ cli交互模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`, 如果登录
 
 > Android / iOS 移动设备操作比较麻烦, 本人不建议在移动设备上使用本程序.
 
-安卓, 建议使用软件 [Termux](https://termux.com) 或 [NeoTerm](https://github.com/NeoTerm/NeoTerm/releases) 或 终端模拟器, 以提供终端环境.
+安卓, 建议使用 [Termux](https://termux.com) 或 [NeoTerm](https://github.com/NeoTerm/NeoTerm) 或 终端模拟器, 以提供终端环境.
 
 示例: [Android 运行本 BaiduPCS-Go 程序参考示例](https://github.com/iikira/BaiduPCS-Go/wiki/Android-运行本-BaiduPCS-Go-程序参考示例), 有兴趣的可以参考一下.
 
@@ -120,7 +121,7 @@ cli交互模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`, 如果登录
 
 直接运行程序时, 未带任何其他参数, 则程序进入cli交互模式, 运行以下命令时, 要把命令的前缀 `BaiduPCS-Go` 去掉!
 
-cli交互模式已支持按tab键自动补全命令, 后续会添加更多的自动补全规则.
+cli交互模式已支持按tab键自动补全命令和路径.
 
 ## 登录百度帐号
 

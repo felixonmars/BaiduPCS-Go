@@ -1,3 +1,4 @@
+// Package getip 获取 ip 信息包
 package getip
 
 import (

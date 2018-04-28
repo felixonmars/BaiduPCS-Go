@@ -68,8 +68,9 @@ func SplitAll(pcspath string) (elem []string) {
 	return
 }
 
-func EscapeBlank(pcspath string) string {
-	if !strings.Contains(pcspath, " ") {
+// Escape 转义字符串的空格, 小括号, 中括号
+func Escape(pcspath string) string {
+	if !strings.ContainsAny(pcspath, " []()") {
 		return pcspath
 	}
 
@@ -85,8 +86,9 @@ func EscapeBlank(pcspath string) string {
 				builder.WriteRune('\\')
 			}
 			continue
-		case ' ':
-			builder.WriteString("\\ ")
+		case ' ', '[', ']', '(', ')':
+			builder.WriteString("\\")
+			builder.WriteRune(s)
 			isSlash = false
 			continue
 		default:
@@ -97,8 +99,9 @@ func EscapeBlank(pcspath string) string {
 	return builder.String()
 }
 
-func EscapeStringsBlank(ss []string) {
+// EscapeStrings 转义字符串数组所有元素的空格, 小括号, 中括号
+func EscapeStrings(ss []string) {
 	for k := range ss {
-		ss[k] = EscapeBlank(ss[k])
+		ss[k] = Escape(ss[k])
 	}
 }

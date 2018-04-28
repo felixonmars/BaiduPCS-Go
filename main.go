@@ -32,7 +32,7 @@ import (
 
 var (
 	// Version 版本号
-	Version = "v3.3.3"
+	Version = "v3.5"
 
 	historyFilePath = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
@@ -184,6 +184,9 @@ func main() {
 
 			if !closed {
 				targetPath = lineArgs[numArgs-1]
+				pcspath.EscapeStrings(lineArgs[:numArgs-1]) // 转义
+			} else {
+				pcspath.EscapeStrings(lineArgs)
 			}
 
 			switch {
@@ -235,20 +238,18 @@ func main() {
 				if !closed {
 					if !strings.HasPrefix(file.Path, path.Clean(path.Join(targetDir, path.Base(targetPath)))) {
 						if path.Base(targetDir) == path.Base(targetPath) {
-							appendLine = strings.Join(append(lineArgs[:numArgs-1], pcspath.EscapeBlank(path.Join(targetPath, file.Filename))), " ")
+							appendLine = strings.Join(append(lineArgs[:numArgs-1], pcspath.Escape(path.Join(targetPath, file.Filename))), " ")
 							goto handle
 						}
 						// fmt.Println(file.Path, targetDir, targetPath)
 						continue
 					}
 					// fmt.Println(path.Clean(path.Join(path.Dir(targetPath), file.Filename)), targetPath, file.Filename)
-					pcspath.EscapeStringsBlank(lineArgs[:numArgs-1])
-					appendLine = strings.Join(append(lineArgs[:numArgs-1], pcspath.EscapeBlank(path.Clean(path.Join(path.Dir(targetPath), file.Filename)))), " ")
+					appendLine = strings.Join(append(lineArgs[:numArgs-1], pcspath.Escape(path.Clean(path.Join(path.Dir(targetPath), file.Filename)))), " ")
 					goto handle
 				}
 				// 没有的情况
-				pcspath.EscapeStringsBlank(lineArgs)
-				appendLine = strings.Join(append(lineArgs, pcspath.EscapeBlank(file.Filename)), " ")
+				appendLine = strings.Join(append(lineArgs, pcspath.Escape(file.Filename)), " ")
 				goto handle
 
 			handle:
