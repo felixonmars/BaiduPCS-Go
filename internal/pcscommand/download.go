@@ -36,6 +36,7 @@ type DownloadOption struct {
 	IsTest               bool
 	IsPrintStatus        bool
 	IsExecutedPermission bool
+	IsOverwrite          bool
 	SaveTo               string
 	Parallel             int
 }
@@ -304,7 +305,7 @@ func RunDownload(paths []string, option DownloadOption) {
 
 		fmt.Printf("[%d] 准备下载: %s\n", task.ID, task.path)
 
-		if !option.IsTest && fileExist(task.savePath) {
+		if !option.IsTest && !option.IsOverwrite && fileExist(task.savePath) {
 			fmt.Printf("[%d] 文件已经存在: %s, 跳过...\n", task.ID, task.savePath)
 			continue
 		}

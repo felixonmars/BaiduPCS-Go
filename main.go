@@ -66,11 +66,13 @@ var (
 )
 
 func init() {
+	pcsutil.ChWorkDir()
+
 	err := pcsconfig.Config.Init()
 	switch err {
 	case nil:
 	case pcsconfig.ErrConfigFileNoPermission, pcsconfig.ErrConfigContentsParseError:
-		fmt.Printf("FATAL ERROR: config file error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "FATAL ERROR: config file error: %s\n", err)
 		os.Exit(1)
 	default:
 		fmt.Printf("WARNING: config init error: %s\n", err)
@@ -817,6 +819,7 @@ func main() {
 					IsTest:               c.Bool("test"),
 					IsPrintStatus:        c.Bool("status"),
 					IsExecutedPermission: c.Bool("x") && runtime.GOOS != "windows",
+					IsOverwrite:          c.Bool("ow"),
 					SaveTo:               saveTo,
 					Parallel:             c.Int("p"),
 				})
@@ -826,6 +829,10 @@ func main() {
 				cli.BoolFlag{
 					Name:  "test",
 					Usage: "测试下载, 此操作不会保存文件到本地",
+				},
+				cli.BoolFlag{
+					Name:  "ow",
+					Usage: "overwrite, 覆盖已存在的文件",
 				},
 				cli.BoolFlag{
 					Name:  "status",

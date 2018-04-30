@@ -1,28 +1,66 @@
 package pcsutil
 
 import (
+	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/kardianos/osext"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
-// ExecutablePath 获取程序所在目录
-func ExecutablePath() string {
-	folderPath, err := osext.ExecutableFolder()
+// IsIPhoneOS 是否为苹果移动设备
+func IsIPhoneOS() bool {
+	if runtime.GOOS == "darwin" && (runtime.GOARCH == "arm" || runtime.GOARCH == "arm64") {
+		_, err := os.Stat("Info.plist")
+		return err == nil
+	}
+	return false
+}
+
+// ChWorkDir 切换回工作目录
+func ChWorkDir() {
+	if !IsIPhoneOS() {
+		return
+	}
+
+	dir, err := filepath.Abs("")
 	if err != nil {
-		folderPath, err = filepath.Abs(filepath.Dir(os.Args[0]))
+		return
+	}
+
+	subPath := filepath.Dir(os.Args[0])
+	os.Chdir(strings.TrimSuffix(dir, subPath))
+}
+
+// Executable 获取程序所在的真实目录或真实相对路径
+func Executable() string {
+	executablePath, err := osext.Executable()
+	if err != nil {
+		pcsverbose.Verbosef("DEBUG: osext.Executable: %s\n", err)
+		executablePath, err = filepath.Abs(filepath.Dir(os.Args[0]))
 		if err != nil {
-			folderPath = filepath.Dir(os.Args[0])
+			pcsverbose.Verbosef("DEBUG: filepath.Abs: %s\n", err)
+			executablePath = filepath.Dir(os.Args[0])
 		}
 	}
 
-	// 读取链接
-	linkFolderPath, err := filepath.EvalSymlinks(folderPath)
-	if err != nil {
-		return folderPath
+	if IsIPhoneOS() {
+		executablePath = filepath.Join(strings.TrimSuffix(executablePath, os.Args[0]), filepath.Base(os.Args[0]))
 	}
-	return linkFolderPath
+
+	// 读取链接
+	linkedExecutablePath, err := filepath.EvalSymlinks(executablePath)
+	if err != nil {
+		pcsverbose.Verbosef("DEBUG: filepath.EvalSymlinks: %s\n", err)
+		return executablePath
+	}
+	return linkedExecutablePath
+}
+
+// ExecutablePath 获取程序所在目录
+func ExecutablePath() string {
+	return filepath.Dir(Executable())
 }
 
 // ExecutablePathJoin 返回程序所在目录的子目录
