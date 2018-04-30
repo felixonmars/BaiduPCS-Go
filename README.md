@@ -3,7 +3,7 @@
 [![Build status](https://ci.appveyor.com/api/projects/status/nhx92nqyrfq9su7y?svg=true)](https://ci.appveyor.com/project/iikira/baidupcs-go)
 [![GoDoc](https://godoc.org/github.com/iikira/BaiduPCS-Go?status.svg)](https://godoc.org/github.com/iikira/BaiduPCS-Go)
 
-仿 Linux 文件处理命令的百度网盘命令行客户端.
+仿 Linux shell 文件处理命令的百度网盘命令行客户端.
 
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
 
@@ -83,7 +83,7 @@ Go语言程序, 可直接在[发布页](https://github.com/iikira/BaiduPCS-Go/re
 
 使用本程序之前, 建议学习一些 linux 基础知识 和 基础命令.
 
-如果未带任何参数运行程序, 程序将会进入仿Linux的cli交互模式, 可直接运行相关命令.
+如果未带任何参数运行程序, 程序将会进入仿Linux shell系统用户界面的cli交互模式, 可直接运行相关命令.
 
 cli交互模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`, 如果登录了百度帐号则格式为 `BaiduPCS-Go:<工作目录> <百度ID>$ `
 
@@ -103,7 +103,7 @@ cli交互模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`, 如果登录
 
 ## Android / iOS
 
-> Android / iOS 移动设备操作比较麻烦, 本人不建议在移动设备上使用本程序.
+> Android / iOS 移动设备操作比较麻烦, 不建议在移动设备上使用本程序.
 
 安卓, 建议使用 [Termux](https://termux.com) 或 [NeoTerm](https://github.com/NeoTerm/NeoTerm) 或 终端模拟器, 以提供终端环境.
 
@@ -503,7 +503,7 @@ BaiduPCS-Go config set -savedir D:/Downloads
 # 设置下载最大并发量为 150
 BaiduPCS-Go config set -max_parallel 150
 
-# 组合设置,
+# 组合设置
 BaiduPCS-Go config set -max_parallel 150 -savedir D:/Downloads
 ```
 
@@ -516,7 +516,7 @@ BaiduPCS-Go tool
 
 # 初级使用教程
 
-新手建议: **双击运行程序**, 进入仿 Linux 的 cli 交互模式;
+新手建议: **双击运行程序**, 进入仿 Linux shell 的 cli 交互模式;
 
 cli交互模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`, 如果登录了百度帐号则格式为 `BaiduPCS-Go:<工作目录> <百度ID>$ `
 
