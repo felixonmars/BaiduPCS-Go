@@ -107,9 +107,11 @@ cli交互模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`, 如果登录
 
 安卓, 建议使用 [Termux](https://termux.com) 或 [NeoTerm](https://github.com/NeoTerm/NeoTerm) 或 终端模拟器, 以提供终端环境.
 
-示例: [Android 运行本 BaiduPCS-Go 程序参考示例](https://github.com/iikira/BaiduPCS-Go/wiki/Android-运行本-BaiduPCS-Go-程序参考示例), 有兴趣的可以参考一下.
+示例: [Android 运行本项目程序参考示例](https://github.com/iikira/BaiduPCS-Go/wiki/Android-运行本项目程序参考示例), 有兴趣的可以参考一下.
 
 苹果iOS, 需要越狱, 在 Cydia 搜索下载并安装 MobileTerminal, 或者其他提供终端环境的软件.
+
+示例: [iOS 运行本项目程序参考示例](https://github.com/iikira/BaiduPCS-Go/wiki/iOS-运行本项目程序参考示例), 有兴趣的可以参考一下.
 
 具体使用方法请参见 [命令列表及说明](#命令列表及说明) 和 [初级使用教程](#初级使用教程).
 
