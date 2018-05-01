@@ -145,7 +145,7 @@ func main() {
 				lineArgs                   = args.GetArgs(line)
 				numArgs                    = len(lineArgs)
 				acceptCompleteFileCommands = []string{
-					"cd", "cp", "download", "ls", "meta", "mkdir", "mv", "rapidupload", "rm", "tree", "upload",
+					"cd", "cp", "download", "export", "ls", "meta", "mkdir", "mv", "rapidupload", "rm", "tree", "upload",
 				}
 				closed = strings.LastIndex(line, " ") == len(line)-1
 			)
@@ -192,10 +192,10 @@ func main() {
 			}
 
 			switch {
-			case strings.HasSuffix(targetPath, "."):
+			case targetPath == "." || strings.HasSuffix(targetPath, "/."):
 				s = append(s, line+"/")
 				return
-			case strings.HasSuffix(targetPath, ".."):
+			case targetPath == ".." || strings.HasSuffix(targetPath, "/.."):
 				s = append(s, line+"/")
 				return
 			}
@@ -1028,6 +1028,43 @@ func main() {
 				}
 
 				return nil
+			},
+		},
+		{
+			Name:      "export",
+			Aliases:   []string{"ep"},
+			Usage:     "导出文件/目录",
+			UsageText: app.Name + " export <文件/目录1> <文件/目录2> ...",
+			Description: `
+	导出网盘内的文件或目录, 原理为秒传文件, 此操作会生成导出文件或目录的命令.
+
+	示例:
+
+	导出当前工作目录:
+	BaiduPCS-Go export
+
+	导出所有文件和目录, 并设置新的根目录为 /root 
+	BaiduPCS-Go export -root=/root /
+
+	导出 /我的资源
+	BaiduPCS-Go export /我的资源
+`,
+			Category: "百度网盘",
+			Before:   reloadFn,
+			Action: func(c *cli.Context) error {
+				pcspaths := c.Args()
+				if len(pcspaths) == 0 {
+					pcspaths = []string{"."}
+				}
+
+				pcscommand.RunExport(pcspaths, c.String("root"))
+				return nil
+			},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "root",
+					Usage: "设置要导出文件或目录的根路径, 可以是相对路径",
+				},
 			},
 		},
 		{

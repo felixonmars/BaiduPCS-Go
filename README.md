@@ -31,6 +31,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
   * [上传文件/目录](#上传文件目录)
   * [手动秒传文件](#手动秒传文件)
   * [获取本地文件的秒传信息](#获取本地文件的秒传信息)
+  * [导出文件/目录](#导出文件目录)
   * [创建目录](#创建目录)
   * [删除文件/目录](#删除文件目录)
   * [拷贝文件/目录](#拷贝文件目录)
@@ -362,6 +363,26 @@ BaiduPCS-Go sf <本地文件的路径>
 ```
 # 获取 C:\Users\Administrator\Desktop\1.mp4 的秒传信息
 BaiduPCS-Go sumfile C:/Users/Administrator/Desktop/1.mp4
+```
+
+## 导出文件/目录
+```
+BaiduPCS-Go export <文件/目录1> <文件/目录2> ...
+BaiduPCS-Go ep <文件/目录1> <文件/目录2> ...
+```
+
+导出网盘内的文件或目录, 原理为秒传文件, 此操作会生成导出文件或目录的命令.
+
+#### 例子:
+```
+# 导出当前工作目录:
+BaiduPCS-Go export
+
+# 导出所有文件和目录, 并设置新的根目录为 `/root`
+BaiduPCS-Go export -root=/root /
+
+# 导出 `/我的资源`
+BaiduPCS-Go export /我的资源
 ```
 
 ## 创建目录

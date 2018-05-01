@@ -153,6 +153,21 @@ func (pcs *BaiduPCS) FilesDirectoriesList(path string) (data FileDirectoryList, 
 		return nil, jsonData.ErrInfo
 	}
 
+	// 可能是一个文件
+	if len(jsonData.List) == 0 {
+		var fd *FileDirectory
+		fd, pcsError = pcs.FilesDirectoriesMeta(path)
+		if pcsError != nil {
+			return
+		}
+
+		if fd.Isdir {
+			return
+		}
+
+		return FileDirectoryList{fd}, nil
+	}
+
 	data = make(FileDirectoryList, len(jsonData.List))
 	for k := range jsonData.List {
 		data[k] = jsonData.List[k].convert()
