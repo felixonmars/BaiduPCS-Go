@@ -138,16 +138,12 @@ func (c *PCSConfig) SetAppID(appID int) {
 
 // SetCacheSize 设置cache_size, 下载缓存
 func (c *PCSConfig) SetCacheSize(cacheSize int) {
-	if c.cacheSize > 1024 {
-		c.cacheSize = cacheSize
-	}
+	c.cacheSize = cacheSize
 }
 
 // SetMaxParallel 设置max_parallel, 下载最大并发量
 func (c *PCSConfig) SetMaxParallel(maxParallel int) {
-	if c.maxParallel > 0 {
-		c.maxParallel = maxParallel
-	}
+	c.maxParallel = maxParallel
 }
 
 // SetUserAgent 设置User-Agent

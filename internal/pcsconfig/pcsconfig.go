@@ -112,6 +112,11 @@ func (c *PCSConfig) init() error {
 	}
 
 	// 载入配置
+	// 如果 activeUser 已初始化, 则跳过
+	if c.activeUser != nil && c.activeUser.UID == c.baiduActiveUID {
+		return nil
+	}
+
 	c.activeUser, err = c.GetBaiduUser(&BaiduBase{
 		UID: c.baiduActiveUID,
 	})
