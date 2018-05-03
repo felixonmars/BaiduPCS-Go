@@ -506,11 +506,33 @@ BaiduPCS-Go offlinedl query 12345
 BaiduPCS-Go offlinedl cancel 12345
 ```
 
+## 显示程序环境变量
+```
+BaiduPCS-Go env
+```
+
+BAIDUPCS_GO_CONFIG_DIR: 为具体的存储目录,
+
+BAIDUPCS_GO_VERBOSE: 是否启用调试.
+
 ## 显示和修改程序配置项
 ```
+# 显示配置
 BaiduPCS-Go config
+
+# 设置配置
 BaiduPCS-Go config set
 ```
+
+注意: v3.5 以后, 程序对配置文件储存路径的寻找做了调整, 配置文件所在的目录可以是程序本身所在目录, 也可以是家目录.
+
+配置文件所在的目录为家目录的情况:
+
+Windows: `%APPDATA%\BaiduPCS-Go`
+
+其他操作系统: `$HOME/.config/BaiduPCS-Go`
+
+可通过设置环境变量 `BAIDUPCS_GO_CONFIG_DIR`, 指定配置文件存放的目录.
 
 #### 例子
 ```

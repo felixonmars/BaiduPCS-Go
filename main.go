@@ -34,7 +34,7 @@ var (
 	// Version 版本号
 	Version = "v3.5"
 
-	historyFilePath = pcsutil.ExecutablePathJoin("pcs_command_history.txt")
+	historyFilePath = filepath.Join(pcsconfig.GetConfigDir(), "pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
 		err := pcsconfig.Config.Reload()
 		if err != nil {
@@ -113,7 +113,7 @@ func main() {
 		cli.BoolFlag{
 			Name:        "verbose",
 			Usage:       "启用调试",
-			EnvVar:      "BAIDUPCS_GO_VERBOSE",
+			EnvVar:      pcsverbose.EnvVerbose,
 			Destination: &pcsverbose.IsVerbose,
 		},
 	}
@@ -125,9 +125,11 @@ func main() {
 		cli.ShowAppHelp(c)
 		pcsverbose.Verbosef("VERBOSE: 这是一条调试信息\n\n")
 
-		line := pcsliner.NewLiner()
+		var (
+			err  error
+			line = pcsliner.NewLiner()
+		)
 
-		var err error
 		line.History, err = pcsliner.NewLineHistory(historyFilePath)
 		if err != nil {
 			fmt.Printf("警告: 读取历史命令文件错误, %s\n", err)
@@ -350,6 +352,29 @@ func main() {
 			},
 		},
 		{
+			Name:     "env",
+			Usage:    "显示程序环境变量",
+			Category: "其他",
+			Action: func(c *cli.Context) error {
+				envStr := "%s=\"%s\"\n"
+				envVar, ok := os.LookupEnv(pcsverbose.EnvVerbose)
+				if ok {
+					fmt.Printf(envStr, pcsverbose.EnvVerbose, envVar)
+				} else {
+					fmt.Printf(envStr, pcsverbose.EnvVerbose, "0")
+				}
+
+				envVar, ok = os.LookupEnv(pcsconfig.EnvConfigDir)
+				if ok {
+					fmt.Printf(envStr, pcsconfig.EnvConfigDir, envVar)
+				} else {
+					fmt.Printf(envStr, pcsconfig.EnvConfigDir, pcsconfig.GetConfigDir())
+				}
+
+				return nil
+			},
+		},
+		{
 			Name:  "login",
 			Usage: "登录百度账号",
 			Description: `
@@ -408,9 +433,8 @@ func main() {
 			},
 		},
 		{
-			Name:    "su",
-			Aliases: []string{"chuser"}, // 兼容旧版本
-			Usage:   "切换百度帐号",
+			Name:  "su",
+			Usage: "切换百度帐号",
 			Description: `
 	切换已登录的百度帐号:
 	如果运行该条命令没有提供参数, 程序将会列出所有的百度帐号, 供选择切换.
