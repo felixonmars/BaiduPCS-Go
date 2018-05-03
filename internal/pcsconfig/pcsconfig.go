@@ -252,14 +252,14 @@ func GetConfigDir() string {
 		dataPath, ok := os.LookupEnv("APPDATA")
 		if !ok {
 			pcsConfigVerbose.Warn("Environment APPDATA not set")
-			return configDir
+			return oldConfigDir
 		}
 		return filepath.Join(dataPath, "BaiduPCS-Go")
 	default:
 		dataPath, ok := os.LookupEnv("HOME")
 		if !ok {
 			pcsConfigVerbose.Warn("Environment HOME not set")
-			return configDir
+			return oldConfigDir
 		}
 		configDir = filepath.Join(dataPath, ".config", "BaiduPCS-Go")
 
