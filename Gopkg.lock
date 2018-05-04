@@ -104,7 +104,7 @@
   branch = "master"
   name = "github.com/peterh/liner"
   packages = ["."]
-  revision = "6106ee4fe3e8435f18cd10e34557e5e50f0e792a"
+  revision = "80ce870644db1b043e8dc2cf836bde5c347e2701"
 
 [[projects]]
   branch = "master"
