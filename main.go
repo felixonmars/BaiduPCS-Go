@@ -1324,10 +1324,21 @@ func main() {
 				},
 				{
 					Name:  "getip",
-					Usage: "获取IP地址和IP位置",
+					Usage: "获取IP地址",
 					Action: func(c *cli.Context) error {
-						ipAddr, location := getip.IPInfo()
-						fmt.Printf("IP地址: %s, IP位置: %s\n", ipAddr, location)
+						fmt.Printf("内部IP地址: \n")
+						for _, address := range pcsutil.ListAddresses() {
+							fmt.Printf("%s\n", address)
+						}
+						fmt.Printf("\n")
+
+						ipAddr, err := getip.IPInfo(pcsconfig.Config.EnableHTTPS())
+						if err != nil {
+							fmt.Printf("获取外部IP错误: %s\n", err)
+							return nil
+						}
+
+						fmt.Printf("外部IP地址: %s\n", ipAddr)
 						return nil
 					},
 				},
