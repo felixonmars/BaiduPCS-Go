@@ -8,7 +8,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
-	"github.com/iikira/BaiduPCS-Go/requester/rio"
+	"io"
 	"net/http/cookiejar"
 	"os"
 	"path/filepath"
@@ -54,10 +54,10 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 		setupHTTPClient(h)
 
 		var (
-			file          *os.File
-			writeCloserAt rio.WriteCloserAt
-			err           error
-			exitChan      chan struct{}
+			file     *os.File
+			writerAt io.WriterAt
+			err      error
+			exitChan chan struct{}
 		)
 
 		if !cfg.IsTest {
@@ -85,11 +85,11 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 
 			// 空指针和空接口不等价
 			if file != nil {
-				writeCloserAt = file
+				writerAt = file
 			}
 		}
 
-		download := downloader.NewDownloader(downloadURL, writeCloserAt, cfg)
+		download := downloader.NewDownloader(downloadURL, writerAt, cfg)
 		download.SetClient(h)
 
 		exitChan = make(chan struct{})

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/internal/pcscommand"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/internal/pcsupdate"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsweb"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	_ "github.com/iikira/BaiduPCS-Go/pcsinit"
@@ -372,6 +373,26 @@ func main() {
 				}
 
 				return nil
+			},
+		},
+		{
+			Name:     "update",
+			Usage:    "更新程序",
+			Category: "其他",
+			Action: func(c *cli.Context) error {
+				if c.IsSet("y") {
+					if !c.Bool("y") {
+						return nil
+					}
+				}
+				pcsupdate.CheckUpdate(app.Version, c.Bool("y"))
+				return nil
+			},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "y",
+					Usage: "确认更新",
+				},
 			},
 		},
 		{

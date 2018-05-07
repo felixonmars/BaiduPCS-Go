@@ -10,6 +10,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"strconv"
 	"strings"
+	"unsafe"
 )
 
 // HandleFileDirectoryFunc 处理文件或目录的元信息
@@ -43,26 +44,20 @@ type fdJSON struct {
 	Mtime          int64  `json:"mtime"`           // 修改日期
 	MD5            string `json:"md5"`             // md5 值
 	Size           int64  `json:"size"`            // 文件大小 (目录为0)
-	IsdirInt       int    `json:"isdir"`
-	IfhassubdirInt int    `json:"ifhassubdir"`
-}
+	IsdirInt       int8   `json:"isdir"`
+	IfhassubdirInt int8   `json:"ifhassubdir"`
 
-// convert 将解析的远程JSON数据, 转换为 *FileDirectory
-func (fj *fdJSON) convert() *FileDirectory {
-	return &FileDirectory{
-		FsID:        fj.FsID,
-		Path:        fj.Path,
-		Filename:    fj.Filename,
-		Ctime:       fj.Ctime,
-		Mtime:       fj.Mtime,
-		MD5:         fj.MD5,
-		Size:        fj.Size,
-		Isdir:       converter.IntToBool(fj.IsdirInt),
-		Ifhassubdir: converter.IntToBool(fj.IfhassubdirInt),
-	}
+	// 对齐
+	_ *fdJSON
+	_ []*fdJSON
 }
 
 type fdData struct {
+	*ErrInfo
+	List []*FileDirectory
+}
+
+type fdDataJSONExport struct {
 	*ErrInfo
 	List []*fdJSON `json:"list"`
 }
@@ -106,7 +101,7 @@ func (pcs *BaiduPCS) FilesDirectoriesBatchMeta(paths ...string) (data FileDirect
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
-	err := d.Decode(jsonData)
+	err := d.Decode((*fdDataJSONExport)(unsafe.Pointer(jsonData)))
 	if err != nil {
 		errInfo.jsonError(err)
 		return nil, errInfo
@@ -119,10 +114,7 @@ func (pcs *BaiduPCS) FilesDirectoriesBatchMeta(paths ...string) (data FileDirect
 	}
 
 	// 结果处理
-	data = make(FileDirectoryList, len(jsonData.List))
-	for k := range jsonData.List {
-		data[k] = jsonData.List[k].convert()
-	}
+	data = jsonData.List
 
 	return
 }
@@ -141,7 +133,7 @@ func (pcs *BaiduPCS) FilesDirectoriesList(path string) (data FileDirectoryList, 
 	}
 
 	d := jsoniter.NewDecoder(dataReadCloser)
-	err := d.Decode(jsonData)
+	err := d.Decode((*fdDataJSONExport)(unsafe.Pointer(jsonData)))
 	if err != nil {
 		jsonData.ErrInfo.jsonError(err)
 		return nil, jsonData.ErrInfo
@@ -168,10 +160,7 @@ func (pcs *BaiduPCS) FilesDirectoriesList(path string) (data FileDirectoryList, 
 		return FileDirectoryList{fd}, nil
 	}
 
-	data = make(FileDirectoryList, len(jsonData.List))
-	for k := range jsonData.List {
-		data[k] = jsonData.List[k].convert()
-	}
+	data = jsonData.List
 	return
 }
 

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"io"
 	"sync"
 	"time"
@@ -29,7 +28,7 @@ type Downloader struct {
 	executeTime   time.Time
 	executed      bool
 	durl          string
-	writer        rio.WriteCloserAt
+	writer        io.WriterAt
 	client        *requester.HTTPClient
 	config        *Config
 	monitor       *Monitor
@@ -37,7 +36,7 @@ type Downloader struct {
 }
 
 //NewDownloader 初始化Downloader
-func NewDownloader(durl string, writer rio.WriteCloserAt, config *Config) (der *Downloader) {
+func NewDownloader(durl string, writer io.WriterAt, config *Config) (der *Downloader) {
 	der = &Downloader{
 		durl:   durl,
 		config: config,

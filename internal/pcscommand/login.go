@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/iikira/Baidu-Login"
+	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"image/png"
 	"io/ioutil"
+	"path/filepath"
 )
 
 // handleVerifyImg 处理验证码, 下载到本地
@@ -23,7 +24,7 @@ func handleVerifyImg(imgURL string) (savePath string, err error) {
 		return "", fmt.Errorf("验证码解析错误: %s", err)
 	}
 
-	savePath = pcsutil.ExecutablePathJoin("captcha.png")
+	savePath = filepath.Join(pcsconfig.GetConfigDir(), "captcha.png")
 
 	return savePath, ioutil.WriteFile(savePath, imgContents, 0777)
 }

@@ -58,11 +58,12 @@
   name = "github.com/iikira/baidu-tools"
   packages = [
     ".",
+    "pan",
     "randominfo",
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "dcc8327d688d9e5696615c2386b90f7b641775c2"
+  revision = "0501b222c8d573b42e208619bae9e7a9a33e1b61"
 
 [[projects]]
   name = "github.com/json-iterator/go"
@@ -98,7 +99,7 @@
   branch = "master"
   name = "github.com/olekukonko/tablewriter"
   packages = ["."]
-  revision = "d5dd8a50526aadb3d5f2c9b5233277bc2db90e88"
+  revision = "d4647c9c7a84d847478d890b816b7d8b62b0b279"
 
 [[projects]]
   branch = "master"
@@ -121,6 +122,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3b593d54e283c77c5e9bc3d38266a794bf6e259e9e531838c587b0baa6a5c82a"
+  inputs-digest = "d5b2e988256dee3c8d4d0386e77c5f086f61878d07d953b182818744d7b5aef2"
   solver-name = "gps-cdcl"
   solver-version = 1
