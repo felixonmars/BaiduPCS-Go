@@ -17,6 +17,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
   * [Android / iOS](#android--ios)
 - [命令列表及说明](#命令列表及说明)
   * [注意 ! ! !](#注意---)
+  * [检测程序更新](#检测程序更新)
   * [登录百度帐号](#登录百度帐号)
   * [列出帐号列表](#列出帐号列表)
   * [切换百度帐号](#切换百度帐号)
@@ -126,6 +127,11 @@ cli交互模式下, 光标所在行的前缀应为 `BaiduPCS-Go >`, 如果登录
 
 cli交互模式已支持按tab键自动补全命令和路径.
 
+## 检测程序更新
+```
+BaiduPCS-Go update
+```
+
 ## 登录百度帐号
 
 ### 常规登录百度帐号
@@ -231,9 +237,25 @@ BaiduPCS-Go ls
 BaiduPCS-Go ls <目录>
 ```
 
+### 可选参数
+```
+-asc: 升序排序
+-desc: 降序排序
+-time: 根据时间排序
+-name: 根据文件名排序
+-size: 根据大小排序
+```
+
 #### 例子
 ```
+# 列出 我的资源 内的文件和目录
 BaiduPCS-Go ls 我的资源
+
+# 降序排序
+BaiduPCS-Go ls -desc 我的资源
+
+# 按文件大小降序排序
+BaiduPCS-Go ls -size -desc 我的资源
 
 # 使用通配符
 BaiduPCS-Go ls /我的*

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/internal/pcscommand"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsupdate"
@@ -29,6 +30,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -80,6 +82,7 @@ func init() {
 	}
 
 	// 启动缓存回收
+	pcscache.DirCache.SetLifeTime(10 * time.Second)
 	pcscache.DirCache.GC()
 	requester.TCPAddrCache.GC()
 }
@@ -220,7 +223,7 @@ func main() {
 			filesPtr := pcscache.DirCache.Get(targetDir)
 
 			if filesPtr == nil {
-				files, err := pcs.FilesDirectoriesList(targetDir)
+				files, err := pcs.FilesDirectoriesList(targetDir, baidupcs.DefaultOrderOptions)
 				if err != nil {
 					return
 				}
@@ -377,7 +380,7 @@ func main() {
 		},
 		{
 			Name:     "update",
-			Usage:    "更新程序",
+			Usage:    "检测程序更新",
 			Category: "其他",
 			Action: func(c *cli.Context) error {
 				if c.IsSet("y") {
@@ -654,20 +657,68 @@ func main() {
 
 	示例:
 
-	相对路径:
+	列出 我的资源 内的文件和目录
 	BaiduPCS-Go ls 我的资源
 
-	绝对路径:
+	绝对路径
 	BaiduPCS-Go ls /我的资源
 
-	使用通配符:
+	降序排序
+	BaiduPCS-Go ls -desc 我的资源
+
+	按文件大小降序排序
+	BaiduPCS-Go ls -size -desc 我的资源
+
+	使用通配符
 	BaiduPCS-Go ls /我的*
 `,
 			Category: "百度网盘",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
-				pcscommand.RunLs(c.Args().Get(0))
+				options := &baidupcs.OrderOptions{}
+				switch {
+				case c.IsSet("asc"):
+					options.Order = baidupcs.OrderAsc
+				case c.IsSet("desc"):
+					options.Order = baidupcs.OrderDesc
+				default:
+					options.Order = baidupcs.OrderAsc
+				}
+
+				switch {
+				case c.IsSet("time"):
+					options.By = baidupcs.OrderByTime
+				case c.IsSet("name"):
+					options.By = baidupcs.OrderByName
+				case c.IsSet("size"):
+					options.By = baidupcs.OrderBySize
+				default:
+					options.By = baidupcs.OrderByName
+				}
+				pcscommand.RunLs(c.Args().Get(0), options)
 				return nil
+			},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "asc",
+					Usage: "升序排序",
+				},
+				cli.BoolFlag{
+					Name:  "desc",
+					Usage: "降序排序",
+				},
+				cli.BoolFlag{
+					Name:  "time",
+					Usage: "根据时间排序",
+				},
+				cli.BoolFlag{
+					Name:  "name",
+					Usage: "根据文件名排序",
+				},
+				cli.BoolFlag{
+					Name:  "size",
+					Usage: "根据大小排序",
+				},
 			},
 		},
 		{

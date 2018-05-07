@@ -118,7 +118,7 @@ func CheckUpdate(version string, yes bool) {
 	case "mips64le":
 		builder.WriteString("(mips64le|mips64el)")
 	default:
-		builder.WriteString(runtime.GOOS)
+		builder.WriteString(runtime.GOARCH)
 	}
 	builder.WriteString("\\.zip")
 

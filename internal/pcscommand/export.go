@@ -32,7 +32,7 @@ func RunExport(pcspaths []string, rootPath string) {
 		}
 
 		var d int
-		pcs.FilesDirectoriesRecurseList(pcspath, func(depth int, fd *baidupcs.FileDirectory) {
+		pcs.FilesDirectoriesRecurseList(pcspath, baidupcs.DefaultOrderOptions, func(depth int, fd *baidupcs.FileDirectory) {
 			if fd.Isdir {
 				if depth > d {
 					d = depth

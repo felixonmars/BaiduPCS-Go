@@ -96,7 +96,7 @@ func recurseParsePath(path string) (paths []string, err baidupcs.Error) {
 			continue
 		}
 
-		pfiles, err := GetBaiduPCS().FilesDirectoriesList(strings.Join(names[:k], ""))
+		pfiles, err := GetBaiduPCS().FilesDirectoriesList(strings.Join(names[:k], ""), baidupcs.DefaultOrderOptions)
 		if err != nil {
 			return nil, err
 		}

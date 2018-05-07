@@ -2,6 +2,7 @@ package pcscommand
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/pcstime"
@@ -11,14 +12,14 @@ import (
 )
 
 // RunLs 执行列目录
-func RunLs(path string) {
+func RunLs(path string, options *baidupcs.OrderOptions) {
 	path, err := getAbsPath(path)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	files, err := GetBaiduPCS().FilesDirectoriesList(path)
+	files, err := GetBaiduPCS().FilesDirectoriesList(path, options)
 	if err != nil {
 		fmt.Println(err)
 		return

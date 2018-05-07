@@ -82,8 +82,12 @@ func (der *Downloader) Execute() error {
 		return errors.New(resp.Status)
 	}
 
+	if resp.ContentLength == 0 {
+		return errors.New("Content-Length is zero")
+	}
+
 	acceptRanges := resp.Header.Get("Accept-Ranges")
-	if resp.ContentLength <= 0 {
+	if resp.ContentLength < 0 {
 		acceptRanges = ""
 	} else {
 		acceptRanges = "bytes"

@@ -2,6 +2,7 @@ package pcscommand
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 )
 
@@ -30,6 +31,6 @@ func RunChangeDirectory(path string, isList bool) {
 	fmt.Printf("改变工作目录: %s\n", path)
 
 	if isList {
-		RunLs(".")
+		RunLs(".", baidupcs.DefaultOrderOptions)
 	}
 }

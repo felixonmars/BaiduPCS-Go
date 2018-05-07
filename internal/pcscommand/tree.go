@@ -25,7 +25,7 @@ func getTree(path string, depth int) {
 		}
 	}
 
-	files, err = GetBaiduPCS().FilesDirectoriesList(path)
+	files, err = GetBaiduPCS().FilesDirectoriesList(path, baidupcs.DefaultOrderOptions)
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -273,7 +273,7 @@ func RunDownload(paths []string, option DownloadOption) {
 				os.MkdirAll(task.savePath, 0777) // 首先在本地创建目录, 保证空目录也能被保存
 			}
 
-			fileList, err := pcs.FilesDirectoriesList(task.path)
+			fileList, err := pcs.FilesDirectoriesList(task.path, baidupcs.DefaultOrderOptions)
 			if err != nil {
 				// 不重试
 				fmt.Printf("[%d] 获取目录信息错误, %s\n", task.ID, err)
