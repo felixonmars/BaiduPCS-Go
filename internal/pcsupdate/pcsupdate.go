@@ -130,7 +130,7 @@ func CheckUpdate(version string, yes bool) {
 			continue
 		}
 
-		if fileInfo.Isdir == 1 {
+		if fileInfo.Isdir == 1 || !strings.HasPrefix(fileInfo.Filename, "v") {
 			continue
 		}
 

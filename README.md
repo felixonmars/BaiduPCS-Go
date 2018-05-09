@@ -251,6 +251,9 @@ BaiduPCS-Go ls <目录>
 # 列出 我的资源 内的文件和目录
 BaiduPCS-Go ls 我的资源
 
+# 绝对路径
+BaiduPCS-Go ls /我的资源
+
 # 降序排序
 BaiduPCS-Go ls -desc 我的资源
 

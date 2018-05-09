@@ -4,7 +4,7 @@ name="BaiduPCS-Go"
 version=$1
 
 if [ "$1" = "" ];then
-    version=v3.5
+    version=v3.5.1
 fi
 
 output="out/"
@@ -34,7 +34,7 @@ ArmBuild() {
     export GOOS=$2 GOARCH=$3 GOARM=$4 CGO_ENABLED=1
     go build -ldflags '-s -w -linkmode=external -extldflags=-pie' -o "$output/$1/$name"
     if [ $2 = "darwin" ] && [ $3 = "arm" -o $3 = "arm64" ];then
-        cp Info.plist "$output/$1"
+        # cp Info.plist "$output/$1"
         ldid -S "$output/$1/$name"
     fi
 

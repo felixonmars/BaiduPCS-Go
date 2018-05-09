@@ -35,7 +35,7 @@ import (
 
 var (
 	// Version 版本号
-	Version = "v3.5"
+	Version = "v3.5.1"
 
 	historyFilePath = filepath.Join(pcsconfig.GetConfigDir(), "pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
