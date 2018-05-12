@@ -331,7 +331,11 @@ func RunDownload(paths []string, option DownloadOption) {
 		}
 		if dlink != "" {
 			fmt.Printf("[%d] 获取到下载链接: %s\n", task.ID, dlink)
-			err = download(task.ID, dlink, task.savePath, nil, cfg, option.IsPrintStatus, option.IsExecutedPermission)
+
+			client := requester.NewHTTPClient()
+			client.SetTimeout(20 * time.Minute)
+
+			err = download(task.ID, dlink, task.savePath, client, cfg, option.IsPrintStatus, option.IsExecutedPermission)
 		} else {
 			err = pcs.DownloadFile(task.path, getDownloadFunc(task.ID, task.savePath, cfg, option.IsPrintStatus, option.IsExecutedPermission))
 		}
