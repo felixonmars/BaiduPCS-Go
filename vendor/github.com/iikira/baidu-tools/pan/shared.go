@@ -14,6 +14,9 @@ import (
 
 // SharedInfo 百度网盘文件分享页信息
 type SharedInfo struct {
+	SharedURL string
+	HTTPS     bool
+
 	UK            int64  `json:"uk"`            // 百度网盘用户id
 	ShareID       int64  `json:"shareid"`       // 分享id
 	RootSharePath string `json:"rootSharePath"` // 分享的目录, 基于分享者的网盘根目录
@@ -21,16 +24,19 @@ type SharedInfo struct {
 	Timestamp int64  // unix 时间戳
 	Sign      []byte // 签名
 
-	Client    *requester.HTTPClient
-	sharedURL string
+	Client *requester.HTTPClient
 }
 
 // NewSharedInfo 解析百度网盘文件分享页信息,
 // sharedURL 分享链接
 func NewSharedInfo(sharedURL string) (si *SharedInfo) {
 	return &SharedInfo{
-		sharedURL: sharedURL,
+		SharedURL: sharedURL,
 	}
+}
+
+func (si *SharedInfo) inited() bool {
+	return si.UK != 0 && si.ShareID != 0 && si.RootSharePath != ""
 }
 
 func (si *SharedInfo) lazyInit() {
@@ -39,9 +45,26 @@ func (si *SharedInfo) lazyInit() {
 	}
 }
 
+// SetHTTPS 设置是否启用 https
+func (si *SharedInfo) SetHTTPS(https bool) {
+	si.HTTPS = https
+}
+
+func (si *SharedInfo) getScheme() string {
+	if si.HTTPS {
+		return "https"
+	} else {
+		return "http"
+	}
+}
+
 // Auth 验证提取码
 // passwd 提取码, 没有则留空
 func (si *SharedInfo) Auth(passwd string) error {
+	if si.SharedURL == "" {
+		return ErrSharedInfoNotSetSharedURL
+	}
+
 	si.lazyInit()
 
 	// 不自动跳转
@@ -49,10 +72,7 @@ func (si *SharedInfo) Auth(passwd string) error {
 		return http.ErrUseLastResponse
 	}
 
-	// 须是手机浏览器的标识, 否则可能抓不到数据
-	si.Client.SetUserAgent("Mozilla/5.0 (Linux; Android 7.0; HUAWEI NXT-AL10 Build/HUAWEINXT-AL10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.137 Mobile Safari/537.36")
-
-	resp, err := si.Client.Req("GET", si.sharedURL, nil, nil)
+	resp, err := si.Client.Req("GET", si.SharedURL, nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -68,7 +88,7 @@ func (si *SharedInfo) Auth(passwd string) error {
 		}
 
 		// 验证提取密码
-		body, err := si.Client.Fetch("POST", "https://pan.baidu.com/share/verify?"+locURL.RawQuery, map[string]string{
+		body, err := si.Client.Fetch("POST", si.getScheme()+"://pan.baidu.com/share/verify?"+locURL.RawQuery, map[string]string{
 			"pwd":       passwd,
 			"vcode":     "",
 			"vcode_str": "",
@@ -81,7 +101,7 @@ func (si *SharedInfo) Auth(passwd string) error {
 			return fmt.Errorf("验证提取密码网络错误, %s", err)
 		}
 
-		jsonData := &ErrInfo{}
+		jsonData := &RemoteErrInfo{}
 
 		err = jsoniter.Unmarshal(body, jsonData)
 		if err != nil {
@@ -98,14 +118,17 @@ func (si *SharedInfo) Auth(passwd string) error {
 		return fmt.Errorf(resp.Status)
 	}
 
-	return si.getInfo()
+	return nil
 }
 
-// getInfo 获取 UK, ShareID, 如果有提取码, 先需进行验证
-func (si *SharedInfo) getInfo() error {
+// InitInfo 获取 UK, ShareID, RootSharePath 如果有提取码, 先需进行验证
+func (si *SharedInfo) InitInfo() error {
 	si.lazyInit()
 
-	body, err := si.Client.Fetch("GET", si.sharedURL, nil, nil)
+	// 须是手机浏览器的标识, 否则可能抓不到数据
+	si.Client.SetUserAgent("Mozilla/5.0 (Linux; Android 7.0; HUAWEI NXT-AL10 Build/HUAWEINXT-AL10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.137 Mobile Safari/537.36")
+
+	body, err := si.Client.Fetch("GET", si.SharedURL, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -172,6 +195,10 @@ func (fdss *fileDirectoryString) convert() *FileDirectory {
 
 // List 获取文件列表, subDir 为相对于分享目录的目录
 func (si *SharedInfo) List(subDir string) (fds []*FileDirectory, err error) {
+	if !si.inited() {
+		return nil, ErrSharedInfoNotInit
+	}
+
 	si.lazyInit()
 	si.signature()
 	var (
@@ -188,7 +215,7 @@ func (si *SharedInfo) List(subDir string) (fds []*FileDirectory, err error) {
 	}
 
 	listURL := fmt.Sprintf(
-		"https://pan.baidu.com/share/list?shareid=%d&uk=%d&root=%d&dir=%s&sign=%x&timestamp=%d&devuid=&clienttype=1&channel=android_7.0_HUAWEI%%20NXT-AL10_bd-netdisk_1001540i&version=8.2.0",
+		si.getScheme()+"://pan.baidu.com/share/list?shareid=%d&uk=%d&root=%d&dir=%s&sign=%x&timestamp=%d&devuid=&clienttype=1&channel=android_7.0&version=8.2.0",
 		si.ShareID, si.UK,
 		isRoot, escapedDir,
 		si.Sign, si.Timestamp,
@@ -199,13 +226,13 @@ func (si *SharedInfo) List(subDir string) (fds []*FileDirectory, err error) {
 		return nil, fmt.Errorf("获取文件列表网络错误, %s", err)
 	}
 
-	var errInfo = &ErrInfo{}
+	var errInfo = &RemoteErrInfo{}
 	if isRoot != 0 { // 根目录
 		jsonData := struct {
-			*ErrInfo
+			*RemoteErrInfo
 			List []*fileDirectoryString `json:"list"`
 		}{
-			ErrInfo: errInfo,
+			RemoteErrInfo: errInfo,
 		}
 
 		err = jsoniter.Unmarshal(body, &jsonData)
@@ -217,10 +244,10 @@ func (si *SharedInfo) List(subDir string) (fds []*FileDirectory, err error) {
 		}
 	} else {
 		jsonData := struct {
-			*ErrInfo
+			*RemoteErrInfo
 			List []*FileDirectory `json:"list"`
 		}{
-			ErrInfo: errInfo,
+			RemoteErrInfo: errInfo,
 		}
 
 		err = jsoniter.Unmarshal(body, &jsonData)
@@ -240,28 +267,22 @@ func (si *SharedInfo) List(subDir string) (fds []*FileDirectory, err error) {
 	return fds, nil
 }
 
-// GetDownloadLink 获取下载直链, filePath 为相对于分享目录的目录
-func (si *SharedInfo) GetDownloadLink(filePath string) (dlink string, err error) {
+// Meta 获取文件/目录元信息, filePath 为相对于分享目录的目录
+func (si *SharedInfo) Meta(filePath string) (fd *FileDirectory, err error) {
 	cleanedPath := path.Clean(filePath)
-	if cleanedPath == "/" || cleanedPath == "." {
-		return "", fmt.Errorf("不支持获取根目录下载直链")
-	}
 
 	dir, fileName := path.Split(cleanedPath)
 
 	dirInfo, err := si.List(dir)
 	if err != nil {
-		return "", fmt.Errorf("获取目录信息出错, 路径: %s, %s", path.Clean(dir), err)
+		return nil, err
 	}
 
 	for k := range dirInfo {
 		if strings.Compare(dirInfo[k].Filename, fileName) == 0 {
-			if dirInfo[k].Isdir != 0 {
-				return "", fmt.Errorf("不支持获取目录的下载直链, 路径: %s", cleanedPath)
-			}
-			return dirInfo[k].Dlink, nil
+			return dirInfo[k], nil
 		}
 	}
 
-	return "", fmt.Errorf("未匹配到文件路径 %s", cleanedPath)
+	return nil, fmt.Errorf("未匹配到文件路径")
 }

@@ -1,8 +1,9 @@
 package pan
 
 import (
+	"crypto/hmac"
+	"crypto/sha1"
 	"fmt"
-	"github.com/iikira/Baidu-Login/bdcrypto"
 	"regexp"
 	"strconv"
 	"time"
@@ -35,5 +36,7 @@ func (si *SharedInfo) signature() {
 	si.Timestamp = time.Now().Unix()
 	orig := fmt.Sprintf("%d_%d__%d", si.ShareID, si.UK, si.Timestamp)
 
-	si.Sign = bdcrypto.HmacSHA1([]byte(BDKey), []byte(orig))
+	mac := hmac.New(sha1.New, []byte(BDKey))
+	mac.Write([]byte(orig))
+	si.Sign = mac.Sum(nil)
 }

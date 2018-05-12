@@ -37,8 +37,116 @@ type DownloadOption struct {
 	IsPrintStatus        bool
 	IsExecutedPermission bool
 	IsOverwrite          bool
+	IsShareDownload      bool
 	SaveTo               string
 	Parallel             int
+}
+
+func download(id int, downloadURL, savePath string, client *requester.HTTPClient, cfg *downloader.Config, isPrintStatus, isExecutedPermission bool) error {
+	var (
+		file     *os.File
+		writerAt io.WriterAt
+		err      error
+		exitChan chan struct{}
+	)
+
+	if !cfg.IsTest {
+		cfg.InstanceStatePath = savePath + DownloadSuffix
+
+		// 创建下载的目录
+		dir := filepath.Dir(savePath)
+		fileInfo, err := os.Stat(dir)
+		if err != nil {
+			err = os.MkdirAll(dir, 0777)
+			if err != nil {
+				return err
+			}
+		} else if !fileInfo.IsDir() {
+			return fmt.Errorf("%s, path %s: not a directory", StrDownloadInitError, dir)
+		}
+
+		file, err = os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY, 0666)
+		if file != nil {
+			defer file.Close()
+		}
+		if err != nil {
+			return fmt.Errorf("%s, %s", StrDownloadInitError, err)
+		}
+
+		// 空指针和空接口不等价
+		if file != nil {
+			writerAt = file
+		}
+	}
+
+	download := downloader.NewDownloader(downloadURL, writerAt, cfg)
+	download.SetClient(client)
+
+	exitChan = make(chan struct{})
+
+	download.OnExecute(func() {
+		if cfg.IsTest {
+			fmt.Printf("[%d] 测试下载开始\n\n", id)
+		}
+
+		var (
+			ds                            = download.GetDownloadStatusChan()
+			downloaded, totalSize, speeds int64
+			leftStr                       string
+		)
+		for {
+			select {
+			case <-exitChan:
+				return
+			case v, ok := <-ds:
+				if !ok { // channel 已经关闭
+					return
+				}
+
+				downloaded, totalSize, speeds = v.Downloaded(), v.TotalSize(), v.SpeedsPerSecond()
+				if speeds <= 0 {
+					leftStr = "-"
+				} else {
+					leftStr = (time.Duration((totalSize-downloaded)/(speeds)) * time.Second).String()
+				}
+
+				fmt.Printf("\r[%d] ↓ %s/%s %s/s in %s, left %s ............", id,
+					converter.ConvertFileSize(v.Downloaded(), 2),
+					converter.ConvertFileSize(v.TotalSize(), 2),
+					converter.ConvertFileSize(v.SpeedsPerSecond(), 2),
+					v.TimeElapsed()/1e7*1e7, leftStr,
+				)
+			}
+		}
+	})
+
+	if isPrintStatus {
+		go func() {
+			for {
+				time.Sleep(1 * time.Second)
+				select {
+				case <-exitChan:
+					return
+				default:
+					download.PrintAllWorkers()
+				}
+			}
+		}()
+	}
+	err = download.Execute()
+	close(exitChan)
+	if err != nil {
+		return err
+	}
+
+	if isExecutedPermission {
+		err = file.Chmod(0766)
+		if err != nil {
+			fmt.Printf("\n\n[%d] 警告, 加执行权限错误: %s\n\n", id, err)
+		}
+	}
+
+	return nil
 }
 
 func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintStatus, isExecutedPermission bool) baidupcs.DownloadFunc {
@@ -53,107 +161,9 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 		h.SetTimeout(10 * time.Minute)
 		setupHTTPClient(h)
 
-		var (
-			file     *os.File
-			writerAt io.WriterAt
-			err      error
-			exitChan chan struct{}
-		)
-
-		if !cfg.IsTest {
-			cfg.InstanceStatePath = savePath + DownloadSuffix
-
-			// 创建下载的目录
-			dir := filepath.Dir(savePath)
-			fileInfo, err := os.Stat(dir)
-			if err != nil {
-				err = os.MkdirAll(dir, 0777)
-				if err != nil {
-					return err
-				}
-			} else if !fileInfo.IsDir() {
-				return fmt.Errorf("%s, path %s: not a directory", StrDownloadInitError, dir)
-			}
-
-			file, err = os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY, 0666)
-			if file != nil {
-				defer file.Close()
-			}
-			if err != nil {
-				return fmt.Errorf("%s, %s", StrDownloadInitError, err)
-			}
-
-			// 空指针和空接口不等价
-			if file != nil {
-				writerAt = file
-			}
-		}
-
-		download := downloader.NewDownloader(downloadURL, writerAt, cfg)
-		download.SetClient(h)
-
-		exitChan = make(chan struct{})
-
-		download.OnExecute(func() {
-			if cfg.IsTest {
-				fmt.Printf("[%d] 测试下载开始\n\n", id)
-			}
-
-			var (
-				ds                            = download.GetDownloadStatusChan()
-				downloaded, totalSize, speeds int64
-				leftStr                       string
-			)
-			for {
-				select {
-				case <-exitChan:
-					return
-				case v, ok := <-ds:
-					if !ok { // channel 已经关闭
-						return
-					}
-
-					downloaded, totalSize, speeds = v.Downloaded(), v.TotalSize(), v.SpeedsPerSecond()
-					if speeds <= 0 {
-						leftStr = "-"
-					} else {
-						leftStr = (time.Duration((totalSize-downloaded)/(speeds)) * time.Second).String()
-					}
-
-					fmt.Printf("\r[%d] ↓ %s/%s %s/s in %s, left %s ............", id,
-						converter.ConvertFileSize(v.Downloaded(), 2),
-						converter.ConvertFileSize(v.TotalSize(), 2),
-						converter.ConvertFileSize(v.SpeedsPerSecond(), 2),
-						v.TimeElapsed()/1e7*1e7, leftStr,
-					)
-				}
-			}
-		})
-
-		if isPrintStatus {
-			go func() {
-				for {
-					time.Sleep(1 * time.Second)
-					select {
-					case <-exitChan:
-						return
-					default:
-						download.PrintAllWorkers()
-					}
-				}
-			}()
-		}
-		err = download.Execute()
-		close(exitChan)
+		err := download(id, downloadURL, savePath, h, cfg, isPrintStatus, isExecutedPermission)
 		if err != nil {
 			return err
-		}
-
-		if isExecutedPermission {
-			err = file.Chmod(0766)
-			if err != nil {
-				fmt.Printf("\n\n[%d] 警告, 加执行权限错误: %s\n\n", id, err)
-			}
 		}
 
 		if !cfg.IsTest {
@@ -314,7 +324,18 @@ func RunDownload(paths []string, option DownloadOption) {
 			fmt.Printf("[%d] 将会下载到路径: %s\n\n", task.ID, task.savePath)
 		}
 
-		err = pcs.DownloadFile(task.path, getDownloadFunc(task.ID, task.savePath, cfg, option.IsPrintStatus, option.IsExecutedPermission))
+		// 以分享文件的方式获取下载链接来下载
+		var dlink string
+		if option.IsShareDownload {
+			dlink = getShareDLink(task.path)
+		}
+		if dlink != "" {
+			fmt.Printf("[%d] 获取到下载链接: %s\n", task.ID, dlink)
+			err = download(task.ID, dlink, task.savePath, nil, cfg, option.IsPrintStatus, option.IsExecutedPermission)
+		} else {
+			err = pcs.DownloadFile(task.path, getDownloadFunc(task.ID, task.savePath, cfg, option.IsPrintStatus, option.IsExecutedPermission))
+		}
+
 		if err != nil {
 			handleTaskErr(task, "下载文件错误", err)
 			continue

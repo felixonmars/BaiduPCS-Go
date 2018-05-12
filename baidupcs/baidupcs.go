@@ -2,8 +2,11 @@
 package baidupcs
 
 import (
+	"errors"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/iikira/baidu-tools/pan"
+	"github.com/json-iterator/go"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -11,6 +14,8 @@ import (
 )
 
 const (
+	// OperationGetUK 获取UK
+	OperationGetUK = "获取UK"
 	// OperationQuotaInfo 获取当前用户空间配额信息
 	OperationQuotaInfo = "获取当前用户空间配额信息"
 	// OperationFilesDirectoriesMeta 获取文件/目录的元信息
@@ -49,6 +54,10 @@ const (
 	OperationCloudDlCancelTask = "取消离线下载任务"
 	// OperationCloudDlDeleteTask 删除离线下载任务
 	OperationCloudDlDeleteTask = "删除离线下载任务"
+	// OperationShareSet 创建分享链接
+	OperationShareSet = "创建分享链接"
+	// OperationShareCancel 取消分享
+	OperationShareCancel = "取消分享"
 )
 
 var (
@@ -168,4 +177,56 @@ func (pcs *BaiduPCS) generatePCSURL2(subPath, method string, param ...map[string
 
 	pcsURL2.RawQuery = uv.Encode()
 	return pcsURL2
+}
+
+// UK 获取用户 UK
+func (pcs *BaiduPCS) UK() (uk int64, pcsError Error) {
+	pcs.lazyInit()
+
+	var scheme string
+	if pcs.isHTTPS {
+		scheme = "https"
+	} else {
+		scheme = "http"
+	}
+
+	pcsURL := scheme + "://pan.baidu.com/api/user/getinfo?need_selfinfo=1"
+
+	errInfo := NewErrorInfo(OperationGetUK)
+	body, err := pcs.client.Fetch("GET", pcsURL, nil, map[string]string{
+		"User-Agent": "netdisk;8.3.1",
+	})
+	if err != nil {
+		errInfo.errType = ErrTypeNetError
+		errInfo.err = err
+		return 0, errInfo
+	}
+
+	jsonData := struct {
+		pan.RemoteErrInfo
+		Records []struct {
+			Uk int64 `json:"uk"`
+		} `json:"records"`
+	}{}
+
+	err = jsoniter.Unmarshal(body, &jsonData)
+	if err != nil {
+		errInfo.jsonError(err)
+		return 0, errInfo
+	}
+
+	if jsonData.ErrNo != 0 {
+		jsonData.RemoteErrInfo.ParseErrMsg()
+		errInfo.ErrCode = jsonData.RemoteErrInfo.ErrNo
+		errInfo.ErrMsg = jsonData.RemoteErrInfo.ErrMsg
+		return 0, errInfo
+	}
+
+	if len(jsonData.Records) != 1 {
+		errInfo.errType = ErrTypeOthers
+		errInfo.err = errors.New("Unknown remote data")
+		return 0, errInfo
+	}
+
+	return jsonData.Records[0].Uk, nil
 }

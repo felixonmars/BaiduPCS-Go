@@ -3,15 +3,14 @@ package downloader
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
-	"github.com/iikira/BaiduPCS-Go/requester/rio"
+	"io"
 	"os"
-	"time"
 )
 
 // DoDownload 执行下载
 func DoDownload(durl string, savePath string, cfg *Config) {
 	var (
-		file rio.WriteCloserAt
+		file io.WriterAt
 		err  error
 	)
 
@@ -21,6 +20,8 @@ func DoDownload(durl string, savePath string, cfg *Config) {
 			fmt.Println(err)
 			return
 		}
+	} else {
+		file = nil
 	}
 
 	download := NewDownloader(durl, file, cfg)
@@ -54,17 +55,6 @@ func DoDownload(durl string, savePath string, cfg *Config) {
 		}
 	})
 
-	go func() {
-		for {
-			select {
-			case <-exitDownloadFunc:
-				return
-			default:
-				download.PrintAllWorkers()
-			}
-			time.Sleep(1e9)
-		}
-	}()
 	download.Execute()
 	close(exitDownloadFunc)
 }

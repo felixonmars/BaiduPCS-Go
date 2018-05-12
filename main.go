@@ -151,7 +151,7 @@ func main() {
 				lineArgs                   = args.GetArgs(line)
 				numArgs                    = len(lineArgs)
 				acceptCompleteFileCommands = []string{
-					"cd", "cp", "download", "export", "ls", "meta", "mkdir", "mv", "rapidupload", "rm", "tree", "upload",
+					"cd", "cp", "download", "export", "ls", "meta", "mkdir", "mv", "rapidupload", "rm", "share", "tree", "upload",
 				}
 				closed = strings.LastIndex(line, " ") == len(line)-1
 			)
@@ -917,6 +917,7 @@ func main() {
 					IsExecutedPermission: c.Bool("x") && runtime.GOOS != "windows",
 					IsOverwrite:          c.Bool("ow"),
 					SaveTo:               saveTo,
+					IsShareDownload:      c.Bool("share"),
 					Parallel:             c.Int("p"),
 				})
 				return nil
@@ -945,6 +946,10 @@ func main() {
 				cli.BoolFlag{
 					Name:  "x",
 					Usage: "为文件加上执行权限, (windows系统无效)",
+				},
+				cli.BoolFlag{
+					Name:  "share",
+					Usage: "以分享文件的方式获取下载链接来下载",
 				},
 				cli.IntFlag{
 					Name:  "p",
@@ -1124,6 +1129,50 @@ func main() {
 				}
 
 				return nil
+			},
+		},
+		{
+			Name:      "share",
+			Usage:     "分享文件",
+			UsageText: app.Name + " share",
+			Category:  "百度网盘",
+			Before:    reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() < 2 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+				return nil
+			},
+			Subcommands: []cli.Command{
+				{
+					Name:      "set",
+					Aliases:   []string{"s"},
+					Usage:     "设置分享文件",
+					UsageText: app.Name + " share set <文件/目录1> <文件/目录2> ...",
+					Action: func(c *cli.Context) error {
+						if c.NArg() < 1 {
+							cli.ShowCommandHelp(c, c.Command.Name)
+							return nil
+						}
+						pcscommand.RunShareSet(c.Args(), nil)
+						return nil
+					},
+				},
+				{
+					Name:      "cancel",
+					Aliases:   []string{"c"},
+					Usage:     "取消分享文件",
+					UsageText: app.Name + " share cancel <shareid1> <shareid2> ...",
+					Action: func(c *cli.Context) error {
+						if c.NArg() < 1 {
+							cli.ShowCommandHelp(c, c.Command.Name)
+							return nil
+						}
+						pcscommand.RunShareCancel(converter.SliceStringToInt64(c.Args()))
+						return nil
+					},
+				},
 			},
 		},
 		{

@@ -4,6 +4,11 @@ package pcscommand
 import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/pcsverbose"
+)
+
+var (
+	pcsCommandVerbose = pcsverbose.New("PCSCOMMAND")
 )
 
 // GetActiveUser 获取当前登录的百度帐号

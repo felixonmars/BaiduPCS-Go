@@ -63,7 +63,7 @@
     "tieba",
     "tieba/tiebautil"
   ]
-  revision = "0501b222c8d573b42e208619bae9e7a9a33e1b61"
+  revision = "396c6cdf74b88faadca0d9c51c5a47b0b372f84c"
 
 [[projects]]
   name = "github.com/json-iterator/go"

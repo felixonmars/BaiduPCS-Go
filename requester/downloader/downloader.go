@@ -140,6 +140,10 @@ func (der *Downloader) Execute() error {
 		}
 	}
 
+	if der.config.parallel <= 0 {
+		der.config.parallel = 1
+	}
+
 	der.config.cacheSize = der.config.CacheSize
 	blockSize := status.totalSize / int64(der.config.parallel)
 

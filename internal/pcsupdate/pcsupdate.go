@@ -43,9 +43,13 @@ func CheckUpdate(version string, yes bool) {
 		return
 	}
 
+	sharedInfo.ShareID = 1601412318
+	sharedInfo.UK = 4163763975
+	sharedInfo.RootSharePath = "/Documents/Golang"
+
 	versionList, err := sharedInfo.List(ReleaseName)
 	if err != nil {
-		fmt.Printf("获取数据错误: %s\n", err)
+		fmt.Printf("获取版本列表错误: %s\n", err)
 		return
 	}
 
@@ -183,15 +187,20 @@ func CheckUpdate(version string, yes bool) {
 
 	fmt.Printf("准备下载更新: %s\n", target.filename)
 
-	dlink, err := sharedInfo.GetDownloadLink(ReleaseName + "/" + latestVersion + "/" + target.filename)
+	finfo, err := sharedInfo.Meta(ReleaseName + "/" + latestVersion + "/" + target.filename)
 	if err != nil {
-		fmt.Printf("获取下载链接错误: %s\n", err)
+		fmt.Printf("获取文件信息错误: %s\n", err)
+		return
+	}
+
+	if finfo.Dlink == "" {
+		fmt.Printf("未获取到下载链接")
 		return
 	}
 
 	// 开始下载
 	buf := rio.NewBuffer(make([]byte, target.size))
-	der := downloader.NewDownloader(dlink, buf, &downloader.Config{
+	der := downloader.NewDownloader(finfo.Dlink, buf, &downloader.Config{
 		MaxParallel: 10,
 		CacheSize:   10000,
 	})
