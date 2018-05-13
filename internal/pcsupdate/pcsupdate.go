@@ -1,12 +1,15 @@
+// Package pcsupdate 更新包
 package pcsupdate
 
 import (
 	"archive/zip"
 	"bytes"
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
+	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"github.com/iikira/baidu-tools/pan"
@@ -36,6 +39,8 @@ func CheckUpdate(version string, yes bool) {
 	}
 	fmt.Println("检测更新中, 稍候...")
 	sharedInfo := pan.NewSharedInfo("https://pan.baidu.com/s/100qbYyjlpSNNkrUWq8MKng")
+	sharedInfo.Client = requester.NewHTTPClient()
+	sharedInfo.Client.SetHTTPSecure(pcsconfig.Config.EnableHTTPS())
 
 	err := sharedInfo.Auth("7vgf")
 	if err != nil {

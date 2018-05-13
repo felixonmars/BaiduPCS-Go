@@ -255,7 +255,6 @@ func (wer *Worker) Execute() {
 	wer.status.statusCode = StatusCodePending
 
 	var resp *http.Response
-
 	resp, wer.err = wer.client.Req("GET", wer.url, nil, header)
 	if resp != nil {
 		defer resp.Body.Close()

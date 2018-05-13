@@ -146,6 +146,12 @@ func download(id int, downloadURL, savePath string, client *requester.HTTPClient
 		}
 	}
 
+	if !cfg.IsTest {
+		fmt.Printf("\n\n[%d] 下载完成, 保存位置: %s\n\n", id, savePath)
+	} else {
+		fmt.Printf("\n\n[%d] 测试下载结束\n\n", id)
+	}
+
 	return nil
 }
 
@@ -164,12 +170,6 @@ func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintSta
 		err := download(id, downloadURL, savePath, h, cfg, isPrintStatus, isExecutedPermission)
 		if err != nil {
 			return err
-		}
-
-		if !cfg.IsTest {
-			fmt.Printf("\n\n[%d] 下载完成, 保存位置: %s\n\n", id, savePath)
-		} else {
-			fmt.Printf("\n\n[%d] 测试下载结束\n\n", id)
 		}
 
 		return nil

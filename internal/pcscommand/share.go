@@ -54,7 +54,6 @@ func getShareDLink(pcspath string) (dlink string) {
 	defer pcs.ShareCancel([]int64{s.ShareID})
 
 	sInfo := pan.NewSharedInfo(s.Link)
-	sInfo.SetHTTPS(pcsconfig.Config.EnableHTTPS())
 	sInfo.Client = requester.NewHTTPClient()
 	sInfo.Client.SetHTTPSecure(pcsconfig.Config.EnableHTTPS())
 

@@ -2,16 +2,10 @@ package requester
 
 import (
 	"crypto/tls"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"time"
-)
-
-var (
-	// TLSConfig tls连接配置
-	TLSConfig = &tls.Config{
-		InsecureSkipVerify: true,
-	}
 )
 
 // HTTPClient http client
@@ -19,6 +13,7 @@ type HTTPClient struct {
 	http.Client
 	jar       *cookiejar.Jar
 	transport *http.Transport
+	https     bool
 	UserAgent string
 }
 
@@ -37,11 +32,13 @@ func NewHTTPClient() *HTTPClient {
 func (h *HTTPClient) lazyInit() {
 	if h.transport == nil {
 		h.transport = &http.Transport{
-			Proxy:                 http.ProxyFromEnvironment,
-			DialContext:           dialContext,
-			Dial:                  dial,
-			DialTLS:               dialTLS,
-			TLSClientConfig:       TLSConfig,
+			Proxy: http.ProxyFromEnvironment,
+			// DialContext: dialContext,
+			// Dial:        dial,
+			// DialTLS:     h.dialTLSFunc(),
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: !h.https,
+			},
 			TLSHandshakeTimeout:   10 * time.Second,
 			DisableKeepAlives:     false,
 			DisableCompression:    false, // gzip
@@ -82,12 +79,14 @@ func (h *HTTPClient) ResetCookiejar() {
 
 // SetHTTPSecure 是否启用 https 安全检查, 默认不检查
 func (h *HTTPClient) SetHTTPSecure(b bool) {
+	h.https = b
 	h.lazyInit()
 	if b {
-		TLSConfig.InsecureSkipVerify = b
 		h.transport.TLSClientConfig = nil
 	} else {
-		h.transport.TLSClientConfig = TLSConfig
+		h.transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: !b,
+		}
 	}
 }
 
@@ -112,4 +111,18 @@ func (h *HTTPClient) SetResponseHeaderTimeout(t time.Duration) {
 // SetTimeout 设置 http 请求超时时间, 默认30s
 func (h *HTTPClient) SetTimeout(t time.Duration) {
 	h.Client.Timeout = t
+}
+
+func (h *HTTPClient) dialTLSFunc() func(network, address string) (tlsConn net.Conn, err error) {
+	return func(network, address string) (tlsConn net.Conn, err error) {
+		conn, err := dial(network, address)
+		if err != nil {
+			return nil, err
+		}
+
+		return tls.Client(conn, &tls.Config{
+			ServerName:         getServerName(address),
+			InsecureSkipVerify: !h.https,
+		}), nil
+	}
 }

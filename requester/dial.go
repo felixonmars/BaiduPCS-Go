@@ -2,7 +2,6 @@ package requester
 
 import (
 	"context"
-	"crypto/tls"
 	"net"
 	"time"
 )
@@ -64,16 +63,4 @@ func dialContext(ctx context.Context, network, address string) (conn net.Conn, e
 
 func dial(network, address string) (conn net.Conn, err error) {
 	return dialContext(context.Background(), network, address)
-}
-
-func dialTLS(network, address string) (tlsConn net.Conn, err error) {
-	conn, err := dial(network, address)
-	if err != nil {
-		return nil, err
-	}
-
-	return tls.Client(conn, &tls.Config{
-		ServerName:         getServerName(address),
-		InsecureSkipVerify: TLSConfig.InsecureSkipVerify,
-	}), nil
 }

@@ -15,7 +15,6 @@ import (
 // SharedInfo 百度网盘文件分享页信息
 type SharedInfo struct {
 	SharedURL string
-	HTTPS     bool
 
 	UK            int64  `json:"uk"`            // 百度网盘用户id
 	ShareID       int64  `json:"shareid"`       // 分享id
@@ -42,19 +41,6 @@ func (si *SharedInfo) inited() bool {
 func (si *SharedInfo) lazyInit() {
 	if si.Client == nil {
 		si.Client = requester.NewHTTPClient()
-	}
-}
-
-// SetHTTPS 设置是否启用 https
-func (si *SharedInfo) SetHTTPS(https bool) {
-	si.HTTPS = https
-}
-
-func (si *SharedInfo) getScheme() string {
-	if si.HTTPS {
-		return "https"
-	} else {
-		return "http"
 	}
 }
 
@@ -88,7 +74,7 @@ func (si *SharedInfo) Auth(passwd string) error {
 		}
 
 		// 验证提取密码
-		body, err := si.Client.Fetch("POST", si.getScheme()+"://pan.baidu.com/share/verify?"+locURL.RawQuery, map[string]string{
+		body, err := si.Client.Fetch("POST", "https://pan.baidu.com/share/verify?"+locURL.RawQuery, map[string]string{
 			"pwd":       passwd,
 			"vcode":     "",
 			"vcode_str": "",
@@ -215,7 +201,7 @@ func (si *SharedInfo) List(subDir string) (fds []*FileDirectory, err error) {
 	}
 
 	listURL := fmt.Sprintf(
-		si.getScheme()+"://pan.baidu.com/share/list?shareid=%d&uk=%d&root=%d&dir=%s&sign=%x&timestamp=%d&devuid=&clienttype=1&channel=android_7.0&version=8.2.0",
+		"https://pan.baidu.com/share/list?shareid=%d&uk=%d&root=%d&dir=%s&sign=%x&timestamp=%d&devuid=&clienttype=1&channel=android_7.0&version=8.2.0",
 		si.ShareID, si.UK,
 		isRoot, escapedDir,
 		si.Sign, si.Timestamp,
