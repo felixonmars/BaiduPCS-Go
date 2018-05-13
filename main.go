@@ -151,7 +151,7 @@ func main() {
 				lineArgs                   = args.GetArgs(line)
 				numArgs                    = len(lineArgs)
 				acceptCompleteFileCommands = []string{
-					"cd", "cp", "download", "export", "ls", "meta", "mkdir", "mv", "rapidupload", "rm", "share", "tree", "upload",
+					"cd", "cp", "download", "export", "locate", "ls", "meta", "mkdir", "mv", "rapidupload", "rm", "share", "tree", "upload",
 				}
 				closed = strings.LastIndex(line, " ") == len(line)-1
 			)
@@ -916,8 +916,9 @@ func main() {
 					IsPrintStatus:        c.Bool("status"),
 					IsExecutedPermission: c.Bool("x") && runtime.GOOS != "windows",
 					IsOverwrite:          c.Bool("ow"),
-					SaveTo:               saveTo,
 					IsShareDownload:      c.Bool("share"),
+					IsLocateDownload:     c.Bool("locate"),
+					SaveTo:               saveTo,
 					Parallel:             c.Int("p"),
 				})
 				return nil
@@ -950,6 +951,10 @@ func main() {
 				cli.BoolFlag{
 					Name:  "share",
 					Usage: "以分享文件的方式获取下载链接来下载",
+				},
+				cli.BoolFlag{
+					Name:  "locate",
+					Usage: "以获取直链的方式来下载",
 				},
 				cli.IntFlag{
 					Name:  "p",
@@ -993,6 +998,23 @@ func main() {
 				subArgs := c.Args()
 
 				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1])
+				return nil
+			},
+		},
+		{
+			Name:      "locate",
+			Aliases:   []string{"lt"},
+			Usage:     "获取下载直链",
+			UsageText: fmt.Sprintf("%s locate <文件>", app.Name),
+			Category:  "百度网盘",
+			Before:    reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() < 1 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+
+				pcscommand.RunLocateDownload(c.Args()...)
 				return nil
 			},
 		},

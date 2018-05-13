@@ -29,15 +29,8 @@ func (pcs *BaiduPCS) ShareSet(paths []string, option *ShareOption) (s *Shared, p
 		option = &ShareOption{}
 	}
 
-	var scheme string
-	if pcs.isHTTPS {
-		scheme = "https"
-	} else {
-		scheme = "http"
-	}
-
 	pcsURL := &url.URL{
-		Scheme: scheme,
+		Scheme: GetHTTPScheme(pcs.isHTTPS),
 		Host:   "pan.baidu.com",
 		Path:   "share/pset",
 	}
@@ -109,15 +102,8 @@ func (pcs *BaiduPCS) ShareSet(paths []string, option *ShareOption) (s *Shared, p
 func (pcs *BaiduPCS) ShareCancel(shareIDs []int64) (pcsError Error) {
 	pcs.lazyInit()
 
-	var scheme string
-	if pcs.isHTTPS {
-		scheme = "https"
-	} else {
-		scheme = "http"
-	}
-
 	pcsURL := &url.URL{
-		Scheme: scheme,
+		Scheme: GetHTTPScheme(pcs.isHTTPS),
 		Host:   "pan.baidu.com",
 		Path:   "share/cancel",
 	}

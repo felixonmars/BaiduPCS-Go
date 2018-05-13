@@ -261,6 +261,30 @@ func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 
 	return resp.Body, nil
 }
 
+// PrepareLocateDownload 提取下载链接, 只返回服务器响应数据和错误信息
+func (pcs *BaiduPCS) PrepareLocateDownload(pcspath string) (dataReadCloser io.ReadCloser, pcsError Error) {
+	pcs.lazyInit()
+	pcsURL := pcs.generatePCSURL("file", "locatedownload", map[string]string{
+		"path":         pcspath,
+		"ver":          "2",
+		"vip":          "1",
+		"network_type": "wifi",
+	})
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationLocateDownload, pcsURL)
+
+	resp, err := pcs.client.Req("POST", pcsURL.String(), nil, nil)
+	if err != nil {
+		handleRespClose(resp)
+		return nil, &ErrInfo{
+			operation: OperationLocateDownload,
+			errType:   ErrTypeNetError,
+			err:       err,
+		}
+	}
+
+	return resp.Body, nil
+}
+
 // PrepareUpload 上传单个文件, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareUpload(targetPath string, uploadFunc UploadFunc) (dataReadCloser io.ReadCloser, pcsError Error) {
 	pcs.lazyInit()

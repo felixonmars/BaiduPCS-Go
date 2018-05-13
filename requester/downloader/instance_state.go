@@ -11,7 +11,6 @@ import (
 //InstanceState 状态, 断点续传信息
 type InstanceState struct {
 	saveFile *os.File
-	buf      []byte
 	ii       *instanceInfo
 	mu       sync.Mutex
 }
@@ -106,17 +105,10 @@ func (is *InstanceState) getSaveFileContents() []byte {
 	}
 	intSize := int(size)
 
-	if is.buf != nil {
-		is.buf = make([]byte, intSize)
-	}
+	buf := make([]byte, intSize)
 
-	capacity := len(is.buf)
-	if intSize > capacity {
-		is.buf = append(is.buf, make([]byte, intSize-capacity)...)
-	}
-
-	n, _ := is.saveFile.ReadAt(is.buf, 0)
-	return is.buf[:n]
+	n, _ := is.saveFile.ReadAt(buf, 0)
+	return buf[:n]
 }
 
 //Get 拉取信息
@@ -163,12 +155,17 @@ func (is *InstanceState) Put(eii *InstanceInfo) {
 	var err error
 
 	is.ii.Render(eii)
-	is.buf, err = jsoniter.Marshal(is.ii)
+	data, err := jsoniter.Marshal(is.ii)
 	if err != nil {
 		panic(err)
 	}
 
-	_, err = is.saveFile.WriteAt(is.buf, 0)
+	err = is.saveFile.Truncate(int64(len(data)))
+	if err != nil {
+		pcsverbose.Verbosef("DEBUG: truncate file error: %s\n", err)
+	}
+
+	_, err = is.saveFile.WriteAt(data, 0)
 	if err != nil {
 		pcsverbose.Verbosef("DEBUG: write json error: %s\n", err)
 	}

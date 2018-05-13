@@ -2,16 +2,20 @@ package pcscommand
 
 import (
 	"container/list"
+	"errors"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"io"
+	"net/http"
 	"net/http/cookiejar"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -38,6 +42,7 @@ type DownloadOption struct {
 	IsExecutedPermission bool
 	IsOverwrite          bool
 	IsShareDownload      bool
+	IsLocateDownload     bool
 	SaveTo               string
 	Parallel             int
 }
@@ -324,17 +329,27 @@ func RunDownload(paths []string, option DownloadOption) {
 			fmt.Printf("[%d] 将会下载到路径: %s\n\n", task.ID, task.savePath)
 		}
 
-		// 以分享文件的方式获取下载链接来下载
+		// 获取直链, 或者以分享文件的方式获取下载链接来下载
 		var dlink string
-		if option.IsShareDownload {
+		if option.IsLocateDownload {
+			dlink = getDownloadLink(task.path)
+		} else if option.IsShareDownload {
 			dlink = getShareDLink(task.path)
 		}
+
 		if dlink != "" {
-			fmt.Printf("[%d] 获取到下载链接: %s\n", task.ID, dlink)
-
+			pcsCommandVerbose.Infof("[%d] 获取到下载链接: %s\n", task.ID, dlink)
 			client := requester.NewHTTPClient()
+			client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+				// 去掉 Referer
+				req.Header.Del("Referer")
+				if len(via) >= 10 {
+					return errors.New("stopped after 10 redirects")
+				}
+				return nil
+			}
 			client.SetTimeout(20 * time.Minute)
-
+			setupHTTPClient(client)
 			err = download(task.ID, dlink, task.savePath, client, cfg, option.IsPrintStatus, option.IsExecutedPermission)
 		} else {
 			err = pcs.DownloadFile(task.path, getDownloadFunc(task.ID, task.savePath, cfg, option.IsPrintStatus, option.IsExecutedPermission))
@@ -351,10 +366,58 @@ func RunDownload(paths []string, option DownloadOption) {
 	fmt.Printf("任务结束, 数据总量: %s\n", converter.ConvertFileSize(totalSize))
 }
 
+// RunLocateDownload 执行获取直链
+func RunLocateDownload(pcspaths ...string) {
+	absPaths, err := getAllAbsPaths(pcspaths...)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	pcs := GetBaiduPCS()
+
+	for i, pcspath := range absPaths {
+		info, err := pcs.LocateDownload(pcspath)
+		if err != nil {
+			fmt.Printf("[%d] %s, 路径: %s\n", i, err, pcspath)
+			continue
+		}
+
+		fmt.Printf("[%d] %s: \n", i, pcspath)
+		tb := pcstable.NewTable(os.Stdout)
+		tb.SetHeader([]string{"#", "链接"})
+		for k, u := range info.URLStrings(pcsconfig.Config.EnableHTTPS()) {
+			tb.Append([]string{strconv.Itoa(k), u.String()})
+		}
+		tb.Render()
+		fmt.Println()
+	}
+}
+
+func getDownloadLink(pcspath string) string {
+	pcs := GetBaiduPCS()
+	dInfo, pcsError := pcs.LocateDownload(pcspath)
+	if pcsError != nil {
+		pcsCommandVerbose.Warn(pcsError.Error())
+		return ""
+	}
+
+	u := dInfo.SingleURL(pcsconfig.Config.EnableHTTPS())
+	if u == nil {
+		pcsCommandVerbose.Warn("no any url")
+		return ""
+	}
+
+	return u.String()
+}
+
 // fileExist 检查文件是否存在,
-// 只有当文件存在, 断点续传文件不存在时, 才判断为存在
+// 只有当文件存在, 文件大小不为0或断点续传文件不存在时, 才判断为存在
 func fileExist(path string) bool {
-	if _, err := os.Stat(path); err == nil {
+	if info, err := os.Stat(path); err == nil {
+		if info.Size() == 0 {
+			return false
+		}
 		if _, err = os.Stat(path + DownloadSuffix); err != nil {
 			return true
 		}

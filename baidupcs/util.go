@@ -41,6 +41,14 @@ func (pcs *BaiduPCS) checkIsdir(op string, targetPath string) Error {
 	return nil
 }
 
+// GetHTTPScheme 获取 http 协议, https 或 http
+func GetHTTPScheme(https bool) (scheme string) {
+	if https {
+		return "https"
+	}
+	return "http"
+}
+
 // decodeJSONError 解析json中的远端服务器返回的错误
 func decodeJSONError(op string, data io.Reader) Error {
 	errInfo := NewErrorInfo(op)

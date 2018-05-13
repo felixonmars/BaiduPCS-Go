@@ -44,6 +44,8 @@ const (
 	OperationDownloadFile = "下载单个文件"
 	// OperationDownloadStreamFile 下载流式文件
 	OperationDownloadStreamFile = "下载流式文件"
+	// OperationLocateDownload 提取下载链接
+	OperationLocateDownload = "提取下载链接"
 	// OperationCloudDlAddTask 添加离线下载任务
 	OperationCloudDlAddTask = "添加离线下载任务"
 	// OperationCloudDlQueryTask 精确查询离线下载任务
@@ -133,13 +135,9 @@ func (pcs *BaiduPCS) SetHTTPS(https bool) {
 
 func (pcs *BaiduPCS) generatePCSURL(subPath, method string, param ...map[string]string) *url.URL {
 	pcsURL := &url.URL{
-		Scheme: "http",
+		Scheme: GetHTTPScheme(pcs.isHTTPS),
 		Host:   "pcs.baidu.com",
 		Path:   "/rest/2.0/pcs/" + subPath,
-	}
-
-	if pcs.isHTTPS {
-		pcsURL.Scheme = "https"
 	}
 
 	uv := pcsURL.Query()
@@ -157,13 +155,9 @@ func (pcs *BaiduPCS) generatePCSURL(subPath, method string, param ...map[string]
 
 func (pcs *BaiduPCS) generatePCSURL2(subPath, method string, param ...map[string]string) *url.URL {
 	pcsURL2 := &url.URL{
-		Scheme: "http",
+		Scheme: GetHTTPScheme(pcs.isHTTPS),
 		Host:   "pan.baidu.com",
 		Path:   "/rest/2.0/" + subPath,
-	}
-
-	if pcs.isHTTPS {
-		pcsURL2.Scheme = "https"
 	}
 
 	uv := pcsURL2.Query()
@@ -183,14 +177,7 @@ func (pcs *BaiduPCS) generatePCSURL2(subPath, method string, param ...map[string
 func (pcs *BaiduPCS) UK() (uk int64, pcsError Error) {
 	pcs.lazyInit()
 
-	var scheme string
-	if pcs.isHTTPS {
-		scheme = "https"
-	} else {
-		scheme = "http"
-	}
-
-	pcsURL := scheme + "://pan.baidu.com/api/user/getinfo?need_selfinfo=1"
+	pcsURL := GetHTTPScheme(pcs.isHTTPS) + "://pan.baidu.com/api/user/getinfo?need_selfinfo=1"
 
 	errInfo := NewErrorInfo(OperationGetUK)
 	body, err := pcs.client.Fetch("GET", pcsURL, nil, map[string]string{
