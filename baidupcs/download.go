@@ -24,7 +24,6 @@ func (ui *URLInfo) URLStrings(https bool) (urls []*url.URL) {
 		if err != nil {
 			continue
 		}
-
 		thisURL.Scheme = GetHTTPScheme(https)
 		urls = append(urls, thisURL)
 	}

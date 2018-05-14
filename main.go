@@ -1182,6 +1182,16 @@ func main() {
 					},
 				},
 				{
+					Name:      "list",
+					Aliases:   []string{"l"},
+					Usage:     "列出已分享文件",
+					UsageText: app.Name + " share list",
+					Action: func(c *cli.Context) error {
+						pcscommand.RunShareList()
+						return nil
+					},
+				},
+				{
 					Name:      "cancel",
 					Aliases:   []string{"c"},
 					Usage:     "取消分享文件",

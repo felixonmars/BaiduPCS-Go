@@ -5,6 +5,7 @@ import (
 	"github.com/iikira/baidu-tools/pan"
 	"github.com/json-iterator/go"
 	"net/url"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -19,6 +20,54 @@ type ShareOption struct {
 type Shared struct {
 	Link    string `json:"link"`
 	ShareID int64  `json:"shareid"`
+}
+
+// ShareRecordInfo 分享信息
+type ShareRecordInfo struct {
+	ShareID     int64    `json:"shareId"`
+	FsIds       []string `json:"fsIds"`
+	Passwd      string   `json:"passwd"`
+	Shortlink   string   `json:"shortlink"`
+	TypicalPath string   `json:"typicalPath"`
+}
+
+// Clean 清理
+func (sri *ShareRecordInfo) Clean() {
+	if sri.Passwd == "0" {
+		sri.Passwd = ""
+	}
+}
+
+// HasPasswd 是否需要提取码
+func (sri *ShareRecordInfo) HasPasswd() bool {
+	return sri.Passwd != "" && sri.Passwd != "0"
+}
+
+// ShareRecordInfoList 分享信息列表
+type ShareRecordInfoList []*ShareRecordInfo
+
+// Clean 清理
+func (sril *ShareRecordInfoList) Clean() {
+	newSril := make(ShareRecordInfoList, 0, len(*sril))
+
+	for _, sri := range *sril {
+		if sri == nil {
+			continue
+		}
+
+		if !path.IsAbs(sri.TypicalPath) {
+			continue
+		}
+
+		if len(sri.FsIds) == 0 {
+			continue
+		}
+
+		sri.Clean()
+		newSril = append(newSril, sri)
+	}
+
+	*sril = newSril
 }
 
 // ShareSet 分享文件
@@ -157,4 +206,67 @@ func (pcs *BaiduPCS) ShareCancel(shareIDs []int64) (pcsError Error) {
 	}
 
 	return nil
+}
+
+// ShareList 列出分享列表
+func (pcs *BaiduPCS) ShareList(page int) (records ShareRecordInfoList, pcsError Error) {
+	pcs.lazyInit()
+
+	query := url.Values{}
+	query.Set("page", strconv.Itoa(page))
+	query.Set("desc", "1")
+	query.Set("order", "time")
+
+	pcsURL := &url.URL{
+		Scheme:   GetHTTPScheme(pcs.isHTTPS),
+		Host:     "pan.baidu.com",
+		Path:     "share/record",
+		RawQuery: query.Encode(),
+	}
+
+	errInfo := NewErrorInfo(OperationShareList)
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationShareList, pcsURL)
+
+	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, map[string]string{
+		"User-Agent": "netdisk;8.3.1",
+	})
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		errInfo.errType = ErrTypeNetError
+		errInfo.err = err
+		return nil, errInfo
+	}
+
+	jsonData := struct {
+		List ShareRecordInfoList `json:"list"`
+		*pan.RemoteErrInfo
+	}{
+		List:          records,
+		RemoteErrInfo: &pan.RemoteErrInfo{},
+	}
+
+	d := jsoniter.NewDecoder(resp.Body)
+	err = d.Decode(&jsonData)
+	if err != nil {
+		errInfo.jsonError(err)
+		return nil, errInfo
+	}
+
+	if jsonData.RemoteErrInfo.ErrNo != 0 {
+		jsonData.RemoteErrInfo.ParseErrMsg()
+		errInfo.ErrCode = jsonData.RemoteErrInfo.ErrNo
+		errInfo.ErrMsg = jsonData.RemoteErrInfo.ErrMsg
+		return nil, errInfo
+	}
+
+	if jsonData.List == nil {
+		errInfo.errType = ErrTypeOthers
+		errInfo.err = errors.New("shared list is nil")
+		return nil, errInfo
+	}
+
+	jsonData.List.Clean()
+	return jsonData.List, nil
 }

@@ -342,13 +342,16 @@ func RunDownload(paths []string, option DownloadOption) {
 			client := requester.NewHTTPClient()
 			client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 				// 去掉 Referer
-				req.Header.Del("Referer")
+				if !pcsconfig.Config.EnableHTTPS() {
+					req.Header.Del("Referer")
+				}
 				if len(via) >= 10 {
 					return errors.New("stopped after 10 redirects")
 				}
 				return nil
 			}
 			client.SetTimeout(20 * time.Minute)
+			client.SetKeepAlive(true)
 			setupHTTPClient(client)
 			err = download(task.ID, dlink, task.savePath, client, cfg, option.IsPrintStatus, option.IsExecutedPermission)
 		} else {

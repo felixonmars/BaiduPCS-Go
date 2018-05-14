@@ -3,6 +3,7 @@ package pan
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/json-iterator/go"
@@ -55,7 +56,14 @@ func (si *SharedInfo) Auth(passwd string) error {
 
 	// 不自动跳转
 	si.Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
+		if strings.Contains(req.URL.String(), "surl=") {
+			return http.ErrUseLastResponse
+		}
+
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
 	}
 
 	resp, err := si.Client.Req("GET", si.SharedURL, nil, nil)

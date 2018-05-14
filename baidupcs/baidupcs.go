@@ -60,6 +60,8 @@ const (
 	OperationShareSet = "创建分享链接"
 	// OperationShareCancel 取消分享
 	OperationShareCancel = "取消分享"
+	// OperationShareList 列出分享列表
+	OperationShareList = "列出分享列表"
 )
 
 var (
