@@ -20,6 +20,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
   * [检测程序更新](#检测程序更新)
   * [登录百度帐号](#登录百度帐号)
   * [列出帐号列表](#列出帐号列表)
+  * [获取当前帐号](#获取当前帐号)
   * [切换百度帐号](#切换百度帐号)
   * [退出百度帐号](#退出百度帐号)
   * [获取网盘配额](#获取网盘配额)
@@ -30,6 +31,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
   * [获取单个文件/目录的元信息](#获取单个文件目录的元信息)
   * [下载文件/目录](#下载文件目录)
   * [上传文件/目录](#上传文件目录)
+  * [获取下载直链](#获取下载直链)
   * [手动秒传文件](#手动秒传文件)
   * [获取本地文件的秒传信息](#获取本地文件的秒传信息)
   * [导出文件/目录](#导出文件目录)
@@ -37,6 +39,10 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
   * [删除文件/目录](#删除文件目录)
   * [拷贝文件/目录](#拷贝文件目录)
   * [移动/重命名文件/目录](#移动重命名文件目录)
+  * [分享文件/目录](#分享文件目录)
+    + [设置分享文件/目录](#设置分享文件目录)
+    + [列出已分享文件/目录](#列出已分享文件目录)
+    + [取消分享文件/目录](#取消分享文件目录)
   * [离线下载](#离线下载)
     + [添加离线下载任务](#添加离线下载任务)
     + [精确查询离线下载任务](#精确查询离线下载任务)
@@ -164,7 +170,13 @@ BaiduPCS-Go login
 BaiduPCS-Go loglist
 ```
 
-获取当前帐号, 和所有已登录的百度帐号
+列出所有已登录的百度帐号
+
+## 获取当前帐号
+
+```
+BaiduPCS-Go who
+```
 
 ## 切换百度帐号
 
@@ -299,12 +311,15 @@ BaiduPCS-Go d <网盘文件或目录的路径1> <文件或目录2> <文件或目
 
 ### 可选参数
 ```
--test: 测试下载, 此操作不会保存文件到本地
--status: 输出所有线程的工作状态
---save: 将下载的文件直接保存到当前工作目录
---saveto: 将下载的文件直接保存到指定的目录
--x: 为文件加上执行权限, (windows系统无效)
--p <num>: 指定下载的最大并发量
+  --test          测试下载, 此操作不会保存文件到本地
+  --ow            overwrite, 覆盖已存在的文件
+  --status        输出所有线程的工作状态
+  --save          将下载的文件直接保存到当前工作目录
+  --saveto value  将下载的文件直接保存到指定的目录
+  -x              为文件加上执行权限, (windows系统无效)
+  --share         以分享文件的方式获取下载链接来下载
+  --locate        以获取直链的方式来下载
+  -p value        指定下载线程数
 ```
 
 支持多个文件或目录的下载.
@@ -355,6 +370,11 @@ BaiduPCS-Go upload C:/Users/Administrator/Desktop/1.mp4 C:/Users/Administrator/D
 BaiduPCS-Go upload C:/Users/Administrator/Desktop /视频
 ```
 
+## 获取下载直链
+```
+BaiduPCS-Go locate <文件1> <文件2> ...
+```
+
 ## 手动秒传文件
 ```
 BaiduPCS-Go rapidupload -length=<文件的大小> -md5=<文件的md5值> -slicemd5=<文件前256KB切片的md5值(可选)> -crc32=<文件的crc32值(可选)> <保存的网盘路径, 需包含文件名>
@@ -403,10 +423,10 @@ BaiduPCS-Go ep <文件/目录1> <文件/目录2> ...
 # 导出当前工作目录:
 BaiduPCS-Go export
 
-# 导出所有文件和目录, 并设置新的根目录为 `/root`
+# 导出所有文件和目录, 并设置新的根目录为 /root
 BaiduPCS-Go export -root=/root /
 
-# 导出 `/我的资源`
+# 导出 /我的资源
 BaiduPCS-Go export /我的资源
 ```
 
@@ -479,6 +499,31 @@ BaiduPCS-Go mv /我的资源/1.mp4 /
 # 将 /我的资源/1.mp4 重命名为 /我的资源/3.mp4
 BaiduPCS-Go mv /我的资源/1.mp4 /我的资源/3.mp4
 ```
+
+## 分享文件/目录
+```
+BaiduPCS-Go share
+```
+
+### 设置分享文件/目录
+```
+BaiduPCS-Go share set <文件/目录1> <文件/目录2> ...
+BaiduPCS-Go share s <文件/目录1> <文件/目录2> ...
+```
+
+### 列出已分享文件/目录
+```
+BaiduPCS-Go share list
+BaiduPCS-Go share l
+```
+
+### 取消分享文件/目录
+```
+BaiduPCS-Go share cancel <shareid_1> <shareid_2> ...
+BaiduPCS-Go share c <shareid_1> <shareid_2> ...
+```
+
+目前只支持通过分享id (shareid) 来取消分享.
 
 ## 离线下载
 ```
@@ -695,4 +740,4 @@ QQ群: 178324706
 
 |支付宝|
 |:-----:|
-|![alipay](./assets/donate/alipay.jpg)|
+|![alipay](https://github.com/iikira/BaiduPCS-Go/raw/master/assets/donate/alipay.jpg)|

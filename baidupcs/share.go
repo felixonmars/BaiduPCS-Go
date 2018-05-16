@@ -5,7 +5,6 @@ import (
 	"github.com/iikira/baidu-tools/pan"
 	"github.com/json-iterator/go"
 	"net/url"
-	"path"
 	"strconv"
 	"strings"
 )
@@ -48,26 +47,13 @@ type ShareRecordInfoList []*ShareRecordInfo
 
 // Clean 清理
 func (sril *ShareRecordInfoList) Clean() {
-	newSril := make(ShareRecordInfoList, 0, len(*sril))
-
 	for _, sri := range *sril {
 		if sri == nil {
 			continue
 		}
 
-		if !path.IsAbs(sri.TypicalPath) {
-			continue
-		}
-
-		if len(sri.FsIds) == 0 {
-			continue
-		}
-
 		sri.Clean()
-		newSril = append(newSril, sri)
 	}
-
-	*sril = newSril
 }
 
 // ShareSet 分享文件

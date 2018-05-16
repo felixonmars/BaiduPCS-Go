@@ -7,6 +7,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/baidu-tools/pan"
+	"net/url"
 	"os"
 	"path"
 	"strconv"
@@ -55,13 +56,13 @@ func RunShareList() {
 	}
 
 	tb := pcstable.NewTable(os.Stdout)
-	tb.SetHeader([]string{"#", "ShareID", "分享链接", "提取密码", "根目录"})
+	tb.SetHeader([]string{"#", "ShareID", "分享链接", "提取密码", "根目录", "路径"})
 	for k, record := range records {
 		if record == nil {
 			continue
 		}
 
-		tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(record.ShareID, 10), record.Shortlink, record.Passwd, path.Dir(record.TypicalPath)})
+		tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(record.ShareID, 10), record.Shortlink, record.Passwd, record.TypicalPath[:strings.LastIndex(record.TypicalPath, "/")+1], record.TypicalPath})
 	}
 	tb.Render()
 }
@@ -155,5 +156,17 @@ func getLink(shareID int64, shareLink, passwd, rootSharePath, filePath string) (
 		return ""
 	}
 
-	return fd.Dlink
+	u, err := url.Parse(fd.Dlink)
+	if err != nil {
+		pcsCommandVerbose.Warn(err.Error())
+		return ""
+	}
+
+	if pcsconfig.Config.EnableHTTPS() {
+		u.Scheme = "https"
+	} else {
+		u.Scheme = "http"
+	}
+
+	return u.String()
 }

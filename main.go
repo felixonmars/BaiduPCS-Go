@@ -35,7 +35,7 @@ import (
 
 var (
 	// Version 版本号
-	Version = "v3.5.1"
+	Version = "v3.5.2-devel"
 
 	historyFilePath = filepath.Join(pcsconfig.GetConfigDir(), "pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
@@ -125,7 +125,7 @@ func main() {
 			fmt.Printf("未找到命令: %s\n运行命令 %s help 获取帮助\n", c.Args().Get(0), app.Name)
 			return
 		}
-		cli.ShowAppHelp(c)
+
 		pcsverbose.Verbosef("VERBOSE: 这是一条调试信息\n\n")
 
 		var (
@@ -270,6 +270,8 @@ func main() {
 
 			return
 		})
+
+		fmt.Printf("提示: 输入 help 获取帮助.\n")
 
 		for {
 			var (
@@ -580,15 +582,24 @@ func main() {
 		{
 			Name:        "loglist",
 			Usage:       "列出帐号列表",
-			Description: "获取当前帐号, 和所有已登录的百度帐号",
+			Description: "列出所有已登录的百度帐号",
+			Category:    "百度帐号",
+			Before:      reloadFn,
+			Action: func(c *cli.Context) error {
+				list := pcsconfig.Config.BaiduUserList()
+				fmt.Println(list.String())
+				return nil
+			},
+		},
+		{
+			Name:        "who",
+			Usage:       "获取当前帐号",
+			Description: "获取当前帐号的信息",
 			Category:    "百度帐号",
 			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
 				activeUser := pcsconfig.Config.ActiveUser()
-				fmt.Printf("\n当前帐号 uid: %d, 用户名: %s\n\n", activeUser.UID, activeUser.Name)
-
-				list := pcsconfig.Config.BaiduUserList()
-				fmt.Println(list.String())
+				fmt.Printf("当前帐号 uid: %d, 用户名: %s, 性别: %s, 年龄: %.1f\n", activeUser.UID, activeUser.Name, activeUser.Sex, activeUser.Age)
 				return nil
 			},
 		},
@@ -1004,7 +1015,7 @@ func main() {
 			Name:      "locate",
 			Aliases:   []string{"lt"},
 			Usage:     "获取下载直链",
-			UsageText: fmt.Sprintf("%s locate <文件>", app.Name),
+			UsageText: fmt.Sprintf("%s locate <文件1> <文件2> ...", app.Name),
 			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
@@ -1154,7 +1165,7 @@ func main() {
 		},
 		{
 			Name:      "share",
-			Usage:     "分享文件",
+			Usage:     "分享文件/目录",
 			UsageText: app.Name + " share",
 			Category:  "百度网盘",
 			Before:    reloadFn,
@@ -1167,10 +1178,11 @@ func main() {
 			},
 			Subcommands: []cli.Command{
 				{
-					Name:      "set",
-					Aliases:   []string{"s"},
-					Usage:     "设置分享文件",
-					UsageText: app.Name + " share set <文件/目录1> <文件/目录2> ...",
+					Name:        "set",
+					Aliases:     []string{"s"},
+					Usage:       "设置分享文件/目录",
+					UsageText:   app.Name + " share set <文件/目录1> <文件/目录2> ...",
+					Description: `目前只支持创建私密链接.`,
 					Action: func(c *cli.Context) error {
 						if c.NArg() < 1 {
 							cli.ShowCommandHelp(c, c.Command.Name)
@@ -1183,7 +1195,7 @@ func main() {
 				{
 					Name:      "list",
 					Aliases:   []string{"l"},
-					Usage:     "列出已分享文件",
+					Usage:     "列出已分享文件/目录",
 					UsageText: app.Name + " share list",
 					Action: func(c *cli.Context) error {
 						pcscommand.RunShareList()
@@ -1191,10 +1203,11 @@ func main() {
 					},
 				},
 				{
-					Name:      "cancel",
-					Aliases:   []string{"c"},
-					Usage:     "取消分享文件",
-					UsageText: app.Name + " share cancel <shareid1> <shareid2> ...",
+					Name:        "cancel",
+					Aliases:     []string{"c"},
+					Usage:       "取消分享文件/目录",
+					UsageText:   app.Name + " share cancel <shareid_1> <shareid_2> ...",
+					Description: `目前只支持通过分享id (shareid) 来取消分享.`,
 					Action: func(c *cli.Context) error {
 						if c.NArg() < 1 {
 							cli.ShowCommandHelp(c, c.Command.Name)

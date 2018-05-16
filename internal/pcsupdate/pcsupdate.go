@@ -64,8 +64,8 @@ func CheckUpdate(version string, yes bool) {
 			continue
 		}
 
-		// 忽略 Beta 版本
-		if strings.Contains(versionInfo.Filename, "Beta") {
+		// 忽略 Beta 版本, 和版本前缀不符的
+		if strings.Contains(versionInfo.Filename, "Beta") || !strings.HasPrefix(versionInfo.Filename, "v") {
 			continue
 		}
 
@@ -139,7 +139,7 @@ func CheckUpdate(version string, yes bool) {
 			continue
 		}
 
-		if fileInfo.Isdir == 1 || !strings.HasPrefix(fileInfo.Filename, "v") {
+		if fileInfo.Isdir == 1 {
 			continue
 		}
 
