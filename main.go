@@ -110,8 +110,7 @@ func main() {
 
 	交流反馈:
 		提交Issue: https://github.com/iikira/BaiduPCS-Go/issues
-		邮箱: i@mail.iikira.com
-		QQ群: 178324706`
+		邮箱: i@mail.iikira.com`
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{

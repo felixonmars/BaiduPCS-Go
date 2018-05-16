@@ -86,6 +86,7 @@ func download(id int, downloadURL, savePath string, client *requester.HTTPClient
 
 	download := downloader.NewDownloader(downloadURL, writerAt, cfg)
 	download.SetClient(client)
+	download.TryHTTP(!pcsconfig.Config.EnableHTTPS())
 
 	exitChan = make(chan struct{})
 

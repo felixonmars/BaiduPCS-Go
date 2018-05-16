@@ -134,6 +134,9 @@ func (c *PCSConfig) SetupUserByBDUSS(bduss, ptoken, stoken string) (baidu *Baidu
 // SetAppID 设置app_id
 func (c *PCSConfig) SetAppID(appID int) {
 	c.appID = appID
+	if c.pcs != nil {
+		c.pcs.SetAPPID(appID)
+	}
 }
 
 // SetCacheSize 设置cache_size, 下载缓存
@@ -149,6 +152,9 @@ func (c *PCSConfig) SetMaxParallel(maxParallel int) {
 // SetUserAgent 设置User-Agent
 func (c *PCSConfig) SetUserAgent(userAgent string) {
 	c.userAgent = userAgent
+	if c.pcs != nil {
+		c.pcs.SetUserAgent(userAgent)
+	}
 }
 
 // SetSaveDir 设置下载保存路径
@@ -159,4 +165,7 @@ func (c *PCSConfig) SetSaveDir(saveDir string) {
 // SetEnableHTTPS 设置是否启用https
 func (c *PCSConfig) SetEnableHTTPS(https bool) {
 	c.enableHTTPS = https
+	if c.pcs != nil {
+		c.pcs.SetHTTPS(https)
+	}
 }

@@ -28,6 +28,7 @@ type Downloader struct {
 	executeTime   time.Time
 	executed      bool
 	durl          string
+	tryHTTP       bool
 	writer        io.WriterAt
 	client        *requester.HTTPClient
 	config        *Config
@@ -48,6 +49,11 @@ func NewDownloader(durl string, writer io.WriterAt, config *Config) (der *Downlo
 //SetClient 设置http客户端
 func (der *Downloader) SetClient(client *requester.HTTPClient) {
 	der.client = client
+}
+
+//TryHTTP 尝试使用 http 连接
+func (der *Downloader) TryHTTP(t bool) {
+	der.tryHTTP = t
 }
 
 func (der *Downloader) lazyInit() {
@@ -103,6 +109,10 @@ func (der *Downloader) Execute() error {
 
 	if req != nil {
 		referer = req.Referer()
+
+		if der.tryHTTP {
+			req.URL.Scheme = "http"
+		}
 		durl = req.URL.String()
 		pcsverbose.Verbosef("DEBUG: download task: URL: %s, Referer: %s\n", durl, referer)
 	}
