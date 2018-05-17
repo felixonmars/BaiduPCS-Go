@@ -11,15 +11,20 @@ import (
 	"strconv"
 )
 
+// LsOptions 列目录可选项
+type LsOptions struct {
+	Total bool
+}
+
 // RunLs 执行列目录
-func RunLs(path string, options *baidupcs.OrderOptions) {
+func RunLs(path string, lsOptions *LsOptions, orderOptions *baidupcs.OrderOptions) {
 	path, err := getAbsPath(path)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	files, err := GetBaiduPCS().FilesDirectoriesList(path, options)
+	files, err := GetBaiduPCS().FilesDirectoriesList(path, orderOptions)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -28,21 +33,42 @@ func RunLs(path string, options *baidupcs.OrderOptions) {
 	fmt.Printf("\n当前目录: %s\n----\n", path)
 
 	tb := pcstable.NewTable(os.Stdout)
-	tb.SetHeader([]string{"#", "文件大小", "创建日期", "文件(目录)"})
 
-	tb.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})
-
-	for k, file := range files {
-		if file.Isdir {
-			tb.Append([]string{strconv.Itoa(k), "-", pcstime.FormatTime(file.Ctime), file.Filename + "/"})
-			continue
-		}
-
-		tb.Append([]string{strconv.Itoa(k), converter.ConvertFileSize(file.Size), pcstime.FormatTime(file.Ctime), file.Filename})
+	if lsOptions == nil {
+		lsOptions = &LsOptions{}
 	}
 
-	fN, dN := files.Count()
-	tb.Append([]string{"", "总: " + converter.ConvertFileSize(files.TotalSize()), "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
+	var (
+		fN, dN int64
+	)
+
+	if lsOptions.Total {
+		tb.SetHeader([]string{"#", "fs_id", "文件大小", "创建日期", "修改日期", "md5(截图请打码)", "文件(目录)"})
+		tb.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})
+		for k, file := range files {
+			if file.Isdir {
+				tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(file.FsID, 10), "-", pcstime.FormatTime(file.Ctime), pcstime.FormatTime(file.Mtime), file.MD5, file.Filename + "/"})
+				continue
+			}
+
+			tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(file.FsID, 10), converter.ConvertFileSize(file.Size), pcstime.FormatTime(file.Ctime), pcstime.FormatTime(file.Mtime), file.MD5, file.Filename})
+		}
+		fN, dN := files.Count()
+		tb.Append([]string{"", "", "总: " + converter.ConvertFileSize(files.TotalSize()), "", "", "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
+	} else {
+		tb.SetHeader([]string{"#", "文件大小", "修改日期", "文件(目录)"})
+		tb.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})
+		for k, file := range files {
+			if file.Isdir {
+				tb.Append([]string{strconv.Itoa(k), "-", pcstime.FormatTime(file.Mtime), file.Filename + "/"})
+				continue
+			}
+
+			tb.Append([]string{strconv.Itoa(k), converter.ConvertFileSize(file.Size), pcstime.FormatTime(file.Mtime), file.Filename})
+		}
+		fN, dN = files.Count()
+		tb.Append([]string{"", "总: " + converter.ConvertFileSize(files.TotalSize()), "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
+	}
 
 	tb.Render()
 

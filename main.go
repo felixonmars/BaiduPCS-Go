@@ -685,30 +685,38 @@ func main() {
 			Category: "百度网盘",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
-				options := &baidupcs.OrderOptions{}
+				orderOptions := &baidupcs.OrderOptions{}
 				switch {
 				case c.IsSet("asc"):
-					options.Order = baidupcs.OrderAsc
+					orderOptions.Order = baidupcs.OrderAsc
 				case c.IsSet("desc"):
-					options.Order = baidupcs.OrderDesc
+					orderOptions.Order = baidupcs.OrderDesc
 				default:
-					options.Order = baidupcs.OrderAsc
+					orderOptions.Order = baidupcs.OrderAsc
 				}
 
 				switch {
 				case c.IsSet("time"):
-					options.By = baidupcs.OrderByTime
+					orderOptions.By = baidupcs.OrderByTime
 				case c.IsSet("name"):
-					options.By = baidupcs.OrderByName
+					orderOptions.By = baidupcs.OrderByName
 				case c.IsSet("size"):
-					options.By = baidupcs.OrderBySize
+					orderOptions.By = baidupcs.OrderBySize
 				default:
-					options.By = baidupcs.OrderByName
+					orderOptions.By = baidupcs.OrderByName
 				}
-				pcscommand.RunLs(c.Args().Get(0), options)
+
+				pcscommand.RunLs(c.Args().Get(0), &pcscommand.LsOptions{
+					Total: c.Bool("l") || c.Parent().Args().Get(0) == "ll",
+				}, orderOptions)
+
 				return nil
 			},
 			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "l",
+					Usage: "详细显示",
+				},
 				cli.BoolFlag{
 					Name:  "asc",
 					Usage: "升序排序",
