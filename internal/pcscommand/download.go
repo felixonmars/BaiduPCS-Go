@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -47,7 +48,7 @@ type DownloadOption struct {
 	Parallel             int
 }
 
-func download(id int, downloadURL, savePath string, client *requester.HTTPClient, cfg *downloader.Config, isPrintStatus, isExecutedPermission bool) error {
+func download(id int, downloadURL, savePath string, loadBalansers []string, client *requester.HTTPClient, cfg *downloader.Config, isPrintStatus, isExecutedPermission bool) error {
 	var (
 		file     *os.File
 		writerAt io.WriterAt
@@ -87,10 +88,25 @@ func download(id int, downloadURL, savePath string, client *requester.HTTPClient
 	download := downloader.NewDownloader(downloadURL, writerAt, cfg)
 	download.SetClient(client)
 	download.TryHTTP(!pcsconfig.Config.EnableHTTPS())
+	download.AddLoadBalanceServer(loadBalansers...)
 
 	exitChan = make(chan struct{})
 
 	download.OnExecute(func() {
+		if isPrintStatus {
+			go func() {
+				for {
+					time.Sleep(1 * time.Second)
+					select {
+					case <-exitChan:
+						return
+					default:
+						download.PrintAllWorkers()
+					}
+				}
+			}()
+		}
+
 		if cfg.IsTest {
 			fmt.Printf("[%d] 测试下载开始\n\n", id)
 		}
@@ -126,19 +142,6 @@ func download(id int, downloadURL, savePath string, client *requester.HTTPClient
 		}
 	})
 
-	if isPrintStatus {
-		go func() {
-			for {
-				time.Sleep(1 * time.Second)
-				select {
-				case <-exitChan:
-					return
-				default:
-					download.PrintAllWorkers()
-				}
-			}
-		}()
-	}
 	err = download.Execute()
 	close(exitChan)
 	if err != nil {
@@ -159,27 +162,6 @@ func download(id int, downloadURL, savePath string, client *requester.HTTPClient
 	}
 
 	return nil
-}
-
-func getDownloadFunc(id int, savePath string, cfg *downloader.Config, isPrintStatus, isExecutedPermission bool) baidupcs.DownloadFunc {
-	if cfg == nil {
-		cfg = downloader.NewConfig()
-	}
-
-	return func(downloadURL string, jar *cookiejar.Jar) error {
-		h := requester.NewHTTPClient()
-		h.SetCookiejar(jar)
-		h.SetKeepAlive(true)
-		h.SetTimeout(10 * time.Minute)
-		setupHTTPClient(h)
-
-		err := download(id, downloadURL, savePath, h, cfg, isPrintStatus, isExecutedPermission)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
 }
 
 // RunDownload 执行下载网盘内文件
@@ -331,10 +313,27 @@ func RunDownload(paths []string, option DownloadOption) {
 		}
 
 		// 获取直链, 或者以分享文件的方式获取下载链接来下载
-		var dlink string
+		var (
+			dlink  string
+			dlinks []string
+		)
+
 		if option.IsLocateDownload {
-			dlink = getDownloadLink(task.path)
+			// 提取直链下载
+			rawDlinks := getDownloadLinks(task.path)
+			if len(rawDlinks) > 0 {
+				dlink = rawDlinks[0].String()
+				dlinks = make([]string, 0, len(rawDlinks)-1)
+				for _, rawDlink := range rawDlinks[1:len(rawDlinks)] {
+					if rawDlink == nil {
+						continue
+					}
+
+					dlinks = append(dlinks, rawDlink.String())
+				}
+			}
 		} else if option.IsShareDownload {
+			// 分享下载
 			dlink = getShareDLink(task.path)
 		}
 
@@ -354,9 +353,22 @@ func RunDownload(paths []string, option DownloadOption) {
 			client.SetTimeout(20 * time.Minute)
 			client.SetKeepAlive(true)
 			setupHTTPClient(client)
-			err = download(task.ID, dlink, task.savePath, client, cfg, option.IsPrintStatus, option.IsExecutedPermission)
+			err = download(task.ID, dlink, task.savePath, dlinks, client, cfg, option.IsPrintStatus, option.IsExecutedPermission)
 		} else {
-			err = pcs.DownloadFile(task.path, getDownloadFunc(task.ID, task.savePath, cfg, option.IsPrintStatus, option.IsExecutedPermission))
+			err = pcs.DownloadFile(task.path, func(downloadURL string, jar *cookiejar.Jar) error {
+				h := requester.NewHTTPClient()
+				h.SetCookiejar(jar)
+				h.SetKeepAlive(true)
+				h.SetTimeout(10 * time.Minute)
+				setupHTTPClient(h)
+
+				err := download(task.ID, downloadURL, task.savePath, dlinks, h, cfg, option.IsPrintStatus, option.IsExecutedPermission)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
 		}
 
 		if err != nil {
@@ -398,21 +410,21 @@ func RunLocateDownload(pcspaths ...string) {
 	}
 }
 
-func getDownloadLink(pcspath string) string {
+func getDownloadLinks(pcspath string) (dlinks []*url.URL) {
 	pcs := GetBaiduPCS()
 	dInfo, pcsError := pcs.LocateDownload(pcspath)
 	if pcsError != nil {
 		pcsCommandVerbose.Warn(pcsError.Error())
-		return ""
+		return
 	}
 
-	u := dInfo.SingleURL(pcsconfig.Config.EnableHTTPS())
-	if u == nil {
+	us := dInfo.URLStrings(pcsconfig.Config.EnableHTTPS())
+	if len(us) == 0 {
 		pcsCommandVerbose.Warn("no any url")
-		return ""
+		return
 	}
 
-	return u.String()
+	return us
 }
 
 // fileExist 检查文件是否存在,

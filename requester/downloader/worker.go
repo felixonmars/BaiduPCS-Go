@@ -20,7 +20,7 @@ type Worker struct {
 	speedsPerSecond int64 //速度
 	wrange          Range
 	speedsStat      speeds.Speeds
-	id              int32  //id
+	id              int    //id
 	cacheSize       int    //下载缓存
 	url             string //下载地址
 	referer         string //来源地址
@@ -41,7 +41,7 @@ type Worker struct {
 }
 
 //NewWorker 初始化Worker
-func NewWorker(id int32, durl string, writerAt io.WriterAt) *Worker {
+func NewWorker(id int, durl string, writerAt io.WriterAt) *Worker {
 	return &Worker{
 		id:       id,
 		url:      durl,
@@ -50,7 +50,7 @@ func NewWorker(id int32, durl string, writerAt io.WriterAt) *Worker {
 }
 
 //ID 返回worker ID
-func (wer *Worker) ID() int32 {
+func (wer *Worker) ID() int {
 	return wer.id
 }
 

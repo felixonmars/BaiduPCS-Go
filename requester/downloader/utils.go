@@ -2,10 +2,22 @@ package downloader
 
 import (
 	"github.com/iikira/BaiduPCS-Go/requester"
+	mathrand "math/rand"
 	"mime"
 	"net/url"
 	"path"
+	"time"
 )
+
+// RandomNumber 生成指定区间随机数
+func RandomNumber(min, max int) int {
+	s := mathrand.NewSource(time.Now().UnixNano())
+	r := mathrand.New(s)
+	if min > max {
+		min, max = max, min
+	}
+	return r.Intn(max-min) + min
+}
 
 // GetFileName 获取文件名
 func GetFileName(uri string, client *requester.HTTPClient) (filename string, err error) {

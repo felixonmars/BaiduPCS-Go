@@ -5,9 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/waitgroup"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"io"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -28,6 +30,7 @@ type Downloader struct {
 	executeTime   time.Time
 	executed      bool
 	durl          string
+	loadBalansers []string
 	tryHTTP       bool
 	writer        io.WriterAt
 	client        *requester.HTTPClient
@@ -103,19 +106,62 @@ func (der *Downloader) Execute() error {
 	status.totalSize = resp.ContentLength
 
 	var (
-		req           = resp.Request
-		durl, referer string
+		loadBalancerResponses = make([]*LoadBalancerResponse, 0, len(der.loadBalansers)+1)
+		handleLoadBalancer    = func(req *http.Request) {
+			if req != nil {
+				if der.tryHTTP {
+					req.URL.Scheme = "http"
+				}
+
+				loadBalancer := &LoadBalancerResponse{
+					URL:     req.URL.String(),
+					Referer: req.Referer(),
+				}
+
+				loadBalancerResponses = append(loadBalancerResponses, loadBalancer)
+				pcsverbose.Verbosef("DEBUG: download task: URL: %s, Referer: %s\n", loadBalancer.URL, loadBalancer.Referer)
+			}
+		}
 	)
 
-	if req != nil {
-		referer = req.Referer()
+	handleLoadBalancer(resp.Request)
 
-		if der.tryHTTP {
-			req.URL.Scheme = "http"
-		}
-		durl = req.URL.String()
-		pcsverbose.Verbosef("DEBUG: download task: URL: %s, Referer: %s\n", durl, referer)
+	// 负载均衡
+	wg := waitgroup.NewWaitGroup(10)
+	privTimeout := der.client.Client.Timeout
+	der.client.SetTimeout(5 * time.Second)
+	for _, loadBalanser := range der.loadBalansers {
+		wg.AddDelta()
+		go func(loadBalanser string) {
+			defer wg.Done()
+
+			subResp, subErr := der.client.Req("HEAD", loadBalanser, nil, nil)
+			if subResp != nil {
+				defer subResp.Body.Close()
+			}
+			if subErr != nil {
+				pcsverbose.Verbosef("DEBUG: loadBalanser Error: %s\n", subErr)
+				return
+			}
+
+			if !ServerEqual(resp, subResp) {
+				pcsverbose.Verbosef("DEBUG: loadBalanser not equal to main server: %s\n", subErr)
+				return
+			}
+
+			if subResp.Request != nil {
+				loadBalancerResponses = append(loadBalancerResponses, &LoadBalancerResponse{
+					URL: subResp.Request.URL.String(),
+				})
+			}
+			handleLoadBalancer(subResp.Request)
+
+		}(loadBalanser)
 	}
+	wg.Wait()
+	der.client.SetTimeout(privTimeout)
+
+	loadBalancerResponseList := NewLoadBalancerResponseList(loadBalancerResponses)
 
 	//load breakpoint
 	err = der.initInstanceState()
@@ -178,16 +224,17 @@ func (der *Downloader) Execute() error {
 		writerAt = der.writer
 	}
 
-	workerInit := func(wer *Worker) {
-		wer.SetClient(der.client)
-		wer.SetCacheSize(der.config.cacheSize)
-		wer.SetWriteMutex(writeMu)
-		wer.SetReferer(referer)
-	}
-
 	for i := 0; i < der.config.parallel; i++ {
-		worker := NewWorker(int32(i), durl, writerAt)
-		workerInit(worker)
+		loadBalancer := loadBalancerResponseList.SequentialGet()
+		if loadBalancer == nil {
+			continue
+		}
+
+		worker := NewWorker(i, loadBalancer.URL, writerAt)
+		worker.SetClient(der.client)
+		worker.SetCacheSize(der.config.cacheSize)
+		worker.SetWriteMutex(writeMu)
+		worker.SetReferer(loadBalancer.Referer)
 
 		// 分配线程
 		if isRange {
