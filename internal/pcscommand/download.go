@@ -44,6 +44,7 @@ type DownloadOption struct {
 	IsOverwrite          bool
 	IsShareDownload      bool
 	IsLocateDownload     bool
+	IsStreaming          bool
 	SaveTo               string
 	Parallel             int
 }
@@ -355,7 +356,7 @@ func RunDownload(paths []string, option DownloadOption) {
 			setupHTTPClient(client)
 			err = download(task.ID, dlink, task.savePath, dlinks, client, cfg, option.IsPrintStatus, option.IsExecutedPermission)
 		} else {
-			err = pcs.DownloadFile(task.path, func(downloadURL string, jar *cookiejar.Jar) error {
+			dfunc := func(downloadURL string, jar *cookiejar.Jar) error {
 				h := requester.NewHTTPClient()
 				h.SetCookiejar(jar)
 				h.SetKeepAlive(true)
@@ -368,7 +369,12 @@ func RunDownload(paths []string, option DownloadOption) {
 				}
 
 				return nil
-			})
+			}
+			if option.IsStreaming {
+				err = pcs.DownloadStreamFile(task.path, dfunc)
+			} else {
+				err = pcs.DownloadFile(task.path, dfunc)
+			}
 		}
 
 		if err != nil {

@@ -233,7 +233,7 @@ func (wer *Worker) Execute() {
 	}
 
 	// 已完成
-	if wer.wrange.Len() == 0 {
+	if wer.wrange.Len() <= 0 {
 		wer.status.statusCode = StatusCodeSuccessed
 		return
 	}
@@ -333,7 +333,8 @@ func (wer *Worker) Execute() {
 			// 初始化数据
 			var readErr error
 			n = 0
-			// 线程未被分配
+
+			// 读取数据
 			for n < len(buf) && readErr == nil && (single || wer.wrange.Len() > 0) {
 				nn, readErr = resp.Body.Read(buf[n:])
 				nn64 = int64(nn)
@@ -399,8 +400,9 @@ func (wer *Worker) Execute() {
 					fallthrough
 				case readErr == io.EOF:
 					fallthrough
-				case wer.wrange.Len() == 0:
+				case wer.wrange.Len() <= 0:
 					// 下载完成
+					// 小于0可能是因为 worker 被 duplicate
 					wer.status.statusCode = StatusCodeSuccessed
 					return
 				default:

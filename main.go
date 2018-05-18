@@ -271,6 +271,9 @@ func main() {
 			return
 		})
 
+		fmt.Printf("提示: 方向键上下可切换历史命令.\n")
+		fmt.Printf("提示: Ctrl + A 跳转命令首.\n")
+		fmt.Printf("提示: Ctrl + E 跳转命令尾.\n")
 		fmt.Printf("提示: 输入 help 获取帮助.\n")
 
 		for {
@@ -936,6 +939,7 @@ func main() {
 					IsOverwrite:          c.Bool("ow"),
 					IsShareDownload:      c.Bool("share"),
 					IsLocateDownload:     c.Bool("locate"),
+					IsStreaming:          c.Bool("stream"),
 					SaveTo:               saveTo,
 					Parallel:             c.Int("p"),
 				})
@@ -965,6 +969,10 @@ func main() {
 				cli.BoolFlag{
 					Name:  "x",
 					Usage: "为文件加上执行权限, (windows系统无效)",
+				},
+				cli.BoolFlag{
+					Name:  "stream",
+					Usage: "以流式文件的方式下载",
 				},
 				cli.BoolFlag{
 					Name:  "share",
