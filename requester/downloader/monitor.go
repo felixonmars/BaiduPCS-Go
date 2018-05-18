@@ -375,56 +375,56 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 						worker.Reset()
 					}(worker)
 				}
-			}
 
-			//下载快完成了, 动态分配线程
-			if float64(mt.status.Downloaded()) > float64(mt.status.TotalSize())*0.7 {
-				pcsverbose.Verbosef("DEBUG: monitor: start duplicate.\n")
-				for k := range mt.workers {
-					if mt.workers[k] == nil {
-						continue
-					}
-					//动态分配线程
-					go func(worker *Worker) {
-						//过滤速度为0的worker
-						if worker.GetSpeedsPerSecond() == 0 {
-							return
+				//下载快完成了, 动态分配线程
+				if float64(mt.status.Downloaded()) > float64(mt.status.TotalSize())*0.7 {
+					pcsverbose.Verbosef("DEBUG: monitor: start duplicate.\n")
+					for k := range mt.workers {
+						if mt.workers[k] == nil {
+							continue
 						}
+						//动态分配线程
+						go func(worker *Worker) {
+							//过滤速度为0的worker
+							if worker.GetSpeedsPerSecond() == 0 {
+								return
+							}
 
-						mt.dymanicMu.Lock()
-						defer mt.dymanicMu.Unlock()
+							mt.dymanicMu.Lock()
+							defer mt.dymanicMu.Unlock()
 
-						// 筛选空闲的Worker
-						avaliableWorker := mt.GetAvaliableWorker()
-						if avaliableWorker == nil || worker == avaliableWorker { // 没有空的
-							return
-						}
+							// 筛选空闲的Worker
+							avaliableWorker := mt.GetAvaliableWorker()
+							if avaliableWorker == nil || worker == avaliableWorker { // 没有空的
+								return
+							}
 
-						workerRange := worker.GetRange()
+							workerRange := worker.GetRange()
 
-						end := workerRange.LoadEnd()
-						middle := (workerRange.LoadBegin() + end) / 2
+							end := workerRange.LoadEnd()
+							middle := (workerRange.LoadBegin() + end) / 2
 
-						if end-middle < MinParallelSize/5 { // 如果线程剩余的下载量太少, 不分配空闲线程
-							return
-						}
+							if end-middle < MinParallelSize/5 { // 如果线程剩余的下载量太少, 不分配空闲线程
+								return
+							}
 
-						// 折半
+							// 折半
 
-						avaliableWorkerRange := avaliableWorker.GetRange()
-						avaliableWorkerRange.StoreBegin(middle + 1)
-						avaliableWorkerRange.StoreEnd(end)
+							avaliableWorkerRange := avaliableWorker.GetRange()
+							avaliableWorkerRange.StoreBegin(middle + 1)
+							avaliableWorkerRange.StoreEnd(end)
 
-						avaliableWorker.CleanStatus()
+							avaliableWorker.CleanStatus()
 
-						workerRange.StoreEnd(middle)
+							workerRange.StoreEnd(middle)
 
-						pcsverbose.Verbosef("MONITER: worker duplicated: %d <- %d\n", avaliableWorker.ID(), worker.ID())
-						go avaliableWorker.Execute()
-						time.Sleep(10 * time.Microsecond)
-					}(mt.workers[k])
-				} //end for
-			} // end if
+							pcsverbose.Verbosef("MONITER: worker duplicated: %d <- %d\n", avaliableWorker.ID(), worker.ID())
+							go avaliableWorker.Execute()
+							time.Sleep(10 * time.Microsecond)
+						}(mt.workers[k])
+					} //end for
+				} // end if 1
+			} // end if 2
 		} //end select
 	} //end for
 }
