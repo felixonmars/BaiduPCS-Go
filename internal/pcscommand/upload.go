@@ -34,12 +34,17 @@ type utask struct {
 	savePath   string
 }
 
-// SumOption 计算文件摘要值配置
-type SumOption struct {
+// SumConfig 计算文件摘要值配置
+type SumConfig struct {
 	IsMD5Sum      bool
 	IsSliceMD5Sum bool
 	IsCRC32Sum    bool
 }
+
+// // UploadOptions 上传文件可选项
+// type UploadOptions struct {
+// 	IsRapidUpload bool
+// }
 
 // LocalPathInfo 本地文件详情
 type LocalPathInfo struct {
@@ -119,38 +124,38 @@ func (lp *LocalPathInfo) repeatRead(ws ...io.Writer) {
 }
 
 // Sum 计算文件摘要值
-func (lp *LocalPathInfo) Sum(opt SumOption) {
+func (lp *LocalPathInfo) Sum(cfg SumConfig) {
 	var (
 		md5w   hash.Hash
 		crc32w hash.Hash32
 	)
 
 	ws := make([]io.Writer, 0, 2)
-	if opt.IsMD5Sum {
+	if cfg.IsMD5Sum {
 		md5w = md5.New()
 		ws = append(ws, md5w)
 	}
-	if opt.IsCRC32Sum {
+	if cfg.IsCRC32Sum {
 		crc32w = crc32.NewIEEE()
 		ws = append(ws, crc32w)
 	}
-	if opt.IsSliceMD5Sum {
+	if cfg.IsSliceMD5Sum {
 		lp.SliceMD5Sum()
 	}
 
 	lp.repeatRead(ws...)
 
-	if opt.IsMD5Sum {
+	if cfg.IsMD5Sum {
 		lp.MD5 = md5w.Sum(nil)
 	}
-	if opt.IsCRC32Sum {
+	if cfg.IsCRC32Sum {
 		lp.CRC32 = crc32w.Sum32()
 	}
 }
 
 // Md5Sum 获取文件的 md5 值
 func (lp *LocalPathInfo) Md5Sum() {
-	lp.Sum(SumOption{
+	lp.Sum(SumConfig{
 		IsMD5Sum: true,
 	})
 }
@@ -184,7 +189,7 @@ md5sum:
 
 // Crc32Sum 获取文件的 crc32 值
 func (lp *LocalPathInfo) Crc32Sum() {
-	lp.Sum(SumOption{
+	lp.Sum(SumConfig{
 		IsCRC32Sum: true,
 	})
 }
@@ -477,7 +482,7 @@ func RunUpload(localPaths []string, savePath string) {
 }
 
 // GetFileSum 获取文件的大小, md5, 前256KB切片的 md5, crc32
-func GetFileSum(localPath string, opt *SumOption) (lp *LocalPathInfo, err error) {
+func GetFileSum(localPath string, cfg *SumConfig) (lp *LocalPathInfo, err error) {
 	file, err := os.Open(localPath)
 	if err != nil {
 		return nil, err
@@ -499,7 +504,7 @@ func GetFileSum(localPath string, opt *SumOption) (lp *LocalPathInfo, err error)
 		Length: fileStat.Size(),
 	}
 
-	lp.Sum(*opt)
+	lp.Sum(*cfg)
 
 	return lp, nil
 }

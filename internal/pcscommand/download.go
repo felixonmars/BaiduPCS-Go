@@ -146,6 +146,13 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 	err = download.Execute()
 	close(exitChan)
 	if err != nil {
+		// 下载失败, 删去空文件
+		if info, infoErr := file.Stat(); infoErr == nil {
+			if info.Size() == 0 {
+				pcsCommandVerbose.Infof("[%d] remove empty file: %s\n", id, savePath)
+				os.Remove(savePath)
+			}
+		}
 		return err
 	}
 
@@ -213,6 +220,7 @@ func RunDownload(paths []string, option DownloadOption) {
 	}
 
 	var (
+		failedList    []string
 		handleTaskErr = func(task *dtask, errManifest string, err error) {
 			if task == nil {
 				panic("task is nil")
@@ -235,9 +243,12 @@ func RunDownload(paths []string, option DownloadOption) {
 			if task.retry < task.MaxRetry {
 				task.retry++
 				dlist.PushBack(task)
+			} else {
+				failedList = append(failedList, task.path)
 			}
 			time.Sleep(3 * time.Duration(task.retry) * time.Second)
 		}
+		startTime = time.Now()
 		totalSize int64
 	)
 
@@ -385,7 +396,15 @@ func RunDownload(paths []string, option DownloadOption) {
 		totalSize += task.downloadInfo.Size
 	}
 
-	fmt.Printf("任务结束, 数据总量: %s\n", converter.ConvertFileSize(totalSize))
+	fmt.Printf("任务结束, 时间: %s, 数据总量: %s\n", time.Since(startTime), converter.ConvertFileSize(totalSize))
+	if len(failedList) != 0 {
+		fmt.Printf("以下文件下载失败: \n")
+		tb := pcstable.NewTable(os.Stdout)
+		for k := range failedList {
+			tb.Append([]string{strconv.Itoa(k), failedList[k]})
+		}
+		tb.Render()
+	}
 }
 
 // RunLocateDownload 执行获取直链

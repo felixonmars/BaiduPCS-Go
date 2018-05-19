@@ -1147,7 +1147,7 @@ func main() {
 				}
 
 				for k, filePath := range c.Args() {
-					lp, err := pcscommand.GetFileSum(filePath, &pcscommand.SumOption{
+					lp, err := pcscommand.GetFileSum(filePath, &pcscommand.SumConfig{
 						IsMD5Sum:      true,
 						IsCRC32Sum:    true,
 						IsSliceMD5Sum: true,

@@ -333,14 +333,76 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 			// 速度减慢或者全部失败, 开始监控
 			isLeftWorkersAllFailed := mt.IsLeftWorkersAllFailed()
 			if mt.status.SpeedsPerSecond() < mt.status.MaxSpeeds()/20 || isLeftWorkersAllFailed {
-				pcsverbose.Verbosef("DEBUG: monitor: start reload.\n")
 				if isLeftWorkersAllFailed {
 					pcsverbose.Verbosef("DEBUG: monitor: All workers failed\n")
 				}
 				mt.status.ResetMaxSpeeds() //清空统计
 
+				// 先进行动态分配线程
+
+				//下载快完成了, 动态分配线程
+				if float64(mt.status.Downloaded()) > float64(mt.status.TotalSize())*0.7 {
+					pcsverbose.Verbosef("DEBUG: monitor: start duplicate.\n")
+
+					var (
+						dwg    = sync.WaitGroup{}
+						dupNum int32
+					)
+					for k := range mt.workers {
+						if mt.workers[k] == nil {
+							continue
+						}
+						//动态分配线程
+
+						dwg.Add(1)
+						go func(worker *Worker) {
+							defer dwg.Done()
+
+							mt.dymanicMu.Lock()
+							defer mt.dymanicMu.Unlock()
+
+							if atomic.LoadInt32(&dupNum) >= 32 {
+								return
+							}
+
+							// 筛选空闲的Worker
+							avaliableWorker := mt.GetAvaliableWorker()
+							if avaliableWorker == nil || worker == avaliableWorker { // 没有空的
+								return
+							}
+
+							workerRange := worker.GetRange()
+
+							end := workerRange.LoadEnd()
+							middle := (workerRange.LoadBegin() + end) / 2
+
+							if end-middle < MinParallelSize/5 { // 如果线程剩余的下载量太少, 不分配空闲线程
+								return
+							}
+
+							atomic.AddInt32(&dupNum, 1)
+
+							// 折半
+
+							avaliableWorkerRange := avaliableWorker.GetRange()
+							avaliableWorkerRange.StoreBegin(middle + 1)
+							avaliableWorkerRange.StoreEnd(end)
+
+							avaliableWorker.CleanStatus()
+
+							workerRange.StoreEnd(middle)
+
+							pcsverbose.Verbosef("MONITER: worker duplicated: %d <- %d\n", avaliableWorker.ID(), worker.ID())
+							go avaliableWorker.Execute()
+							time.Sleep(10 * time.Microsecond)
+						}(mt.workers[k])
+					} //end for
+					dwg.Wait()
+				} // end if 1
+
+				// 重设长时间无响应, 和下载速度为 0 的线程
+				pcsverbose.Verbosef("DEBUG: monitor: start reload.\n")
 				for _, worker := range mt.workers {
-					// 重设长时间无响应, 和下载速度为 0 的线程
 					go func(worker *Worker) {
 						if atomic.LoadInt32(&reloadNum) > maxReloadNumFunc() { //达到最大重载次数
 							return
@@ -374,56 +436,7 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 						pcsverbose.Verbosef("MONITER: worker reload, worker id: %d\n", worker.ID())
 						worker.Reset()
 					}(worker)
-				}
-
-				//下载快完成了, 动态分配线程
-				if float64(mt.status.Downloaded()) > float64(mt.status.TotalSize())*0.7 {
-					pcsverbose.Verbosef("DEBUG: monitor: start duplicate.\n")
-					for k := range mt.workers {
-						if mt.workers[k] == nil {
-							continue
-						}
-						//动态分配线程
-						go func(worker *Worker) {
-							//过滤速度为0的worker
-							if worker.GetSpeedsPerSecond() == 0 {
-								return
-							}
-
-							mt.dymanicMu.Lock()
-							defer mt.dymanicMu.Unlock()
-
-							// 筛选空闲的Worker
-							avaliableWorker := mt.GetAvaliableWorker()
-							if avaliableWorker == nil || worker == avaliableWorker { // 没有空的
-								return
-							}
-
-							workerRange := worker.GetRange()
-
-							end := workerRange.LoadEnd()
-							middle := (workerRange.LoadBegin() + end) / 2
-
-							if end-middle < MinParallelSize/5 { // 如果线程剩余的下载量太少, 不分配空闲线程
-								return
-							}
-
-							// 折半
-
-							avaliableWorkerRange := avaliableWorker.GetRange()
-							avaliableWorkerRange.StoreBegin(middle + 1)
-							avaliableWorkerRange.StoreEnd(end)
-
-							avaliableWorker.CleanStatus()
-
-							workerRange.StoreEnd(middle)
-
-							pcsverbose.Verbosef("MONITER: worker duplicated: %d <- %d\n", avaliableWorker.ID(), worker.ID())
-							go avaliableWorker.Execute()
-							time.Sleep(10 * time.Microsecond)
-						}(mt.workers[k])
-					} //end for
-				} // end if 1
+				} // end for
 			} // end if 2
 		} //end select
 	} //end for
