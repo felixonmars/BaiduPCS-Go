@@ -306,7 +306,7 @@ func RunUpload(localPaths []string, savePath string) {
 				panic("task is nil")
 			}
 
-			if err == nil {
+			if pcsError == nil {
 				return
 			}
 
@@ -318,7 +318,7 @@ func RunUpload(localPaths []string, savePath string) {
 				return
 			}
 
-			fmt.Printf("[%d] %s, %s, 重试 %d/%d\n", task.ID, errManifest, err, task.retry, task.MaxRetry)
+			fmt.Printf("[%d] %s, %s, 重试 %d/%d\n", task.ID, errManifest, pcsError, task.retry, task.MaxRetry)
 
 			// 未达到失败重试最大次数, 将任务推送到队列末尾
 			if task.retry < task.MaxRetry {
@@ -358,9 +358,11 @@ func RunUpload(localPaths []string, savePath string) {
 		// 设置缓存
 		if !pcscache.DirCache.Existed(panDir) {
 			fdl, err := pcs.FilesDirectoriesList(panDir, baidupcs.DefaultOrderOptions)
-			if err == nil {
-				pcscache.DirCache.Set(panDir, &fdl)
+			if err != nil {
+				fmt.Printf("%s\n", err)
+				continue
 			}
+			pcscache.DirCache.Set(panDir, &fdl)
 		}
 
 		if task.uploadInfo.Length >= 128*converter.MB {

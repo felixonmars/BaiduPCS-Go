@@ -36,7 +36,7 @@ func (pcs *BaiduPCS) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string,
 func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (pcsError Error) {
 	dataReadCloser, pcsError := pcs.PrepareUpload(targetPath, uploadFunc)
 	if pcsError != nil {
-		return
+		return pcsError
 	}
 
 	defer dataReadCloser.Close()
