@@ -357,10 +357,15 @@ func RunUpload(localPaths []string, savePath string) {
 
 		// 设置缓存
 		if !pcscache.DirCache.Existed(panDir) {
-			fdl, err := pcs.FilesDirectoriesList(panDir, baidupcs.DefaultOrderOptions)
-			if err != nil {
-				fmt.Printf("%s\n", err)
-				continue
+			fdl, pcsError := pcs.FilesDirectoriesList(panDir, baidupcs.DefaultOrderOptions)
+			if pcsError != nil {
+				switch pcsError.ErrorType() {
+				case baidupcs.ErrTypeRemoteError:
+					// do nothing
+				default:
+					fmt.Printf("%s\n", err)
+					continue
+				}
 			}
 			pcscache.DirCache.Set(panDir, &fdl)
 		}
