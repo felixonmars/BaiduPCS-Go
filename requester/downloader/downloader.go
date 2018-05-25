@@ -4,7 +4,6 @@ package downloader
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/waitgroup"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
@@ -37,14 +36,16 @@ type Downloader struct {
 	config        *Config
 	monitor       *Monitor
 	instanceState *InstanceState
+	banOutput     *OutputController
 }
 
 //NewDownloader 初始化Downloader
 func NewDownloader(durl string, writer io.WriterAt, config *Config) (der *Downloader) {
 	der = &Downloader{
-		durl:   durl,
-		config: config,
-		writer: writer,
+		durl:      durl,
+		config:    config,
+		writer:    writer,
+		banOutput: config.BanOutput,
 	}
 	return
 }
@@ -343,7 +344,7 @@ func (der *Downloader) PrintAllWorkers() {
 	if der.monitor == nil {
 		return
 	}
-	fmt.Println(der.monitor.ShowWorkers())
+	der.banOutput.Println(der.monitor.ShowWorkers())
 }
 
 //OnExecute 设置开始下载事件

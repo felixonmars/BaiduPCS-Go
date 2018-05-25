@@ -16,6 +16,7 @@ type Config struct {
 	CacheSize         int    // 下载缓冲
 	InstanceStatePath string // 断点续传信息路径
 	IsTest            bool   // 是否测试下载
+	BanOutput         *OutputController // 是否关闭终端的输出
 	cacheSize         int    // 实际下载缓存
 	parallel          int    // 实际的下载并行量
 }

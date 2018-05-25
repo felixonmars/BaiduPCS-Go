@@ -19,6 +19,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil/pcstime"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"github.com/iikira/args"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
@@ -932,6 +933,8 @@ func main() {
 					saveTo = filepath.Clean(c.String("saveto"))
 				}
 
+				banOutput := downloader.NewOutputController()
+				banOutput.SetTrigger(false)
 				pcscommand.RunDownload(c.Args(), pcscommand.DownloadOption{
 					IsTest:               c.Bool("test"),
 					IsPrintStatus:        c.Bool("status"),
@@ -942,7 +945,8 @@ func main() {
 					IsStreaming:          c.Bool("stream"),
 					SaveTo:               saveTo,
 					Parallel:             c.Int("p"),
-				})
+					BanOutput:            banOutput,
+				}, "")
 				return nil
 			},
 			Flags: []cli.Flag{
@@ -986,6 +990,124 @@ func main() {
 					Name:  "p",
 					Usage: "指定下载线程数",
 				},
+			},
+		},
+		{
+			Name:      "bg",
+			Usage:     "在后台进行下载任务（测试中，仅支持在cli模式下进行下载）",
+			UsageText: app.Name + " bg <文件/目录路径1> <文件/目录2> <文件/目录3> ...",
+			Description: `
+	默认关闭下载中任何向终端的输出（包括下载进度）
+	再后台进行文件下载，不会影响用户继续在客户端操作
+	可以同时进行多个任务
+	
+	示例:
+	
+	1. 后台下载文件
+	BaiduPCS-Go bg -d <文件1> <文件2> ...
+	
+	2. 显示所有后台任务
+	BaiduPCS-Go bg
+`,
+			Category: "百度网盘",
+			Before:   reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() == 0 {
+					pcscommand.PrintAllBgTask()
+					return nil
+				} else if !c.Bool("d") {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+
+				var saveTo string
+
+				if c.Bool("save") {
+					saveTo = "."
+				} else if c.String("saveto") != "" {
+					saveTo = filepath.Clean(c.String("saveto"))
+				}
+
+				pcscommand.RunBgDownload(c.Args(), pcscommand.DownloadOption{
+					IsTest:               c.Bool("test"),
+					IsPrintStatus:        c.Bool("status"),
+					IsExecutedPermission: c.Bool("x") && runtime.GOOS != "windows",
+					IsOverwrite:          c.Bool("ow"),
+					IsShareDownload:      c.Bool("share"),
+					IsLocateDownload:     c.Bool("locate"),
+					IsStreaming:          c.Bool("stream"),
+					SaveTo:               saveTo,
+					Parallel:             c.Int("p"),
+					BanOutput:            downloader.NewOutputController(),
+				})
+				return nil
+			},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "d",
+					Usage: "下载文件",
+				},
+				cli.BoolFlag{
+					Name:  "test",
+					Usage: "测试下载, 此操作不会保存文件到本地",
+				},
+				cli.BoolFlag{
+					Name:  "ow",
+					Usage: "overwrite, 覆盖已存在的文件",
+				},
+				cli.BoolFlag{
+					Name:  "status",
+					Usage: "输出所有线程的工作状态",
+				},
+				cli.BoolFlag{
+					Name:  "save",
+					Usage: "将下载的文件直接保存到当前工作目录",
+				},
+				cli.StringFlag{
+					Name:  "saveto",
+					Usage: "将下载的文件直接保存到指定的目录",
+				},
+				cli.BoolFlag{
+					Name:  "x",
+					Usage: "为文件加上执行权限, (windows系统无效)",
+				},
+				cli.BoolFlag{
+					Name:  "stream",
+					Usage: "以流式文件的方式下载",
+				},
+				cli.BoolFlag{
+					Name:  "share",
+					Usage: "以分享文件的方式获取下载链接来下载",
+				},
+				cli.BoolFlag{
+					Name:  "locate",
+					Usage: "以获取直链的方式来下载",
+				},
+				cli.IntFlag{
+					Name:  "p",
+					Usage: "指定下载线程数",
+				},
+			},
+		},
+		{
+			Name:      "fg",
+			Usage:     "将task_id对应的后台任务调度到前台（测试中）",
+			UsageText: app.Name + " fg <task_id>",
+			Description: `
+	将task_id对应的后台任务调度到前台（测试中，仅支持cli模式）
+	示例:
+	BaiduPCS-Go fg <task_id>
+`,
+			Category: "百度网盘",
+			Before:   reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() == 0 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+				
+				pcscommand.RunFgDownload(c.Args()[0])
+				return nil
 			},
 		},
 		{

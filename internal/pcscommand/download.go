@@ -47,9 +47,10 @@ type DownloadOption struct {
 	IsStreaming          bool
 	SaveTo               string
 	Parallel             int
+	BanOutput            *downloader.OutputController
 }
 
-func download(id int, downloadURL, savePath string, loadBalansers []string, client *requester.HTTPClient, cfg *downloader.Config, isPrintStatus, isExecutedPermission bool) error {
+func download(id int, downloadURL, savePath string, loadBalansers []string, client *requester.HTTPClient, cfg *downloader.Config, isPrintStatus, isExecutedPermission bool, taskID string) error {
 	var (
 		file     *os.File
 		writerAt io.WriterAt
@@ -109,7 +110,7 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 		}
 
 		if cfg.IsTest {
-			fmt.Printf("[%d] 测试下载开始\n\n", id)
+			cfg.BanOutput.Printf("[%v-%d] 测试下载开始\n\n", taskID, id)
 		}
 
 		var (
@@ -132,8 +133,8 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 				} else {
 					leftStr = (time.Duration((totalSize-downloaded)/(speeds)) * time.Second).String()
 				}
-
-				fmt.Printf("\r[%d] ↓ %s/%s %s/s in %s, left %s ............", id,
+				
+				cfg.BanOutput.Printf("\r[%v-%d] ↓ %s/%s %s/s in %s, left %s ............", taskID, id,
 					converter.ConvertFileSize(v.Downloaded(), 2),
 					converter.ConvertFileSize(v.TotalSize(), 2),
 					converter.ConvertFileSize(v.SpeedsPerSecond(), 2),
@@ -149,7 +150,7 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 		// 下载失败, 删去空文件
 		if info, infoErr := file.Stat(); infoErr == nil {
 			if info.Size() == 0 {
-				pcsCommandVerbose.Infof("[%d] remove empty file: %s\n", id, savePath)
+				pcsCommandVerbose.Infof("[%v-%d] remove empty file: %s\n", taskID, id, savePath)
 				os.Remove(savePath)
 			}
 		}
@@ -159,25 +160,26 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 	if isExecutedPermission {
 		err = file.Chmod(0766)
 		if err != nil {
-			fmt.Printf("\n\n[%d] 警告, 加执行权限错误: %s\n\n", id, err)
+			cfg.BanOutput.Printf("\n\n[%v-%d] 警告, 加执行权限错误: %s\n\n", taskID, id, err)
 		}
 	}
 
 	if !cfg.IsTest {
-		fmt.Printf("\n\n[%d] 下载完成, 保存位置: %s\n\n", id, savePath)
+		cfg.BanOutput.Printf("\n\n[%v-%d] 下载完成, 保存位置: %s\n\n", taskID, id, savePath)
 	} else {
-		fmt.Printf("\n\n[%d] 测试下载结束\n\n", id)
+		cfg.BanOutput.Printf("\n\n[%v-%d] 测试下载结束\n\n", taskID, id)
 	}
 
 	return nil
 }
 
 // RunDownload 执行下载网盘内文件
-func RunDownload(paths []string, option DownloadOption) {
+func RunDownload(paths []string, option DownloadOption, taskID string) {
 	// 设置下载配置
 	cfg := &downloader.Config{
 		IsTest:    option.IsTest,
 		CacheSize: pcsconfig.Config.CacheSize(),
+		BanOutput: option.BanOutput,
 	}
 
 	// 设置下载最大并发量
@@ -192,8 +194,8 @@ func RunDownload(paths []string, option DownloadOption) {
 		return
 	}
 
-	fmt.Printf("\n")
-	fmt.Printf("[0] 提示: 当前下载最大并发量为: %d, 下载缓存为: %d\n", cfg.MaxParallel, cfg.CacheSize)
+	cfg.BanOutput.Printf("\n")
+	cfg.BanOutput.Printf("[0] 提示: 当前下载最大并发量为: %d, 下载缓存为: %d\n", cfg.MaxParallel, cfg.CacheSize)
 
 	var (
 		pcs    = GetBaiduPCS()
@@ -216,7 +218,7 @@ func RunDownload(paths []string, option DownloadOption) {
 			ptask.savePath = GetActiveUser().GetSavePath(paths[k])
 		}
 		dlist.PushBack(ptask)
-		fmt.Printf("[%d] 加入下载队列: %s\n", lastID, paths[k])
+		cfg.BanOutput.Printf("[%v-%d] 加入下载队列: %s\n", taskID, lastID, paths[k])
 	}
 
 	var (
@@ -233,11 +235,11 @@ func RunDownload(paths []string, option DownloadOption) {
 			// 不重试的情况
 			switch {
 			case strings.Compare(errManifest, "下载文件错误") == 0 && strings.Contains(err.Error(), StrDownloadInitError):
-				fmt.Printf("[%d] %s, %s\n", task.ID, errManifest, err)
+				cfg.BanOutput.Printf("[%v-%d] %s, %s\n", taskID, task.ID, errManifest, err)
 				return
 			}
 
-			fmt.Printf("[%d] %s, %s, 重试 %d/%d\n", task.ID, errManifest, err, task.retry, task.MaxRetry)
+			cfg.BanOutput.Printf("[%v-%d] %s, %s, 重试 %d/%d\n", taskID, task.ID, errManifest, err, task.retry, task.MaxRetry)
 
 			// 未达到失败重试最大次数, 将任务推送到队列末尾
 			if task.retry < task.MaxRetry {
@@ -269,13 +271,13 @@ func RunDownload(paths []string, option DownloadOption) {
 			task.downloadInfo, err = pcs.FilesDirectoriesMeta(task.path)
 			if err != nil {
 				// 不重试
-				fmt.Printf("[%d] 获取路径信息错误, %s\n", task.ID, err)
+				fmt.Printf("[%v-%d] 获取路径信息错误, %s\n", taskID, task.ID, err)
 				continue
 			}
 		}
 
-		fmt.Printf("\n")
-		fmt.Printf("[%d] ----\n%s\n", task.ID, task.downloadInfo.String())
+		cfg.BanOutput.Printf("\n")
+		cfg.BanOutput.Printf("[%v-%d] ----\n%s\n", taskID, task.ID, task.downloadInfo.String())
 
 		// 如果是一个目录, 将子文件和子目录加入队列
 		if task.downloadInfo.Isdir {
@@ -286,7 +288,7 @@ func RunDownload(paths []string, option DownloadOption) {
 			fileList, err := pcs.FilesDirectoriesList(task.path, baidupcs.DefaultOrderOptions)
 			if err != nil {
 				// 不重试
-				fmt.Printf("[%d] 获取目录信息错误, %s\n", task.ID, err)
+				fmt.Printf("[%v-%d] 获取目录信息错误, %s\n", taskID, task.ID, err)
 				continue
 			}
 
@@ -308,20 +310,20 @@ func RunDownload(paths []string, option DownloadOption) {
 				}
 
 				dlist.PushBack(subTask)
-				fmt.Printf("[%d] 加入下载队列: %s\n", lastID, fileList[k].Path)
+				cfg.BanOutput.Printf("[%v-%d] 加入下载队列: %s\n", taskID, lastID, fileList[k].Path)
 			}
 			continue
 		}
 
-		fmt.Printf("[%d] 准备下载: %s\n", task.ID, task.path)
+		cfg.BanOutput.Printf("[%v-%d] 准备下载: %s\n", taskID, task.ID, task.path)
 
 		if !option.IsTest && !option.IsOverwrite && fileExist(task.savePath) {
-			fmt.Printf("[%d] 文件已经存在: %s, 跳过...\n", task.ID, task.savePath)
+			cfg.BanOutput.Printf("[%v-%d] 文件已经存在: %s, 跳过...\n", taskID, task.ID, task.savePath)
 			continue
 		}
 
 		if !option.IsTest {
-			fmt.Printf("[%d] 将会下载到路径: %s\n\n", task.ID, task.savePath)
+			cfg.BanOutput.Printf("[%v-%d] 将会下载到路径: %s\n\n", taskID, task.ID, task.savePath)
 		}
 
 		// 获取直链, 或者以分享文件的方式获取下载链接来下载
@@ -350,7 +352,7 @@ func RunDownload(paths []string, option DownloadOption) {
 		}
 
 		if dlink != "" {
-			pcsCommandVerbose.Infof("[%d] 获取到下载链接: %s\n", task.ID, dlink)
+			pcsCommandVerbose.Infof("[%v-%d] 获取到下载链接: %s\n", taskID, task.ID, dlink)
 			client := requester.NewHTTPClient()
 			client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 				// 去掉 Referer
@@ -365,7 +367,7 @@ func RunDownload(paths []string, option DownloadOption) {
 			client.SetTimeout(20 * time.Minute)
 			client.SetKeepAlive(true)
 			setupHTTPClient(client)
-			err = download(task.ID, dlink, task.savePath, dlinks, client, cfg, option.IsPrintStatus, option.IsExecutedPermission)
+			err = download(task.ID, dlink, task.savePath, dlinks, client, cfg, option.IsPrintStatus, option.IsExecutedPermission, taskID)
 		} else {
 			dfunc := func(downloadURL string, jar *cookiejar.Jar) error {
 				h := requester.NewHTTPClient()
@@ -374,7 +376,7 @@ func RunDownload(paths []string, option DownloadOption) {
 				h.SetTimeout(10 * time.Minute)
 				setupHTTPClient(h)
 
-				err := download(task.ID, downloadURL, task.savePath, dlinks, h, cfg, option.IsPrintStatus, option.IsExecutedPermission)
+				err := download(task.ID, downloadURL, task.savePath, dlinks, h, cfg, option.IsPrintStatus, option.IsExecutedPermission, taskID)
 				if err != nil {
 					return err
 				}
@@ -396,7 +398,7 @@ func RunDownload(paths []string, option DownloadOption) {
 		totalSize += task.downloadInfo.Size
 	}
 
-	fmt.Printf("任务结束, 时间: %s, 数据总量: %s\n", time.Since(startTime), converter.ConvertFileSize(totalSize))
+	cfg.BanOutput.Printf("任务结束, 时间: %s, 数据总量: %s\n", time.Since(startTime), converter.ConvertFileSize(totalSize))
 	if len(failedList) != 0 {
 		fmt.Printf("以下文件下载失败: \n")
 		tb := pcstable.NewTable(os.Stdout)
