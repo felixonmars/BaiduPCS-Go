@@ -13,11 +13,12 @@ import (
 	"unsafe"
 )
 
-// OrderBy 排序字段
-type OrderBy string
-
-// Order 升序降序
-type Order string
+type (
+	// OrderBy 排序字段
+	OrderBy string
+	// Order 升序降序
+	Order string
+)
 
 const (
 	// OrderByName 根据文件名排序
@@ -32,60 +33,62 @@ const (
 	OrderDesc Order = "desc"
 )
 
-// HandleFileDirectoryFunc 处理文件或目录的元信息
-type HandleFileDirectoryFunc func(depth int, fd *FileDirectory)
+type (
+	// HandleFileDirectoryFunc 处理文件或目录的元信息
+	HandleFileDirectoryFunc func(depth int, fd *FileDirectory)
 
-// FileDirectory 文件或目录的元信息
-type FileDirectory struct {
-	FsID        int64  // fs_id
-	Path        string // 路径
-	Filename    string // 文件名 或 目录名
-	Ctime       int64  // 创建日期
-	Mtime       int64  // 修改日期
-	MD5         string // md5 值
-	Size        int64  // 文件大小 (目录为0)
-	Isdir       bool   // 是否为目录
-	Ifhassubdir bool   // 是否含有子目录 (只对目录有效)
+	// FileDirectory 文件或目录的元信息
+	FileDirectory struct {
+		FsID        int64  // fs_id
+		Path        string // 路径
+		Filename    string // 文件名 或 目录名
+		Ctime       int64  // 创建日期
+		Mtime       int64  // 修改日期
+		MD5         string // md5 值
+		Size        int64  // 文件大小 (目录为0)
+		Isdir       bool   // 是否为目录
+		Ifhassubdir bool   // 是否含有子目录 (只对目录有效)
 
-	Parent   *FileDirectory    // 父目录信息
-	Children FileDirectoryList // 子目录信息
-}
+		Parent   *FileDirectory    // 父目录信息
+		Children FileDirectoryList // 子目录信息
+	}
 
-// FileDirectoryList FileDirectory 的 指针数组
-type FileDirectoryList []*FileDirectory
+	// FileDirectoryList FileDirectory 的 指针数组
+	FileDirectoryList []*FileDirectory
 
-// fdJSON 用于解析远程JSON数据
-type fdJSON struct {
-	FsID           int64  `json:"fs_id"`           // fs_id
-	Path           string `json:"path"`            // 路径
-	Filename       string `json:"server_filename"` // 文件名 或 目录名
-	Ctime          int64  `json:"ctime"`           // 创建日期
-	Mtime          int64  `json:"mtime"`           // 修改日期
-	MD5            string `json:"md5"`             // md5 值
-	Size           int64  `json:"size"`            // 文件大小 (目录为0)
-	IsdirInt       int8   `json:"isdir"`
-	IfhassubdirInt int8   `json:"ifhassubdir"`
+	// fdJSON 用于解析远程JSON数据
+	fdJSON struct {
+		FsID           int64  `json:"fs_id"`           // fs_id
+		Path           string `json:"path"`            // 路径
+		Filename       string `json:"server_filename"` // 文件名 或 目录名
+		Ctime          int64  `json:"ctime"`           // 创建日期
+		Mtime          int64  `json:"mtime"`           // 修改日期
+		MD5            string `json:"md5"`             // md5 值
+		Size           int64  `json:"size"`            // 文件大小 (目录为0)
+		IsdirInt       int8   `json:"isdir"`
+		IfhassubdirInt int8   `json:"ifhassubdir"`
 
-	// 对齐
-	_ *fdJSON
-	_ []*fdJSON
-}
+		// 对齐
+		_ *fdJSON
+		_ []*fdJSON
+	}
 
-type fdData struct {
-	*ErrInfo
-	List []*FileDirectory
-}
+	fdData struct {
+		*ErrInfo
+		List []*FileDirectory
+	}
 
-type fdDataJSONExport struct {
-	*ErrInfo
-	List []*fdJSON `json:"list"`
-}
+	fdDataJSONExport struct {
+		*ErrInfo
+		List []*fdJSON `json:"list"`
+	}
 
-// OrderOptions 列文件/目录可选项
-type OrderOptions struct {
-	By    OrderBy
-	Order Order
-}
+	// OrderOptions 列文件/目录可选项
+	OrderOptions struct {
+		By    OrderBy
+		Order Order
+	}
+)
 
 // DefaultOrderOptions 默认的排序
 var DefaultOrderOptions = &OrderOptions{

@@ -1,40 +1,46 @@
 package pcscommand
 
 import (
-	"sync"
 	"fmt"
-	"os"
-	"time"
-	"strings"
-	"crypto/md5"
-	
-	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
 )
 
 var (
-	bgMap = bgTasks{
+	// BgMap 后台
+	BgMap = BgTasks{
 		tasks: sync.Map{},
-		ticker: time.NewTicker(1*time.Minute),
+		sig:   make(chan struct{}),
 	}
 )
 
-func init() {
-	bgMap.cycleCheck()
-}
+type (
+	// BgTasks 后台任务
+	BgTasks struct {
+		lastID  int64
+		tasks   sync.Map
+		started bool
+		sig     chan struct{}
+	}
+	// BgDTaskItem 后台任务详情
+	BgDTaskItem struct {
+		id              int
+		downloadOptions *DownloadOptions
+		pcspaths        []string
+		done            <-chan struct{}
+	}
+)
 
-type bgTasks struct {
-	tasks sync.Map
-	ticker *time.Ticker
-	checkStarted bool
-}
-
-func (b *bgTasks)checkDoneTask() {
+func (b *BgTasks) checkDoneTask() {
 	b.tasks.Range(func(id, v interface{}) bool {
-		task := v.(*bgDTaskItem)
+		task := v.(*BgDTaskItem)
 		select {
-		case <- task.Done:
-			fmt.Printf("任务：%v 已完成\n", id.(string))
+		case <-task.done:
+			fmt.Printf("任务：%d 已完成\n", id.(int64))
 			b.tasks.Delete(id)
 			return true
 		default:
@@ -43,79 +49,58 @@ func (b *bgTasks)checkDoneTask() {
 	})
 }
 
-// 周期性检查是否有后台任务完成
-func (b *bgTasks)cycleCheck() {
-	if b.checkStarted {
-		return
-	}
-	
-	b.checkStarted = true
-	go func() {
-		for {
-			select {
-			case <- b.ticker.C:
-				b.checkDoneTask()
-			}
-		}
-	}()
+// NewID 返回生成的 ID
+func (b *BgTasks) NewID() int64 {
+	id := atomic.AddInt64(&b.lastID, 1)
+	return id
 }
 
-type bgDTaskItem struct {
-	paths []string
-	outputcontrol *downloader.OutputController
-	Done chan struct{}
+// TaskID 返回后台任务 id
+func (t *BgDTaskItem) TaskID() int {
+	return t.id
 }
 
-// TaskID 以paths生成md5，取前10位做taskID
-func (t *bgDTaskItem)TaskID() string {
-	data := strings.Join(t.paths, "")
-	has := md5.Sum([]byte(data))
-	id := fmt.Sprintf("%x", has)
-	return string(id[:10])
-}
-
-func PrintAllBgTask() {
+// PrintAllBgTask 输出所有的后台任务
+func (b *BgTasks) PrintAllBgTask() {
 	tb := pcstable.NewTable(os.Stdout)
-	tb.SetHeader([]string{"task_id", "downloading files"})
-	bgMap.tasks.Range(func(id, v interface{}) bool {
-		tb.Append([]string{id.(string), strings.Join(v.(*bgDTaskItem).paths, ",")})
+	tb.SetHeader([]string{"task_id", "files"})
+	b.tasks.Range(func(id, v interface{}) bool {
+		tb.Append([]string{strconv.FormatInt(id.(int64), 10), strings.Join(v.(*BgDTaskItem).pcspaths, ",")})
 		return true
 	})
 	tb.Render()
 }
 
-func RunBgDownload(paths []string, option DownloadOption) {
-	task := new(bgDTaskItem)
-	task.paths = make([]string, 0, len(paths))
-	task.paths = append(task.paths, paths...)
-	task.outputcontrol = downloader.NewOutputController()
-	task.Done = make(chan struct{})
-	
-	taskID := task.TaskID()
-	_, exists := bgMap.tasks.Load(taskID)
-	if exists {
-		fmt.Printf("下载任务 ID：%v 已在后台下载任务中\n", taskID)
-		return
+// RunBgDownload 执行后台下载
+func RunBgDownload(paths []string, options *DownloadOptions) {
+	if !BgMap.started {
+		go func() {
+			for {
+				select {
+				case <-BgMap.sig:
+					BgMap.checkDoneTask()
+				}
+			}
+		}()
+	} else {
+		BgMap.started = true
 	}
-	
-	bgMap.tasks.Store(taskID, task)
-	
-	option.BanOutput = task.outputcontrol
-	go func(done chan struct{}) {
-		RunDownload(paths, option, taskID)
-		close(done)
-	}(task.Done)
-}
 
-func RunFgDownload(taskID string) {
-	t, ok := bgMap.tasks.Load(taskID)
-	if !ok {
-		fmt.Printf("任务：%v 不存在\n", taskID)
-		return
+	if options.Out == nil {
+		options.Out, _ = os.Open(os.DevNull)
 	}
-	
-	task := t.(*bgDTaskItem)
-	bgMap.checkDoneTask()
-	task.outputcontrol.SetTrigger(false)
-}
 
+	task := new(BgDTaskItem)
+	task.pcspaths = paths
+
+	dchan := make(chan struct{})
+	task.done = dchan
+
+	BgMap.tasks.Store(BgMap.NewID(), task)
+
+	go func(dchan chan struct{}) {
+		RunDownload(paths, options)
+		close(dchan)
+		BgMap.sig <- struct{}{}
+	}(dchan)
+}

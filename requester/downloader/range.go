@@ -25,18 +25,18 @@ func (r *Range) LoadBegin() int64 {
 }
 
 //AddBegin 增加Begin, 原子操作
-func (r *Range) AddBegin(i int64) {
-	atomic.AddInt64(&r.Begin, i)
-}
-
-//StoreBegin 储存End, 原子操作
-func (r *Range) StoreBegin(end int64) {
-	atomic.StoreInt64(&r.Begin, end)
+func (r *Range) AddBegin(i int64) (newi int64) {
+	return atomic.AddInt64(&r.Begin, i)
 }
 
 //LoadEnd 读取End, 原子操作
 func (r *Range) LoadEnd() int64 {
 	return atomic.LoadInt64(&r.End)
+}
+
+//StoreBegin 储存End, 原子操作
+func (r *Range) StoreBegin(end int64) {
+	atomic.StoreInt64(&r.Begin, end)
 }
 
 //StoreEnd 储存End, 原子操作
@@ -45,7 +45,7 @@ func (r *Range) StoreEnd(end int64) {
 }
 
 func (r *Range) String() string {
-	return fmt.Sprintf("{%d-%d}", r.Begin, r.End)
+	return fmt.Sprintf("{%d-%d}", r.LoadBegin(), r.LoadEnd())
 }
 
 //Len 获取所有的Range长度
