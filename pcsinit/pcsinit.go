@@ -3,7 +3,11 @@ package pcsinit
 
 import (
 	"github.com/urfave/cli"
+	_ "unsafe" // allow go:linkname
 )
+
+//go:linkname helpCommand github.com/iikira/BaiduPCS-Go/vendor/github.com/urfave/cli.helpCommand
+var helpCommand cli.Command
 
 func init() {
 	cli.AppHelpTemplate = `----
@@ -68,4 +72,6 @@ OPTIONS:
 	{{range .VisibleFlags}}{{.}}
 	{{end}}{{end}}
 `
+
+	helpCommand.Aliases = append(helpCommand.Aliases, []string{"?", "？"}...)
 }
