@@ -14,7 +14,7 @@ var (
 	// BgMap 后台
 	BgMap = BgTasks{
 		tasks: sync.Map{},
-		sig:   make(chan struct{}),
+		sig:   make(chan int64),
 	}
 )
 
@@ -24,30 +24,15 @@ type (
 		lastID  int64
 		tasks   sync.Map
 		started bool
-		sig     chan struct{}
+		sig     chan int64
 	}
 	// BgDTaskItem 后台任务详情
 	BgDTaskItem struct {
 		id              int
 		downloadOptions *DownloadOptions
 		pcspaths        []string
-		done            <-chan struct{}
 	}
 )
-
-func (b *BgTasks) checkDoneTask() {
-	b.tasks.Range(func(id, v interface{}) bool {
-		task := v.(*BgDTaskItem)
-		select {
-		case <-task.done:
-			fmt.Printf("任务：%d 已完成\n", id.(int64))
-			b.tasks.Delete(id)
-			return true
-		default:
-			return true
-		}
-	})
-}
 
 // NewID 返回生成的 ID
 func (b *BgTasks) NewID() int64 {
@@ -77,8 +62,9 @@ func RunBgDownload(paths []string, options *DownloadOptions) {
 		go func() {
 			for {
 				select {
-				case <-BgMap.sig:
-					BgMap.checkDoneTask()
+				case id := <-BgMap.sig:
+					BgMap.tasks.Delete(id)
+					fmt.Printf("任务：%d 已完成\n", id)
 				}
 			}
 		}()
@@ -93,14 +79,11 @@ func RunBgDownload(paths []string, options *DownloadOptions) {
 	task := new(BgDTaskItem)
 	task.pcspaths = paths
 
-	dchan := make(chan struct{})
-	task.done = dchan
+	id := BgMap.NewID()
+	BgMap.tasks.Store(id, task)
 
-	BgMap.tasks.Store(BgMap.NewID(), task)
-
-	go func(dchan chan struct{}) {
+	go func(taskID int64) {
 		RunDownload(paths, options)
-		close(dchan)
-		BgMap.sig <- struct{}{}
-	}(dchan)
+		BgMap.sig <- taskID
+	}(id)
 }
