@@ -233,7 +233,10 @@ func (wer *Worker) Execute() {
 	}
 
 	// 已完成
-	if wer.wrange.Len() <= 0 {
+	if rlen := wer.wrange.Len(); rlen <= 0 {
+		if rlen < 0 {
+			pcsverbose.Verbosef("DEBUG: RangeLen is negative at begin: %v, %d\n", wer.wrange, wer.wrange.Len())
+		}
 		wer.status.statusCode = StatusCodeSuccessed
 		return
 	}
@@ -394,16 +397,20 @@ func (wer *Worker) Execute() {
 			}
 
 			if readErr != nil {
+				rlen := wer.wrange.Len()
 				switch {
 				case single && readErr == io.ErrUnexpectedEOF:
 					// 单线程判断下载成功
 					fallthrough
 				case readErr == io.EOF:
 					fallthrough
-				case wer.wrange.Len() <= 0:
+				case rlen <= 0:
 					// 下载完成
 					// 小于0可能是因为 worker 被 duplicate
 					wer.status.statusCode = StatusCodeSuccessed
+					if rlen < 0 {
+						pcsverbose.Verbosef("DEBUG: RangeLen is negative at end: %v, %d\n", wer.wrange, wer.wrange.Len())
+					}
 					return
 				default:
 					// 其他错误, 返回

@@ -405,7 +405,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 		totalSize += task.downloadInfo.Size
 	}
 
-	fmt.Fprintf(options.Out, "任务结束, 时间: %s, 数据总量: %s\n", time.Since(startTime), converter.ConvertFileSize(totalSize))
+	fmt.Fprintf(options.Out, "任务结束, 时间: %s, 数据总量: %s\n", time.Since(startTime)/1e6*1e6, converter.ConvertFileSize(totalSize))
 	if len(failedList) != 0 {
 		fmt.Printf("以下文件下载失败: \n")
 		tb := pcstable.NewTable(os.Stdout)

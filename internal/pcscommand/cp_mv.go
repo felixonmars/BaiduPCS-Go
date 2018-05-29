@@ -51,44 +51,47 @@ func runCpMvOp(op string, paths ...string) {
 	}
 
 	pcs := GetBaiduPCS()
+	toFileName := path.Base(to)
 	toInfo, pcsError := pcs.FilesDirectoriesMeta(to)
-	if pcsError != nil {
-		if pcsError.ErrorType() == baidupcs.ErrTypeRemoteError {
-			// 判断路径是否存在
-			// 如果不存在, 则为重命名或同目录拷贝操作
+	switch {
+	case toInfo != nil && toInfo.Filename != toFileName:
+		fallthrough
+	case pcsError != nil && pcsError.ErrorType() == baidupcs.ErrTypeRemoteError:
+		// 判断路径是否存在
+		// 如果不存在, 则为重命名或同目录拷贝操作
 
-			// 如果 froms 数不是1, 则意义不明确.
-			if len(froms) != 1 {
-				fmt.Println(err)
-				return
-			}
-
-			if op == "copy" { // 拷贝
-				err = pcs.Copy(&baidupcs.CpMvJSON{
-					From: froms[0],
-					To:   to,
-				})
-				if err != nil {
-					fmt.Println(err)
-					fmt.Println("文件/目录拷贝失败: ")
-					fmt.Printf("%s <-> %s\n", froms[0], to)
-					return
-				}
-				fmt.Println("文件/目录拷贝成功: ")
-				fmt.Printf("%s <-> %s\n", froms[0], to)
-			} else { // 重命名
-				err = pcs.Rename(froms[0], to)
-				if err != nil {
-					fmt.Println(err)
-					fmt.Println("重命名失败: ")
-					fmt.Printf("%s -> %s\n", froms[0], to)
-					return
-				}
-				fmt.Println("重命名成功: ")
-				fmt.Printf("%s -> %s\n", froms[0], to)
-			}
+		// 如果 froms 数不是1, 则意义不明确.
+		if len(froms) != 1 {
+			fmt.Println(err)
 			return
 		}
+
+		if op == "copy" { // 拷贝
+			err = pcs.Copy(&baidupcs.CpMvJSON{
+				From: froms[0],
+				To:   to,
+			})
+			if err != nil {
+				fmt.Println(err)
+				fmt.Println("文件/目录拷贝失败: ")
+				fmt.Printf("%s <-> %s\n", froms[0], to)
+				return
+			}
+			fmt.Println("文件/目录拷贝成功: ")
+			fmt.Printf("%s <-> %s\n", froms[0], to)
+		} else { // 重命名
+			err = pcs.Rename(froms[0], to)
+			if err != nil {
+				fmt.Println(err)
+				fmt.Println("重命名失败: ")
+				fmt.Printf("%s -> %s\n", froms[0], to)
+				return
+			}
+			fmt.Println("重命名成功: ")
+			fmt.Printf("%s -> %s\n", froms[0], to)
+		}
+		return
+	case pcsError != nil && pcsError.ErrorType() != baidupcs.ErrTypeRemoteError:
 		fmt.Println(pcsError)
 		return
 	}
