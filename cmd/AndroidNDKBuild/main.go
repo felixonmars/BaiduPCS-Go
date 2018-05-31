@@ -1,3 +1,4 @@
+// AndroidNDKBuild
 // go build -ldflags "-X main.APILevel=15 -X main.Arch=x86_64"
 // env ANDROID_API_LEVEL NDK ANDROID_NDK_ROOT GOARCH
 
@@ -8,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"syscall"
 )
 
 var (
@@ -53,14 +55,15 @@ func getGoarch() string {
 }
 
 func getArch() string {
+	if Arch != "" {
+		return Arch
+	}
 	goarch := getGoarch()
 	switch goarch {
 	case "386":
 		return "x86"
 	case "amd64":
 		return "x86_64"
-	case "arm":
-		return "arm"
 	case "arm64":
 		return "aarch64"
 	}
@@ -68,14 +71,12 @@ func getArch() string {
 }
 
 func getPlatformsArch() string {
-	goarch := getGoarch()
-	switch goarch {
-	case "386":
-		return "x86"
-	case "amd64":
-		return "x86_64"
+	arch := getArch()
+	switch arch {
+	case "aarch64":
+		return "arm64"
 	}
-	return goarch
+	return arch
 }
 
 func main() {
@@ -101,14 +102,23 @@ func main() {
 	}
 
 	args := make([]string, len(os.Args))
-	copy(args, os.Args)
-	args[0] = "--sysroot=" + NDKPath + "/platforms/android-" + APILevel + "/arch-" + getPlatformsArch()
+	copy(args[1:], os.Args[1:])
+	args[0] = "--sysroot=" + filepath.Join(NDKPath, "platforms", "android-"+APILevel, "arch-"+getPlatformsArch())
 
 	gccExec := exec.Command(gccPaths[0], args...)
 	gccExec.Stdout = os.Stdout
 	gccExec.Stderr = os.Stderr
 
-	gccExec.Run()
+	err = gccExec.Run()
+	exitError, ok := err.(*exec.ExitError)
+	if ok {
+		status := exitError.ProcessState.Sys().(syscall.WaitStatus)
+		os.Exit(status.ExitStatus())
+	}
+
+	if err != nil {
+		println(err.Error())
+	}
 
 	return
 }
