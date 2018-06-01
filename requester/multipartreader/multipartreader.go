@@ -13,37 +13,38 @@ import (
 	"sync/atomic"
 )
 
-// MultipartReader MIME multipart format
-type MultipartReader struct {
-	length      int64
-	contentType string
-	boundary    string
+type (
+	// MultipartReader MIME multipart format
+	MultipartReader struct {
+		length      int64
+		contentType string
+		boundary    string
 
-	formBody  string
-	parts     []*part
-	part64s   []*part64
-	formClose string
+		formBody  string
+		parts     []*part
+		part64s   []*part64
+		formClose string
 
-	mu          sync.Mutex
-	closed      bool
-	multiReader io.Reader
-}
+		mu          sync.Mutex
+		closed      bool
+		multiReader io.Reader
+	}
 
-type part struct {
-	form      string
-	readerlen rio.ReaderLen
-}
+	part struct {
+		form      string
+		readerlen rio.ReaderLen
+	}
 
-type part64 struct {
-	form        string
-	readerlen64 rio.ReaderLen64
-}
+	part64 struct {
+		form        string
+		readerlen64 rio.ReaderLen64
+	}
+)
 
 // NewMultipartReader 返回初始化的 *MultipartReader
 func NewMultipartReader() (mr *MultipartReader) {
 	builder := &strings.Builder{}
 	writer := multipart.NewWriter(builder)
-
 	mr = &MultipartReader{
 		contentType: writer.FormDataContentType(),
 		boundary:    writer.Boundary(),

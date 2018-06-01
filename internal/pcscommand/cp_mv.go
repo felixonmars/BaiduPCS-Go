@@ -51,10 +51,9 @@ func runCpMvOp(op string, paths ...string) {
 	}
 
 	pcs := GetBaiduPCS()
-	toFileName := path.Base(to)
 	toInfo, pcsError := pcs.FilesDirectoriesMeta(to)
 	switch {
-	case toInfo != nil && toInfo.Filename != toFileName:
+	case toInfo != nil && toInfo.Path != to:
 		fallthrough
 	case pcsError != nil && pcsError.ErrorType() == baidupcs.ErrTypeRemoteError:
 		// 判断路径是否存在

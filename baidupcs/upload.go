@@ -2,9 +2,17 @@ package baidupcs
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/json-iterator/go"
 	"net/http"
 	"net/http/cookiejar"
+)
+
+const (
+	// MaxUploadBlockSize 最大上传的文件分片大小
+	MaxUploadBlockSize = 2 * converter.GB
+	// RecommendUploadBlockSize 推荐的上传的文件分片大小
+	RecommendUploadBlockSize = 1792 * converter.KB
 )
 
 // UploadFunc 上传文件处理函数
