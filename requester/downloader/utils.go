@@ -1,6 +1,7 @@
 package downloader
 
 import (
+	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	mathrand "math/rand"
 	"mime"
@@ -35,7 +36,8 @@ func GetFileName(uri string, client *requester.HTTPClient) (filename string, err
 
 	_, params, err := mime.ParseMediaType(resp.Header.Get("Content-Disposition"))
 	if err != nil {
-		return "", err
+		pcsverbose.Verbosef("DEBUG: GetFileName ParseMediaType error: %s\n", err)
+		return path.Base(uri), nil
 	}
 
 	filename, err = url.QueryUnescape(params["filename"])
