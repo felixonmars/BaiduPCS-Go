@@ -275,8 +275,7 @@ func main() {
 		})
 
 		fmt.Printf("提示: 方向键上下可切换历史命令.\n")
-		fmt.Printf("提示: Ctrl + A 跳转命令首.\n")
-		fmt.Printf("提示: Ctrl + E 跳转命令尾.\n")
+		fmt.Printf("提示: Ctrl + A / E 跳转命令 首 / 尾.\n")
 		fmt.Printf("提示: 输入 help 获取帮助.\n")
 
 		for {
@@ -947,6 +946,7 @@ func main() {
 					IsStreaming:          c.Bool("stream"),
 					SaveTo:               saveTo,
 					Parallel:             c.Int("p"),
+					Load:                 c.Int("l"),
 				}
 
 				if c.Bool("bg") && isCli {
@@ -997,6 +997,10 @@ func main() {
 				cli.IntFlag{
 					Name:  "p",
 					Usage: "指定下载线程数",
+				},
+				cli.IntFlag{
+					Name:  "l",
+					Usage: "指定同时进行下载文件的数量",
 				},
 				cli.BoolFlag{
 					Name:  "bg",
@@ -1488,6 +1492,9 @@ func main() {
 						if c.IsSet("max_parallel") {
 							pcsconfig.Config.SetMaxParallel(c.Int("max_parallel"))
 						}
+						if c.IsSet("max_download_load") {
+							pcsconfig.Config.SetMaxDownloadLoad(c.Int("max_download_load"))
+						}
 						if c.IsSet("savedir") {
 							pcsconfig.Config.SetSaveDir(c.String("savedir"))
 						}
@@ -1523,6 +1530,10 @@ func main() {
 						cli.IntFlag{
 							Name:  "max_parallel",
 							Usage: "下载最大并发量",
+						},
+						cli.IntFlag{
+							Name:  "max_download_load",
+							Usage: "同时进行下载文件的最大数量",
 						},
 						cli.StringFlag{
 							Name:  "savedir",

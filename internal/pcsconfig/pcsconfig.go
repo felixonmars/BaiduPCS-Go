@@ -30,14 +30,15 @@ var (
 
 // PCSConfig 配置详情
 type PCSConfig struct {
-	baiduActiveUID uint64
-	baiduUserList  BaiduUserList
-	appID          int    // appid
-	cacheSize      int    // 下载缓存
-	maxParallel    int    // 最大下载并发量
-	userAgent      string // 浏览器标识
-	saveDir        string // 下载储存路径
-	enableHTTPS    bool   // 启用https
+	baiduActiveUID  uint64
+	baiduUserList   BaiduUserList
+	appID           int    // appid
+	cacheSize       int    // 下载缓存
+	maxParallel     int    // 最大下载并发量
+	maxDownloadLoad int    // 同时进行下载文件的最大数量
+	userAgent       string // 浏览器标识
+	saveDir         string // 下载储存路径
+	enableHTTPS     bool   // 启用https
 
 	configFilePath string
 	configFile     *os.File
@@ -206,6 +207,9 @@ func (c *PCSConfig) defaultConfig() {
 	if c.maxParallel == 0 {
 		c.maxParallel = 100
 	}
+	if c.maxDownloadLoad == 0 {
+		c.maxDownloadLoad = 1
+	}
 
 	// 设置默认的下载路径
 	if c.saveDir == "" {
@@ -279,5 +283,8 @@ func (c *PCSConfig) fix() {
 	}
 	if c.maxParallel < 1 {
 		c.maxParallel = 1
+	}
+	if c.maxDownloadLoad < 1 {
+		c.maxDownloadLoad = 1
 	}
 }

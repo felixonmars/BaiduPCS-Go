@@ -55,6 +55,10 @@
 
 [[constraint]]
   branch = "master"
+  name = "github.com/oleiade/lane"
+
+[[constraint]]
+  branch = "master"
   name = "github.com/olekukonko/tablewriter"
 
 [[constraint]]

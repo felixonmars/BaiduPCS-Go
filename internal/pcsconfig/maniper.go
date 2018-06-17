@@ -149,6 +149,11 @@ func (c *PCSConfig) SetMaxParallel(maxParallel int) {
 	c.maxParallel = maxParallel
 }
 
+// SetMaxDownloadLoad 设置max_download_load, 同时进行下载文件的最大数量
+func (c *PCSConfig) SetMaxDownloadLoad(maxDownloadLoad int) {
+	c.maxDownloadLoad = maxDownloadLoad
+}
+
 // SetUserAgent 设置User-Agent
 func (c *PCSConfig) SetUserAgent(userAgent string) {
 	c.userAgent = userAgent

@@ -97,6 +97,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/oleiade/lane"
+  packages = ["."]
+  revision = "3053869314bb02cb983dc2205da8ea2abe46fa96"
+
+[[projects]]
+  branch = "master"
   name = "github.com/olekukonko/tablewriter"
   packages = ["."]
   revision = "d4647c9c7a84d847478d890b816b7d8b62b0b279"
@@ -122,6 +128,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d5b2e988256dee3c8d4d0386e77c5f086f61878d07d953b182818744d7b5aef2"
+  inputs-digest = "90ad013aff30f1e814e3fa21819433d7e7afa269db4351a3a480081035a3624a"
   solver-name = "gps-cdcl"
   solver-version = 1
