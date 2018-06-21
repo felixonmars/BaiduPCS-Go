@@ -51,10 +51,10 @@ func RunLs(path string, lsOptions *LsOptions, orderOptions *baidupcs.OrderOption
 				continue
 			}
 
-			tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(file.FsID, 10), converter.ConvertFileSize(file.Size), pcstime.FormatTime(file.Ctime), pcstime.FormatTime(file.Mtime), file.MD5, file.Filename})
+			tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(file.FsID, 10), converter.ConvertFileSize(file.Size, 2), pcstime.FormatTime(file.Ctime), pcstime.FormatTime(file.Mtime), file.MD5, file.Filename})
 		}
 		fN, dN := files.Count()
-		tb.Append([]string{"", "", "总: " + converter.ConvertFileSize(files.TotalSize()), "", "", "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
+		tb.Append([]string{"", "", "总: " + converter.ConvertFileSize(files.TotalSize(), 2), "", "", "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
 	} else {
 		tb.SetHeader([]string{"#", "文件大小", "修改日期", "文件(目录)"})
 		tb.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})
@@ -64,10 +64,10 @@ func RunLs(path string, lsOptions *LsOptions, orderOptions *baidupcs.OrderOption
 				continue
 			}
 
-			tb.Append([]string{strconv.Itoa(k), converter.ConvertFileSize(file.Size), pcstime.FormatTime(file.Mtime), file.Filename})
+			tb.Append([]string{strconv.Itoa(k), converter.ConvertFileSize(file.Size, 2), pcstime.FormatTime(file.Mtime), file.Filename})
 		}
 		fN, dN = files.Count()
-		tb.Append([]string{"", "总: " + converter.ConvertFileSize(files.TotalSize()), "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
+		tb.Append([]string{"", "总: " + converter.ConvertFileSize(files.TotalSize(), 2), "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
 	}
 
 	tb.Render()
