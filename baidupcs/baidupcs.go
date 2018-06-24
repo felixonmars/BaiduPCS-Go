@@ -114,6 +114,21 @@ func NewPCSWithClient(appID int, client *requester.HTTPClient) *BaiduPCS {
 	return pcs
 }
 
+// NewPCSWithCookieStr 提供app_id, cookie 字符串, 返回 BaiduPCS 对象
+func NewPCSWithCookieStr(appID int, cookieStr string) *BaiduPCS {
+	pcs := &BaiduPCS{
+		appID:  appID,
+		client: requester.NewHTTPClient(),
+	}
+
+	cookies := requester.ParseCookieStr(cookieStr)
+	jar, _ := cookiejar.New(nil)
+	jar.SetCookies(pcs.URL(), cookies)
+	pcs.client.SetCookiejar(jar)
+
+	return pcs
+}
+
 func (pcs *BaiduPCS) lazyInit() {
 	if pcs.client == nil {
 		pcs.client = requester.NewHTTPClient()
@@ -135,12 +150,17 @@ func (pcs *BaiduPCS) SetHTTPS(https bool) {
 	pcs.isHTTPS = https
 }
 
-func (pcs *BaiduPCS) generatePCSURL(subPath, method string, param ...map[string]string) *url.URL {
-	pcsURL := &url.URL{
+// URL 返回 url
+func (pcs *BaiduPCS) URL() *url.URL {
+	return &url.URL{
 		Scheme: GetHTTPScheme(pcs.isHTTPS),
 		Host:   "pcs.baidu.com",
-		Path:   "/rest/2.0/pcs/" + subPath,
 	}
+}
+
+func (pcs *BaiduPCS) generatePCSURL(subPath, method string, param ...map[string]string) *url.URL {
+	pcsURL := pcs.URL()
+	pcsURL.Path = "/rest/2.0/pcs/" + subPath
 
 	uv := pcsURL.Query()
 	uv.Set("app_id", strconv.Itoa(pcs.appID))

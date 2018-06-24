@@ -86,6 +86,11 @@ func (c *PCSConfig) EnableHTTPS() bool {
 	return c.enableHTTPS
 }
 
+// AverageParallel 返回平均的下载最大并发量
+func (c *PCSConfig) AverageParallel() int {
+	return AverageParallel(c.maxParallel, c.maxDownloadLoad)
+}
+
 // PrintTable 输出表格
 func (c *PCSConfig) PrintTable() {
 	tb := pcstable.NewTable(os.Stdout)

@@ -738,6 +738,8 @@ QQ群: 178324706
 
 如果你愿意.
 
-|支付宝|
-|:-----:|
-|![alipay](https://github.com/iikira/BaiduPCS-Go/raw/master/assets/donate/alipay.jpg)|
+|支付宝|微信|
+|:-----:|:-----:|
+|![alipay](https://github.com/iikira/BaiduPCS-Go/raw/master/assets/donate/alipay.jpg)|![weixin](https://github.com/iikira/BaiduPCS-Go/raw/master/assets/donate/weixin.png)|
+
+![haoyangmao](https://github.com/iikira/BaiduPCS-Go/raw/master/assets/donate/haoyangmao.png)

@@ -195,6 +195,10 @@ func RunDownload(paths []string, options *DownloadOptions) {
 		options.Out = os.Stdout
 	}
 
+	if options.Load < 1 {
+		options.Load = pcsconfig.Config.MaxDownloadLoad()
+	}
+
 	// 设置下载配置
 	cfg := &downloader.Config{
 		IsTest:    options.IsTest,
@@ -202,14 +206,11 @@ func RunDownload(paths []string, options *DownloadOptions) {
 	}
 
 	// 设置下载最大并发量
-	if options.Parallel == 0 {
+	if options.Parallel < 1 {
 		options.Parallel = pcsconfig.Config.MaxParallel()
 	}
-	cfg.MaxParallel = options.Parallel
 
-	if options.Load < 1 {
-		options.Load = pcsconfig.Config.MaxDownloadLoad()
-	}
+	cfg.MaxParallel = pcsconfig.AverageParallel(options.Parallel, options.Load)
 
 	paths, err := getAllAbsPaths(paths...)
 	if err != nil {
