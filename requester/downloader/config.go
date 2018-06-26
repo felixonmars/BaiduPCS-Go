@@ -36,3 +36,9 @@ func (cfg *Config) Fix() {
 		cfg.MaxParallel = 1
 	}
 }
+
+//Copy 拷贝新的配置
+func (cfg *Config) Copy() *Config {
+	newCfg := *cfg
+	return &newCfg
+}

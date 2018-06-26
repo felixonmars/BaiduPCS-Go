@@ -62,14 +62,15 @@ func downloadPrintFormat(load int) string {
 
 func download(id int, downloadURL, savePath string, loadBalansers []string, client *requester.HTTPClient, cfg *downloader.Config, downloadOptions *DownloadOptions) error {
 	var (
+		newCfg   = cfg.Copy()
 		file     *os.File
 		writerAt io.WriterAt
 		err      error
 		exitChan chan struct{}
 	)
 
-	if !cfg.IsTest {
-		cfg.InstanceStatePath = savePath + DownloadSuffix
+	if !newCfg.IsTest {
+		newCfg.InstanceStatePath = savePath + DownloadSuffix
 
 		// 创建下载的目录
 		dir := filepath.Dir(savePath)
@@ -119,7 +120,7 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 			}()
 		}
 
-		if cfg.IsTest {
+		if newCfg.IsTest {
 			fmt.Fprintf(downloadOptions.Out, "[%d] 测试下载开始\n\n", id)
 		}
 
@@ -176,7 +177,7 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 		}
 	}
 
-	if !cfg.IsTest {
+	if !newCfg.IsTest {
 		fmt.Fprintf(downloadOptions.Out, "[%d] 下载完成, 保存位置: %s\n", id, savePath)
 	} else {
 		fmt.Fprintf(downloadOptions.Out, "[%d] 测试下载结束\n", id)
