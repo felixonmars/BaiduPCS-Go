@@ -741,5 +741,3 @@ QQ群: 178324706
 |支付宝|微信|
 |:-----:|:-----:|
 |![alipay](https://github.com/iikira/BaiduPCS-Go/raw/master/assets/donate/alipay.jpg)|![weixin](https://github.com/iikira/BaiduPCS-Go/raw/master/assets/donate/weixin.png)|
-
-![haoyangmao](https://github.com/iikira/BaiduPCS-Go/raw/master/assets/donate/haoyangmao.png)
