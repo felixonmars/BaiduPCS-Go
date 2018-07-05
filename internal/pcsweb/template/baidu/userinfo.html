@@ -58,6 +58,17 @@
         dataType: "json",
         success: function (result) {
             var dl = $("#directory-listing");
+            
+            var template = nano($("#list-template").val(), {
+                encoded_url_path:escape("{{.}}".substring(0, "{{.}}".lastIndexOf("/"))),
+                isdir           :true,
+                fa_class        :"fa-folder",
+                server_filename :"..",
+                size            :0,
+                ctime           :""
+            });
+            dl.append(template);
+            
             for (k in result.list) {
                 var ele = result.list[k];
 
@@ -68,6 +79,8 @@
                 } else {
                     ele.fa_class = "fa-file";
                 }
+
+                ele.ctime = new Date(ele.ctime*1000).toLocaleString();
 
                 var template = nano($("#list-template").val(), ele);
 
