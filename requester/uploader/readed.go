@@ -5,11 +5,13 @@ import (
 	"sync/atomic"
 )
 
-// Readed64 增加获取已读取数据量, 用于统计速度
-type Readed64 interface {
-	rio.ReaderLen64
-	Readed() int64
-}
+type (
+	// Readed64 增加获取已读取数据量, 用于统计速度
+	Readed64 interface {
+		rio.ReaderLen64
+		Readed() int64
+	}
+)
 
 // NewReaded64 实现Readed64接口
 func NewReaded64(rl rio.ReaderLen64) Readed64 {

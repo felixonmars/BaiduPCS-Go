@@ -6,14 +6,15 @@ import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/internal/pcscommand"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
+	_ "github.com/iikira/BaiduPCS-Go/internal/pcsinit"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsupdate"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsweb"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
-	_ "github.com/iikira/BaiduPCS-Go/pcsinit"
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
 	"github.com/iikira/BaiduPCS-Go/pcspath"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/checksum"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/getip"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/pcstime"
@@ -21,6 +22,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/args"
 	"github.com/olekukonko/tablewriter"
+	"github.com/peterh/liner"
 	"github.com/urfave/cli"
 	"os"
 	"os/exec"
@@ -286,7 +288,7 @@ func main() {
 
 			if activeUser.Name != "" {
 				// 格式: BaiduPCS-Go:<工作目录> <百度ID>$
-				// 工作目录太长的话会自动缩略
+				// 工作目录太长时, 会自动缩略
 				prompt = app.Name + ":" + converter.ShortDisplay(path.Base(activeUser.Workdir), 20) + " " + activeUser.Name + "$ "
 			} else {
 				// BaiduPCS-Go >
@@ -294,7 +296,12 @@ func main() {
 			}
 
 			commandLine, err := line.State.Prompt(prompt)
-			if err != nil {
+			switch err {
+			case liner.ErrPromptAborted:
+				return
+			case nil:
+				// continue
+			default:
 				fmt.Println(err)
 				return
 			}
@@ -312,9 +319,7 @@ func main() {
 			// 恢复原始终端状态
 			// 防止运行命令时程序被结束, 终端出现异常
 			line.Pause()
-
 			c.App.Run(s)
-
 			line.Resume()
 		}
 	}
@@ -1072,8 +1077,21 @@ func main() {
 
 				subArgs := c.Args()
 
-				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1])
+				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1], &pcscommand.UploadOptions{
+					NotRapidUpload: c.Bool("norapid"),
+					NoFixMD5:       c.Bool("nofix"),
+				})
 				return nil
+			},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "norapid",
+					Usage: "不检测秒传",
+				},
+				cli.BoolFlag{
+					Name:  "nofix",
+					Usage: "在上传完成后不修复md5",
+				},
 			},
 		},
 		{
@@ -1081,8 +1099,14 @@ func main() {
 			Aliases:   []string{"lt"},
 			Usage:     "获取下载直链",
 			UsageText: fmt.Sprintf("%s locate <文件1> <文件2> ...", app.Name),
-			Category:  "百度网盘",
-			Before:    reloadFn,
+			Description: `
+	获取下载直链
+
+	若该功能无法正常使用, 提示"user is not authorized, hitcode:101", 尝试更换 User-Agent 为 netdisk:
+	BaiduPCS-Go config set -user_agent "netdisk"
+`,
+			Category: "百度网盘",
+			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
 				if c.NArg() < 1 {
 					cli.ShowCommandHelp(c, c.Command.Name)
@@ -1196,7 +1220,7 @@ func main() {
 				}
 
 				for k, filePath := range c.Args() {
-					lp, err := pcscommand.GetFileSum(filePath, &pcscommand.SumConfig{
+					lp, err := checksum.GetFileSum(filePath, &checksum.SumConfig{
 						IsMD5Sum:      true,
 						IsCRC32Sum:    true,
 						IsSliceMD5Sum: true,

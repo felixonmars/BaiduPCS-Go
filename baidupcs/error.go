@@ -135,6 +135,8 @@ func findErr(errCode int, errMsg string) (int, string) {
 		return errCode, ""
 	case 31045: // user not exists
 		return errCode, "操作失败, 可能百度帐号登录状态过期, 请尝试重新登录, 消息: " + errMsg
+	case 31066: // file does not exist
+		return errCode, "文件或目录不存在"
 	}
 	return errCode, errMsg
 }

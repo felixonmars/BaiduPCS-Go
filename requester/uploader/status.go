@@ -71,3 +71,52 @@ func (u *Uploader) GetStatusChan() <-chan Status {
 	}()
 	return c
 }
+
+// GetStatusChan 获取上传状态
+func (muer *MultiUploader) GetStatusChan() <-chan Status {
+	muer.lazyInit()
+	c := make(chan Status)
+
+	go func() {
+		for {
+			select {
+			case <-muer.finished:
+				close(c)
+				return
+			default:
+				if !muer.executed {
+					time.Sleep(1 * time.Second)
+					continue
+				}
+
+				old := muer.workers.Readed()
+				time.Sleep(1 * time.Second) // 每秒统计
+
+				readed := muer.workers.Readed()
+				c <- &UploadStatus{
+					totalSize:       muer.file.Len(),
+					uploaded:        readed,
+					speedsPerSecond: readed - old,
+					timeElapsed:     time.Since(muer.executeTime) / 1000000 * 1000000,
+				}
+			}
+		}
+	}()
+	return c
+}
+
+// UpdateInstanceStateChan 更新状态的信号
+func (muer *MultiUploader) UpdateInstanceStateChan() <-chan struct{} {
+	c := make(chan struct{}, 1)
+	go func() {
+		for {
+			select {
+			case signal := <-muer.updateInstanceStateChan:
+				c <- signal
+			case <-muer.finished:
+				return
+			}
+		}
+	}()
+	return c
+}

@@ -2,37 +2,45 @@
 package uploader
 
 import (
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"net/http"
 	"time"
 )
 
-//CheckFunc 上传完成的检测函数
-type CheckFunc func(resp *http.Response, uploadErr error)
+type (
+	//CheckFunc 上传完成的检测函数
+	CheckFunc func(resp *http.Response, uploadErr error)
 
-// Uploader 上传
-type Uploader struct {
-	url         string   // 上传地址
-	readed64    Readed64 // 要上传的对象
-	contentType string
+	// Uploader 上传
+	Uploader struct {
+		url         string   // 上传地址
+		readed64    Readed64 // 要上传的对象
+		contentType string
 
-	client *requester.HTTPClient
+		client *requester.HTTPClient
 
-	executeTime time.Time
-	executed    bool
-	finished    chan struct{}
+		executeTime time.Time
+		executed    bool
+		finished    chan struct{}
 
-	checkFunc CheckFunc
-	onExecute func()
-	onFinish  func()
-}
+		checkFunc CheckFunc
+		onExecute func()
+		onFinish  func()
+	}
+)
+
+var (
+	uploaderVerbose = pcsverbose.New("UPLOADER")
+)
 
 // NewUploader 返回 uploader 对象, url: 上传地址, readerlen64: 实现 rio.ReaderLen64 接口的对象, 例如文件
-func NewUploader(url string, readedlen64 rio.ReaderLen64) (uploader *Uploader) {
+func NewUploader(url string, readerlen64 rio.ReaderLen64) (uploader *Uploader) {
 	uploader = &Uploader{
 		url:      url,
-		readed64: NewReaded64(readedlen64),
+		readed64: NewReaded64(readerlen64),
 	}
 
 	return
@@ -66,7 +74,7 @@ func (u *Uploader) SetCheckFunc(checkFunc CheckFunc) {
 
 // Execute 执行上传, 收到返回值信号则为上传结束
 func (u *Uploader) Execute() {
-	trigger(u.onExecute)
+	pcsutil.Trigger(u.onExecute)
 
 	// 开始上传
 	u.executeTime = time.Now()
@@ -80,7 +88,7 @@ func (u *Uploader) Execute() {
 		u.checkFunc(resp, err)
 	}
 
-	trigger(u.onFinish) // 触发上传结束的事件
+	pcsutil.Trigger(u.onFinish) // 触发上传结束的事件
 }
 
 func (u *Uploader) execute() (resp *http.Response, code int, err error) {
@@ -96,13 +104,6 @@ func (u *Uploader) execute() (resp *http.Response, code int, err error) {
 	}
 
 	return resp, 0, nil
-}
-
-// trigger 用于触发事件
-func trigger(fn func()) {
-	if fn != nil {
-		go fn()
-	}
 }
 
 // OnExecute 任务开始时触发的事件

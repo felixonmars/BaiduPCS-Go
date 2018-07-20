@@ -9,12 +9,20 @@ var (
 	DefaultClient = NewHTTPClient()
 )
 
-// ContentTyper Content-Type 接口
-type ContentTyper interface {
-	ContentType() string
-}
+type (
+	// ContentTyper Content-Type 接口
+	ContentTyper interface {
+		ContentType() string
+	}
 
-// ContentLengther Content-Length 接口
-type ContentLengther interface {
-	ContentLength() int64
-}
+	// ContentLengther Content-Length 接口
+	ContentLengther interface {
+		ContentLength() int64
+	}
+
+	// Event 下载/上传任务运行时事件
+	Event func()
+
+	// EventOnError 任务出错运行时事件
+	EventOnError func(err error)
+)

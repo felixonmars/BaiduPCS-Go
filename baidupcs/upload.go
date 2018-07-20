@@ -11,8 +11,12 @@ import (
 const (
 	// MaxUploadBlockSize 最大上传的文件分片大小
 	MaxUploadBlockSize = 2 * converter.GB
+	// MinUploadBlockSize 推荐的上传的文件分片大小
+	MinUploadBlockSize = 128 * converter.MB
 	// RecommendUploadBlockSize 推荐的上传的文件分片大小
-	RecommendUploadBlockSize = 1792 * converter.KB
+	RecommendUploadBlockSize = 1 * converter.GB
+	// DefaultSliceMD5 默认的长度为32的slicemd5
+	DefaultSliceMD5 = "ec87a838931d4d5d2e94a04644788a55"
 )
 
 // UploadFunc 上传文件处理函数

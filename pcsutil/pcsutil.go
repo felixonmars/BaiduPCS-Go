@@ -74,3 +74,19 @@ func FlagProvided(names ...string) bool {
 	}
 	return true
 }
+
+// Trigger 用于触发事件
+func Trigger(f func()) {
+	if f == nil {
+		return
+	}
+	go f()
+}
+
+// TriggerOnSync 用于触发事件, 同步触发
+func TriggerOnSync(f func()) {
+	if f == nil {
+		return
+	}
+	f()
+}

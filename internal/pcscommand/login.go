@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/iikira/Baidu-Login"
-	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions/pcscaptcha"
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"image/png"
 	"io/ioutil"
-	"path/filepath"
 )
 
 // handleVerifyImg 处理验证码, 下载到本地
@@ -24,7 +23,7 @@ func handleVerifyImg(imgURL string) (savePath string, err error) {
 		return "", fmt.Errorf("验证码解析错误: %s", err)
 	}
 
-	savePath = filepath.Join(pcsconfig.GetConfigDir(), "captcha.png")
+	savePath = pcscaptcha.CaptchaPath()
 
 	return savePath, ioutil.WriteFile(savePath, imgContents, 0777)
 }
@@ -53,6 +52,11 @@ func RunLogin(username, password string) (bduss, ptoken, stoken string, err erro
 	}
 
 	var vcode, vcodestr string
+	// 移除验证码文件
+	defer func() {
+		pcscaptcha.RemoveCaptchaPath()
+		pcscaptcha.RemoveOldCaptchaPath()
+	}()
 
 for_1:
 	for i := 0; i < 10; i++ {

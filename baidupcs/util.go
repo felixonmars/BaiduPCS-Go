@@ -49,6 +49,14 @@ func GetHTTPScheme(https bool) (scheme string) {
 	return "http"
 }
 
+// FixSliceMD5 修复slicemd5为合法的md5
+func FixSliceMD5(slicemd5 string) string {
+	if len(slicemd5) != 32 {
+		return DefaultSliceMD5
+	}
+	return slicemd5
+}
+
 // decodeJSONError 解析json中的远端服务器返回的错误
 func decodeJSONError(op string, data io.Reader) Error {
 	errInfo := NewErrorInfo(op)

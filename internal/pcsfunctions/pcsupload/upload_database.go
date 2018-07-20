@@ -1,0 +1,163 @@
+package pcsupload
+
+import (
+	"errors"
+	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/checksum"
+	"github.com/iikira/BaiduPCS-Go/requester/uploader"
+	"github.com/json-iterator/go"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+	"unsafe"
+)
+
+type (
+	// Uploading 未完成上传的信息
+	Uploading struct {
+		*checksum.LocalFileMeta
+		State *uploader.InstanceState `json:"state"`
+	}
+
+	// UploadingDatabase 未完成上传的数据库
+	UploadingDatabase struct {
+		UploadingList []*Uploading `json:"upload_state"`
+		Timestamp     int64        `json:"timestamp"`
+
+		dataFile *os.File
+	}
+)
+
+// NewUploadingDatabase 初始化未完成上传的数据库, 从库中读取内容
+func NewUploadingDatabase() (ud *UploadingDatabase, err error) {
+	file, err := os.OpenFile(filepath.Join(pcsconfig.GetConfigDir(), UploadingFileName), os.O_CREATE|os.O_RDWR, 0777)
+	if err != nil {
+		return nil, err
+	}
+
+	ud = &UploadingDatabase{
+		dataFile: file,
+	}
+	info, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	if info.Size() <= 0 {
+		return ud, nil
+	}
+
+	d := jsoniter.NewDecoder(file)
+
+	err = d.Decode(ud)
+	return ud, err
+}
+
+// Save 保存内容
+func (ud *UploadingDatabase) Save() error {
+	if ud.dataFile == nil {
+		return errors.New("dataFile is nil")
+	}
+
+	var (
+		builder = &strings.Builder{}
+		e       = jsoniter.NewEncoder(builder)
+	)
+	ud.Timestamp = time.Now().Unix()
+	err := e.Encode(ud)
+	if err != nil {
+		panic(err)
+	}
+
+	err = ud.dataFile.Truncate(int64(builder.Len()))
+	if err != nil {
+		return err
+	}
+
+	str := builder.String()
+	_, err = ud.dataFile.WriteAt(*(*[]byte)(unsafe.Pointer(&str)), 0)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// UpdateUploading 更新正在上传
+func (ud *UploadingDatabase) UpdateUploading(meta *checksum.LocalFileMeta, state *uploader.InstanceState) {
+	if meta == nil {
+		return
+	}
+
+	meta.CompleteAbsPath()
+	for k, uploading := range ud.UploadingList {
+		if uploading.LocalFileMeta == nil {
+			continue
+		}
+		if uploading.LocalFileMeta.EqualLengthMD5(meta) || strings.Compare(uploading.LocalFileMeta.Path, meta.Path) == 0 {
+			ud.UploadingList[k].State = state
+			return
+		}
+	}
+
+	ud.UploadingList = append(ud.UploadingList, &Uploading{
+		LocalFileMeta: meta,
+		State:         state,
+	})
+}
+
+// Delete 删除
+func (ud *UploadingDatabase) Delete(meta *checksum.LocalFileMeta) bool {
+	if meta == nil {
+		return false
+	}
+
+	meta.CompleteAbsPath()
+	for k, uploading := range ud.UploadingList {
+		if uploading.LocalFileMeta == nil {
+			continue
+		}
+		if uploading.LocalFileMeta.EqualLengthMD5(meta) || strings.Compare(uploading.LocalFileMeta.Path, meta.Path) == 0 {
+			ud.UploadingList = append(ud.UploadingList[:k], ud.UploadingList[k+1:]...)
+			return true
+		}
+	}
+	return false
+}
+
+// Search 搜索
+func (ud *UploadingDatabase) Search(meta *checksum.LocalFileMeta) *uploader.InstanceState {
+	if meta == nil {
+		return nil
+	}
+
+	meta.CompleteAbsPath()
+	for _, uploading := range ud.UploadingList {
+		if uploading.LocalFileMeta == nil {
+			continue
+		}
+		if uploading.LocalFileMeta.EqualLengthMD5(meta) {
+			return uploading.State
+		}
+		if strings.Compare(uploading.LocalFileMeta.Path, meta.Path) == 0 {
+			// 移除旧的信息
+			// 目前只是比较了文件大小
+			if meta.Length != uploading.LocalFileMeta.Length {
+				ud.Delete(meta)
+				return nil
+			}
+
+			// 覆盖数据
+			meta.MD5 = uploading.LocalFileMeta.MD5
+			meta.SliceMD5 = uploading.LocalFileMeta.SliceMD5
+			return uploading.State
+		}
+	}
+	return nil
+}
+
+// Close 关闭数据库
+func (ud *UploadingDatabase) Close() error {
+	return ud.dataFile.Close()
+}

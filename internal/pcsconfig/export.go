@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
+	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/olekukonko/tablewriter"
 	"os"
 	"strconv"
@@ -44,6 +45,13 @@ func (c *PCSConfig) ActiveUserBaiduPCS() *baidupcs.BaiduPCS {
 // BaiduUserList 获取百度用户列表
 func (c *PCSConfig) BaiduUserList() BaiduUserList {
 	return c.baiduUserList
+}
+
+func (c *PCSConfig) HTTPClient() *requester.HTTPClient {
+	client := requester.NewHTTPClient()
+	client.SetHTTPSecure(c.enableHTTPS)
+	client.SetUserAgent(c.userAgent)
+	return client
 }
 
 // NumLogins 获取登录的用户数量

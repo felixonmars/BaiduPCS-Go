@@ -7,7 +7,12 @@
 
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
 
+## 注意
+
+此文档只针对于最新的commit, 可能不适用于已发布的最新版本.
+
 <!-- toc -->
+## 目录
 
 - [特色](#特色)
 - [编译/交叉编译 说明](#编译交叉编译-说明)
@@ -74,9 +79,9 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 通配符匹配网盘路径和 Tab 自动补齐命令和路径, [通配符_百度百科](https://baike.baidu.com/item/通配符);
 
-[下载](#下载文件或目录)网盘内文件, 支持多个文件或目录下载, 支持断点续传和单文件并行下载;
+[下载](#下载文件目录)网盘内文件, 支持多个文件或目录下载, 支持断点续传和单文件并行下载;
 
-[上传](#上传文件或目录)2GB以内的文件, 支持多个文件或目录上传;
+[上传](#上传文件目录)2GB以内的文件, 支持多个文件或目录上传;
 
 [离线下载](#离线下载), 支持http/https/ftp/电驴/磁力链协议.
 
@@ -373,6 +378,13 @@ BaiduPCS-Go upload C:/Users/Administrator/Desktop /视频
 ## 获取下载直链
 ```
 BaiduPCS-Go locate <文件1> <文件2> ...
+```
+
+#### 注意
+
+若该功能无法正常使用, 提示`user is not authorized, hitcode:101`, 尝试更换 User-Agent 为 `netdisk`:
+```
+BaiduPCS-Go config set -user_agent "netdisk"
 ```
 
 ## 手动秒传文件
@@ -716,6 +728,10 @@ cli交互模式下, 运行命令 `config set -max_parallel 250` 将下载最大�
 ## 7. 退出程序
 
 运行命令 `quit` 或 `exit` 或 组合键 `Ctrl+C` 或 组合键 `Ctrl+D`
+
+# 已知问题
+
+* 分片上传文件时, 当文件分片数大于1, 网盘端最终计算所得的md5值和本地的不一致, 这可能是百度网盘的bug, 测试把上传的文件下载到本地后，对比md5值是匹配的. 可通过秒传的原理来修复md5值.
 
 # 常见问题
 

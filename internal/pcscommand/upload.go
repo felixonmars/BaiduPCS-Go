@@ -3,22 +3,17 @@ package pcscommand
 import (
 	"bytes"
 	"container/list"
-	"crypto/md5"
 	"encoding/hex"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
+	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions/pcsupload"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/checksum"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
-	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/delay"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"github.com/iikira/BaiduPCS-Go/requester/uploader"
-	"hash"
-	"hash/crc32"
-	"io"
-	"net/http"
-	"net/http/cookiejar"
 	"os"
 	"path"
 	"path/filepath"
@@ -27,7 +22,25 @@ import (
 )
 
 const (
-	requiredSliceLen = 256 * converter.KB // 256 KB
+	requiredSliceSize = 256 * converter.KB // 256 KB
+)
+
+type (
+	UploadOptions struct {
+		NotRapidUpload bool
+		NoFixMD5       bool
+	}
+
+	// StepUpload 上传步骤
+	StepUpload int
+
+	utask struct {
+		ListTask
+		uploadInfo        *checksum.LocalFile // 要上传的本地文件详情
+		step              StepUpload
+		savePath          string
+		uploadedDelayChan <-chan struct{} // 非强一致接口, 上传完成后需要等待
+	}
 )
 
 const (
@@ -37,177 +50,7 @@ const (
 	StepUploadRapidUpload
 	// StepUploadUpload 正常上传步骤
 	StepUploadUpload
-	// StepUploadCreateSuperFile // 合并分片文件步骤
-	StepUploadCreateSuperFile
 )
-
-type (
-	// StepUpload 上传步骤
-	StepUpload int
-
-	utask struct {
-		ListTask
-		uploadInfo *LocalPathInfo // 要上传的本地文件详情
-		step       StepUpload
-		tmpMD5s    []string
-		savePath   string
-	}
-
-	// SumConfig 计算文件摘要值配置
-	SumConfig struct {
-		IsMD5Sum      bool
-		IsSliceMD5Sum bool
-		IsCRC32Sum    bool
-	}
-
-	// LocalPathInfo 本地文件详情
-	LocalPathInfo struct {
-		Path string // 本地路径
-
-		Length   int64  // 文件大小
-		SliceMD5 []byte // 文件前 requiredSliceLen (256KB) 切片的 md5 值
-		MD5      []byte // 文件的 md5
-		CRC32    uint32 // 文件的 crc32
-
-		buf  []byte
-		file *os.File // 文件
-	}
-)
-
-// OpenPath 检查文件状态并获取文件的大小 (Length)
-func (lp *LocalPathInfo) OpenPath() bool {
-	if lp.file != nil {
-		lp.file.Close()
-	}
-
-	var err error
-	lp.file, err = os.Open(lp.Path)
-	if err != nil {
-		return false
-	}
-
-	info, _ := lp.file.Stat()
-	lp.Length = info.Size()
-	return true
-}
-
-// Close 关闭文件
-func (lp *LocalPathInfo) Close() error {
-	if lp.file == nil {
-		return fmt.Errorf("file is nil")
-	}
-
-	return lp.file.Close()
-}
-
-func (lp *LocalPathInfo) repeatRead(ws ...io.Writer) {
-	if lp.file == nil {
-		return
-	}
-
-	if lp.buf == nil {
-		lp.buf = make([]byte, int(requiredSliceLen))
-	}
-
-	var (
-		begin int64
-		n     int
-		err   error
-	)
-
-	handle := func() {
-		begin += int64(n)
-		for k := range ws {
-			ws[k].Write(lp.buf[:n])
-		}
-	}
-
-	// 读文件
-	for {
-		n, err = lp.file.ReadAt(lp.buf, begin)
-		if err != nil {
-			if err == io.EOF {
-				handle()
-			} else {
-				fmt.Printf("%s\n", err)
-			}
-			break
-		}
-
-		handle()
-	}
-}
-
-// Sum 计算文件摘要值
-func (lp *LocalPathInfo) Sum(cfg SumConfig) {
-	var (
-		md5w   hash.Hash
-		crc32w hash.Hash32
-	)
-
-	ws := make([]io.Writer, 0, 2)
-	if cfg.IsMD5Sum {
-		md5w = md5.New()
-		ws = append(ws, md5w)
-	}
-	if cfg.IsCRC32Sum {
-		crc32w = crc32.NewIEEE()
-		ws = append(ws, crc32w)
-	}
-	if cfg.IsSliceMD5Sum {
-		lp.SliceMD5Sum()
-	}
-
-	lp.repeatRead(ws...)
-
-	if cfg.IsMD5Sum {
-		lp.MD5 = md5w.Sum(nil)
-	}
-	if cfg.IsCRC32Sum {
-		lp.CRC32 = crc32w.Sum32()
-	}
-}
-
-// Md5Sum 获取文件的 md5 值
-func (lp *LocalPathInfo) Md5Sum() {
-	lp.Sum(SumConfig{
-		IsMD5Sum: true,
-	})
-}
-
-// SliceMD5Sum 获取文件前 requiredSliceLen (256KB) 切片的 md5 值
-func (lp *LocalPathInfo) SliceMD5Sum() {
-	if lp.file == nil {
-		return
-	}
-
-	// 获取前 256KB 文件切片的 md5
-	if lp.buf == nil {
-		lp.buf = make([]byte, int(requiredSliceLen))
-	}
-
-	m := md5.New()
-	n, err := lp.file.ReadAt(lp.buf, 0)
-	if err != nil {
-		if err == io.EOF {
-			goto md5sum
-		} else {
-			fmt.Printf("SliceMD5Sum: %s\n", err)
-			return
-		}
-	}
-
-md5sum:
-	m.Write(lp.buf[:n])
-	lp.SliceMD5 = m.Sum(nil)
-}
-
-// Crc32Sum 获取文件的 crc32 值
-func (lp *LocalPathInfo) Crc32Sum() {
-	lp.Sum(SumConfig{
-		IsCRC32Sum: true,
-	})
-}
 
 // RunRapidUpload 执行秒传文件, 前提是知道文件的大小, md5, 前256KB切片的 md5, crc32
 func RunRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) {
@@ -217,7 +60,7 @@ func RunRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64
 	}
 
 	if sliceMD5 == "" {
-		sliceMD5 = "ec87a838931d4d5d2e94a04644788a55" // 长度为32
+		sliceMD5 = baidupcs.FixSliceMD5(sliceMD5)
 	}
 
 	err = GetBaiduPCS().RapidUpload(targetPath, contentMD5, sliceMD5, crc32, length)
@@ -248,7 +91,11 @@ func RunCreateSuperFile(targetPath string, blockList ...string) {
 }
 
 // RunUpload 执行文件上传
-func RunUpload(localPaths []string, savePath string) {
+func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
+	if opt == nil {
+		opt = &UploadOptions{}
+	}
+
 	absSavePath, err := getAbsPath(savePath)
 	if err != nil {
 		fmt.Printf("警告: 上传文件, 获取网盘路径 %s 错误, %s\n", savePath, err)
@@ -263,6 +110,7 @@ func RunUpload(localPaths []string, savePath string) {
 	var (
 		pcs           = GetBaiduPCS()
 		ulist         = list.New()
+		needsFixList  = list.New()
 		lastID        int
 		globedPathDir string
 		subSavePath   string
@@ -304,10 +152,8 @@ func RunUpload(localPaths []string, savePath string) {
 						ID:       lastID,
 						MaxRetry: 3,
 					},
-					uploadInfo: &LocalPathInfo{
-						Path: walkedFiles[k3],
-					},
-					savePath: path.Clean(absSavePath + "/" + subSavePath),
+					uploadInfo: checksum.NewLocalFileInfo(walkedFiles[k3], int(requiredSliceSize)),
+					savePath:   path.Clean(absSavePath + "/" + subSavePath),
 				})
 
 				fmt.Printf("[%d] 加入上传队列: %s\n", lastID, walkedFiles[k3])
@@ -319,6 +165,13 @@ func RunUpload(localPaths []string, savePath string) {
 		fmt.Printf("未检测到上传的文件, 请检查文件路径或通配符是否正确.\n")
 		return
 	}
+
+	ud, err := pcsupload.NewUploadingDatabase()
+	if err != nil {
+		fmt.Printf("打开上传未完成数据库错误: %s\n", err)
+		return
+	}
+	defer ud.Close()
 
 	var (
 		handleTaskErr = func(task *utask, errManifest string, pcsError baidupcs.Error) {
@@ -366,9 +219,6 @@ func RunUpload(localPaths []string, savePath string) {
 		ulist.Remove(e) // 载入任务后, 移除队列
 
 		task := e.Value.(*utask)
-		if task == nil {
-			continue
-		}
 
 		func() {
 			fmt.Printf("[%d] 准备上传: %s\n", task.ID, task.uploadInfo.Path)
@@ -379,11 +229,34 @@ func RunUpload(localPaths []string, savePath string) {
 			}
 			defer task.uploadInfo.Close() // 关闭文件
 
-			// TODO: 多线程上传
-			task.tmpMD5s = make([]string, 1)
-			isBlockUpload := len(task.tmpMD5s) > 1
+			// 步骤控制
+			var (
+				err             error
+				panDir, panFile = path.Split(task.savePath)
+			)
 
-			panDir, panFile := path.Split(task.savePath)
+			// 检测断点续传
+			state := ud.Search(&task.uploadInfo.LocalFileMeta)
+			if state != nil || task.uploadInfo.LocalFileMeta.MD5 != nil { // 读取到了md5
+				task.step = StepUploadUpload
+				goto stepControl
+			}
+
+			if opt.NotRapidUpload {
+				task.step = StepUploadUpload
+				goto stepControl
+			}
+
+		stepControl:
+			switch task.step {
+			case StepUploadRapidUpload:
+				goto stepUploadRapidUpload
+			case StepUploadUpload:
+				goto stepUploadUpload
+			}
+
+		stepUploadRapidUpload:
+			task.step = StepUploadRapidUpload
 
 			// 设置缓存
 			if !pcscache.DirCache.Existed(panDir) {
@@ -400,22 +273,6 @@ func RunUpload(localPaths []string, savePath string) {
 				pcscache.DirCache.Set(panDir, &fdl)
 			}
 
-			// 步骤控制
-			var (
-				err      error
-				pcsError baidupcs.Error
-			)
-			switch task.step {
-			case StepUploadRapidUpload:
-				goto stepUploadRapidUpload
-			case StepUploadUpload:
-				goto stepUploadUpload
-			case StepUploadCreateSuperFile:
-				goto stepUploadCreateSuperFile
-			}
-
-		stepUploadRapidUpload:
-			task.step = StepUploadRapidUpload
 			if task.uploadInfo.Length >= 128*converter.MB {
 				fmt.Printf("[%d] 检测秒传中, 请稍候...\n", task.ID)
 			}
@@ -436,7 +293,7 @@ func RunUpload(localPaths []string, savePath string) {
 
 			// 文件大于256kb, 应该要检测秒传, 反之则不应检测秒传
 			// 经测试, 秒传文件并非一定要大于256KB
-			if task.uploadInfo.Length >= requiredSliceLen {
+			if task.uploadInfo.Length >= requiredSliceSize {
 				// do nothing
 			}
 
@@ -455,120 +312,140 @@ func RunUpload(localPaths []string, savePath string) {
 
 			fmt.Printf("[%d] 秒传失败, 开始上传文件...\n\n", task.ID)
 
+			// 保存秒传信息
+			ud.UpdateUploading(&task.uploadInfo.LocalFileMeta, nil)
+			ud.Save()
+
 			// 秒传失败, 开始上传文件
 		stepUploadUpload:
 			task.step = StepUploadUpload
 			{
-				uploadFunc := func(uploadURL string, jar *cookiejar.Jar) (resp *http.Response, uperr error) {
-					h := requester.NewHTTPClient()
-					h.SetCookiejar(jar)
-					setupHTTPClient(h)
+				muer := uploader.NewMultiUploader(pcsupload.NewPCSUpload(pcs, task.savePath), rio.NewFileReaderAtLen64(task.uploadInfo.File))
+				muer.SetBlockSize(getBlockSize(task.uploadInfo.Length))
+				if state != nil {
+					muer.SetInstanceState(state)
+				}
 
-					mr := multipartreader.NewMultipartReader()
-					mr.AddFormFile("uploadedfile", task.savePath, rio.NewFileReaderLen64(task.uploadInfo.file))
-					mr.CloseMultipart()
-
-					u := uploader.NewUploader(uploadURL, mr)
-					u.SetClient(h)
-					u.SetContentType(mr.ContentType())
-					u.SetCheckFunc(func(upresp *http.Response, err error) {
-						resp = upresp
-						uperr = err
-					})
-
-					exitChan := make(chan struct{})
-
-					u.OnExecute(func() {
-						statusChan := u.GetStatusChan()
-						for {
-							select {
-							case <-exitChan:
+				exitChan := make(chan struct{})
+				muer.OnExecute(func() {
+					statusChan := muer.GetStatusChan()
+					updateChan := muer.UpdateInstanceStateChan()
+					for {
+						select {
+						case <-exitChan:
+							return
+						case v, ok := <-statusChan:
+							if !ok {
 								return
-							case v, ok := <-statusChan:
-								if !ok {
-									return
-								}
-
-								if v.TotalSize() == 0 {
-									fmt.Printf("\r[%d] Prepareing upload...", task.ID)
-									continue
-								}
-
-								fmt.Printf("\r[%d] ↑ %s/%s %s/s in %s ............", task.ID,
-									converter.ConvertFileSize(v.Uploaded(), 2),
-									converter.ConvertFileSize(v.TotalSize(), 2),
-									converter.ConvertFileSize(v.SpeedsPerSecond(), 2),
-									v.TimeElapsed(),
-								)
 							}
+
+							if v.TotalSize() == 0 {
+								fmt.Printf("\r[%d] Prepareing upload...", task.ID)
+								continue
+							}
+
+							fmt.Printf("\r[%d] ↑ %s/%s %s/s in %s ............", task.ID,
+								converter.ConvertFileSize(v.Uploaded(), 2),
+								converter.ConvertFileSize(v.TotalSize(), 2),
+								converter.ConvertFileSize(v.SpeedsPerSecond(), 2),
+								v.TimeElapsed(),
+							)
+						case <-updateChan:
+							ud.UpdateUploading(&task.uploadInfo.LocalFileMeta, muer.InstanceState())
+							ud.Save()
 						}
-					})
+					}
+				})
+				muer.OnSuccess(func() {
+					fmt.Printf("\n")
+					fmt.Printf("[%d] 上传文件成功, 保存到网盘路径: %s\n", task.ID, task.savePath)
+					totalSize += task.uploadInfo.Length
+					ud.Delete(&task.uploadInfo.LocalFileMeta) // 删除
+					ud.Save()
 
-					u.Execute()
+					if !opt.NoFixMD5 && len(task.uploadInfo.MD5) != 0 {
+						task.retry = 0 // 清空重试次数
+						task.uploadedDelayChan = delay.NewDelayChan(10 * time.Second)
+						needsFixList.PushBack(task)
+					}
+				})
+				muer.OnError(func(err error) {
+					pcsError, ok := err.(baidupcs.Error)
+					if ok {
+						handleTaskErr(task, "上传文件失败", pcsError)
+						return
+					}
+					fmt.Printf("[%d] 上传文件错误: %s\n", task.ID, err)
+				})
+				muer.OnFinish(func() {
 					close(exitChan)
-					return
-				}
-
-				// TODO: 分片上传
-				if isBlockUpload {
-					task.tmpMD5s[0], pcsError = pcs.UploadTmpFile(uploadFunc)
-				} else {
-					pcsError = pcs.Upload(task.savePath, uploadFunc)
-				}
-
-				fmt.Printf("\n")
-
-				if pcsError != nil {
-					handleTaskErr(task, "上传文件失败", pcsError)
-					return
-				}
-
-				if !isBlockUpload {
-					goto stepUploadDone
-				}
+				})
+				muer.Execute()
 			}
-		stepUploadCreateSuperFile:
-			task.step = StepUploadCreateSuperFile
-			pcsError = pcs.UploadCreateSuperFile(task.savePath, task.tmpMD5s...)
-			if pcsError != nil {
-				handleTaskErr(task, "合并分片文件失败", pcsError)
-				return
-			}
-
-		stepUploadDone:
-			fmt.Printf("[%d] 上传文件成功, 保存到网盘路径: %s\n", task.ID, task.savePath)
-			totalSize += task.uploadInfo.Length
 		}()
 	}
 
 	fmt.Printf("\n")
 	fmt.Printf("全部上传完毕, 总大小: %s\n", converter.ConvertFileSize(totalSize))
+
+	// 修复上传成功的文件的md5
+	// 当文件分片数大于1时, 网盘端最终计算所得的md5值和本地的不一致, 这可能是百度网盘的bug
+	// 测试把上传的文件下载到本地后，对比md5值是匹配的
+	// 通过秒传的原理来修复md5值
+	if !opt.NoFixMD5 && needsFixList.Len() != 0 {
+		fmt.Printf("修复上传成功文件的md5中, 共计 %d 个文件...\n", needsFixList.Len())
+		for {
+			e := needsFixList.Front()
+			if e == nil { // 结束
+				break
+			}
+
+			needsFixList.Remove(e) // 载入任务后, 移除队列
+
+			task := e.Value.(*utask)
+			<-task.uploadedDelayChan
+
+			pcsError := pcs.RapidUpload(task.savePath, hex.EncodeToString(task.uploadInfo.MD5), baidupcs.FixSliceMD5(hex.EncodeToString(task.uploadInfo.SliceMD5)), "0", task.uploadInfo.Length)
+			if pcsError == nil {
+				fmt.Printf("[%d] 修复md5成功, %s\n", task.ID, task.savePath)
+				continue
+			}
+
+			switch pcsError.ErrorType() {
+			// 远程服务器错误
+			case baidupcs.ErrTypeRemoteError:
+				switch pcsError.ErrorCode() {
+				case 31079: //file md5 not found, you should use upload api to upload the whole file.
+					task.retry++
+					if task.retry < task.MaxRetry {
+						fmt.Printf("[%d] 修复md5失败, 可能服务器未刷新, 重试 %d/%d\n", task.ID, task.retry, task.MaxRetry)
+						needsFixList.PushBack(task)
+						time.Sleep(3 * time.Duration(task.retry) * time.Second)
+					} else {
+						fmt.Printf("[%d] 修复md5失败, %s\n", task.ID, task.savePath)
+					}
+				default:
+					fmt.Printf("[%d] 修复md5失败, 消息: %s\n", task.ID, pcsError)
+					continue
+				}
+			case baidupcs.ErrTypeNetError:
+				task.retry++
+				if task.retry < task.MaxRetry {
+					fmt.Printf("[%d] 修复md5失败, %s, 重试 %d/%d\n", task.ID, pcsError, task.retry, task.MaxRetry)
+					needsFixList.PushBack(task)
+					time.Sleep(3 * time.Duration(task.retry) * time.Second)
+				} else {
+					fmt.Printf("[%d] 修复md5失败, %s, 消息: %s\n", task.ID, task.savePath, pcsError)
+				}
+			}
+		}
+	}
 }
 
-// GetFileSum 获取文件的大小, md5, 前256KB切片的 md5, crc32
-func GetFileSum(localPath string, cfg *SumConfig) (lp *LocalPathInfo, err error) {
-	file, err := os.Open(localPath)
-	if err != nil {
-		return nil, err
+func getBlockSize(fileSize int64) int64 {
+	blockNum := fileSize / baidupcs.MinUploadBlockSize
+	if blockNum > 999 {
+		return fileSize/999 + 1
 	}
-
-	defer file.Close()
-
-	fileStat, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if fileStat.IsDir() {
-		return nil, fmt.Errorf("sum %s: is a directory", localPath)
-	}
-
-	lp = &LocalPathInfo{
-		Path:   localPath,
-		file:   file,
-		Length: fileStat.Size(),
-	}
-
-	lp.Sum(*cfg)
-
-	return lp, nil
+	return baidupcs.MinUploadBlockSize
 }
