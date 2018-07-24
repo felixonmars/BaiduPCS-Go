@@ -1688,6 +1688,18 @@ func main() {
 			},
 		},
 		{
+			Name:        "clear",
+			Aliases:     []string{"cls"},
+			Usage:       "清空控制台",
+			UsageText:   app.Name + " clear",
+			Description: "清空控制台屏幕",
+			Category:    "其他",
+			Action: func(c *cli.Context) error {
+				pcsliner.ClearScreen()
+				return nil
+			},
+		},
+		{
 			Name:    "quit",
 			Aliases: []string{"exit"},
 			Usage:   "退出程序",
