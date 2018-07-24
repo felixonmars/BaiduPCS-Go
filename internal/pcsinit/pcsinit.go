@@ -3,7 +3,7 @@ package pcsinit
 
 import (
 	"github.com/urfave/cli"
-	_ "unsafe" // allow go:linkname
+	_ "unsafe" // for go:linkname
 )
 
 var (

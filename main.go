@@ -94,6 +94,7 @@ func init() {
 func main() {
 	defer pcsconfig.Config.Close()
 
+	line := pcsliner.NewLiner()
 	app := cli.NewApp()
 	app.Name = "BaiduPCS-Go"
 	app.Version = Version
@@ -134,8 +135,7 @@ func main() {
 		pcsverbose.Verbosef("VERBOSE: 这是一条调试信息\n\n")
 
 		var (
-			err  error
-			line = pcsliner.NewLiner()
+			err error
 		)
 
 		line.History, err = pcsliner.NewLineHistory(historyFilePath)
@@ -1695,7 +1695,7 @@ func main() {
 			Description: "清空控制台屏幕",
 			Category:    "其他",
 			Action: func(c *cli.Context) error {
-				pcsliner.ClearScreen()
+				pcsliner.ClearScreen(line.State)
 				return nil
 			},
 		},
