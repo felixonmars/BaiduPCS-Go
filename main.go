@@ -1695,7 +1695,7 @@ func main() {
 			Description: "清空控制台屏幕",
 			Category:    "其他",
 			Action: func(c *cli.Context) error {
-				pcsliner.ClearScreen(line.State)
+				line.ClearScreen()
 				return nil
 			},
 		},

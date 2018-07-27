@@ -1,14 +1,12 @@
+// +build !windows
+
 package pcsliner
 
 import (
-	"github.com/peterh/liner"
-	_ "unsafe" // for go:linkname
+	"fmt"
 )
 
-//go:linkname eraseScreen github.com/iikira/BaiduPCS-Go/vendor/github.com/peterh/liner.(*State).eraseScreen
-func eraseScreen(s *liner.State)
-
 // ClearScreen 清空屏幕
-func ClearScreen(s *liner.State) {
-	eraseScreen(s)
+func (pl *PCSLiner) ClearScreen() {
+	fmt.Print("\x1b[H\x1b[2J")
 }
