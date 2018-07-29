@@ -107,6 +107,12 @@ func (h *HTTPClient) SetResponseHeaderTimeout(t time.Duration) {
 	h.transport.ResponseHeaderTimeout = t
 }
 
+// SetTLSHandshakeTimeout 设置tls握手超时时间
+func (h *HTTPClient) SetTLSHandshakeTimeout(t time.Duration) {
+	h.lazyInit()
+	h.transport.TLSHandshakeTimeout = t
+}
+
 // SetTimeout 设置 http 请求超时时间, 默认30s
 func (h *HTTPClient) SetTimeout(t time.Duration) {
 	h.Client.Timeout = t

@@ -62,6 +62,8 @@ const (
 	OperationShareCancel = "取消分享"
 	// OperationShareList 列出分享列表
 	OperationShareList = "列出分享列表"
+	// NetdiskUA 网盘客户端ua
+	NetdiskUA = "netdisk;7.8.1;Red;android-android;4.3"
 )
 
 var (
@@ -203,7 +205,7 @@ func (pcs *BaiduPCS) UK() (uk int64, pcsError Error) {
 
 	errInfo := NewErrorInfo(OperationGetUK)
 	body, err := pcs.client.Fetch("GET", pcsURL, nil, map[string]string{
-		"User-Agent": "netdisk;8.3.1",
+		"User-Agent": NetdiskUA,
 	})
 	if err != nil {
 		errInfo.errType = ErrTypeNetError

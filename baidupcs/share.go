@@ -90,7 +90,7 @@ func (pcs *BaiduPCS) ShareSet(paths []string, option *ShareOption) (s *Shared, p
 		"period":       strconv.Itoa(option.Period),
 	}, map[string]string{
 		"Content-Type": "application/x-www-form-urlencoded",
-		"User-Agent":   "netdisk;8.3.1",
+		"User-Agent":   NetdiskUA,
 	})
 	if resp != nil {
 		defer resp.Body.Close()
@@ -160,7 +160,7 @@ func (pcs *BaiduPCS) ShareCancel(shareIDs []int64) (pcsError Error) {
 		"shareid_list": builder.String(),
 	}, map[string]string{
 		"Content-Type": "application/x-www-form-urlencoded",
-		"User-Agent":   "netdisk;8.3.1",
+		"User-Agent":   NetdiskUA,
 	})
 	if resp != nil {
 		defer resp.Body.Close()
@@ -214,7 +214,7 @@ func (pcs *BaiduPCS) ShareList(page int) (records ShareRecordInfoList, pcsError 
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationShareList, pcsURL)
 
 	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, map[string]string{
-		"User-Agent": "netdisk;8.3.1",
+		"User-Agent": NetdiskUA,
 	})
 	if resp != nil {
 		defer resp.Body.Close()
