@@ -81,6 +81,23 @@ func SliceStringToInt64(ss []string) (si []int64) {
 	return
 }
 
+// SliceStringToInt []string 转换为 []int
+func SliceStringToInt(ss []string) (si []int) {
+	si = make([]int, 0, len(ss))
+	var (
+		i   int
+		err error
+	)
+	for k := range ss {
+		i, err = strconv.Atoi(ss[k])
+		if err != nil {
+			continue
+		}
+		si = append(si, i)
+	}
+	return
+}
+
 // MustInt 将string转换为int, 忽略错误
 func MustInt(s string) (n int) {
 	n, _ = strconv.Atoi(s)
