@@ -750,6 +750,56 @@ func main() {
 			},
 		},
 		{
+			Name:      "search",
+			Aliases:   []string{"s"},
+			Usage:     "搜索文件",
+			UsageText: app.Name + " search [-path=<需要检索的目录>] [-r] 关键字",
+			Description: `
+	按文件名搜索文件（不支持查找目录）。
+
+	示例:
+
+	搜索根目录的文件
+	BaiduPCS-Go search -path=/ 关键字
+
+	搜索当前工作目录的文件
+	BaiduPCS-Go search 关键字
+
+	递归搜索当前工作目录的文件
+	BaiduPCS-Go search -r 关键字
+`,
+			Category: "百度网盘",
+			Before:   reloadFn,
+			Action: func(c *cli.Context) error {
+				if c.NArg() < 1 {
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
+				}
+
+				pcscommand.RunSearch(c.String("path"), c.Args().Get(0), &pcscommand.SearchOptions{
+					Total:   c.Bool("l"),
+					Recurse: c.Bool("r"),
+				})
+
+				return nil
+			},
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "l",
+					Usage: "详细显示",
+				},
+				cli.BoolFlag{
+					Name:  "r",
+					Usage: "递归搜索",
+				},
+				cli.StringFlag{
+					Name:  "path",
+					Usage: "需要检索的目录",
+					Value: ".",
+				},
+			},
+		},
+		{
 			Name:      "tree",
 			Aliases:   []string{"t"},
 			Usage:     "列出目录的树形图",
@@ -1081,7 +1131,8 @@ func main() {
 
 				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1], &pcscommand.UploadOptions{
 					NotRapidUpload: c.Bool("norapid"),
-					NoFixMD5:       c.Bool("nofix"),
+					NotFixMD5:      c.Bool("nofix"),
+					NotSplitFile:   c.Bool("nosplit"),
 				})
 				return nil
 			},
@@ -1093,6 +1144,10 @@ func main() {
 				cli.BoolFlag{
 					Name:  "nofix",
 					Usage: "在上传完成后不修复md5",
+				},
+				cli.BoolFlag{
+					Name:  "nosplit",
+					Usage: "禁用分片上传",
 				},
 			},
 		},
@@ -1317,6 +1372,9 @@ func main() {
 			UsageText: app.Name + " export <文件/目录1> <文件/目录2> ...",
 			Description: `
 	导出网盘内的文件或目录, 原理为秒传文件, 此操作会生成导出文件或目录的命令.
+
+	注意!!! :
+	并不是所有的文件都能导出成功, 程序会列出无法导出的文件列表
 
 	示例:
 

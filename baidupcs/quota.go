@@ -1,18 +1,17 @@
 package baidupcs
 
 import (
-	"github.com/json-iterator/go"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 )
 
 type quotaInfo struct {
-	*ErrInfo
-
+	*pcserror.PCSErrInfo
 	Quota int64 `json:"quota"`
 	Used  int64 `json:"used"`
 }
 
 // QuotaInfo 获取当前用户空间配额信息
-func (pcs *BaiduPCS) QuotaInfo() (quota, used int64, pcsError Error) {
+func (pcs *BaiduPCS) QuotaInfo() (quota, used int64, pcsError pcserror.Error) {
 	dataReadCloser, pcsError := pcs.PrepareQuotaInfo()
 	if pcsError != nil {
 		return
@@ -21,21 +20,13 @@ func (pcs *BaiduPCS) QuotaInfo() (quota, used int64, pcsError Error) {
 	defer dataReadCloser.Close()
 
 	quotaInfo := &quotaInfo{
-		ErrInfo: NewErrorInfo(OperationQuotaInfo),
+		PCSErrInfo: pcserror.NewPCSErrorInfo(OperationQuotaInfo),
 	}
 
-	d := jsoniter.NewDecoder(dataReadCloser)
-	err := d.Decode(quotaInfo)
-	if err != nil {
-		quotaInfo.ErrInfo.jsonError(err)
-		return 0, 0, quotaInfo.ErrInfo
+	pcsError = handleJSONParse(OperationQuotaInfo, dataReadCloser, quotaInfo)
+	if pcsError != nil {
+		return
 	}
 
-	if quotaInfo.ErrCode != 0 {
-		return 0, 0, quotaInfo.ErrInfo
-	}
-
-	quota = quotaInfo.Quota
-	used = quotaInfo.Used
-	return
+	return quotaInfo.Quota, quotaInfo.Used, nil
 }

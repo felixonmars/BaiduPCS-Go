@@ -23,6 +23,7 @@ type (
 		SliceMD5 []byte `json:"slicemd5"` // 文件前 requiredSliceLen (256KB) 切片的 md5 值
 		MD5      []byte `json:"md5"`      // 文件的 md5
 		CRC32    uint32 `json:"crc32"`    // 文件的 crc32
+		ModTime  int64  `json:"modtime"`  // 修改日期
 	}
 
 	// LocalFileInfo LocalFile
@@ -65,6 +66,7 @@ func (lf *LocalFile) OpenPath() bool {
 
 	info, _ := lf.File.Stat()
 	lf.Length = info.Size()
+	lf.ModTime = info.ModTime().Unix()
 	return true
 }
 

@@ -11,10 +11,22 @@ import (
 	"strconv"
 )
 
-// LsOptions 列目录可选项
-type LsOptions struct {
-	Total bool
-}
+type (
+	// LsOptions 列目录可选项
+	LsOptions struct {
+		Total bool
+	}
+
+	SearchOptions struct {
+		Total   bool
+		Recurse bool
+	}
+)
+
+const (
+	opLs int = iota
+	opSearch
+)
 
 // RunLs 执行列目录
 func RunLs(path string, lsOptions *LsOptions, orderOptions *baidupcs.OrderOptions) {
@@ -32,17 +44,42 @@ func RunLs(path string, lsOptions *LsOptions, orderOptions *baidupcs.OrderOption
 
 	fmt.Printf("\n当前目录: %s\n----\n", path)
 
-	tb := pcstable.NewTable(os.Stdout)
-
 	if lsOptions == nil {
 		lsOptions = &LsOptions{}
 	}
 
+	renderTable(opLs, lsOptions.Total, path, files)
+	return
+}
+
+func RunSearch(targetPath, keyword string, opt *SearchOptions) {
+	targetPath, err := getAbsPath(targetPath)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	if opt == nil {
+		opt = &SearchOptions{}
+	}
+
+	files, err := GetBaiduPCS().Search(targetPath, keyword, opt.Recurse)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	renderTable(opSearch, opt.Total, targetPath, files)
+	return
+}
+
+func renderTable(op int, isTotal bool, path string, files baidupcs.FileDirectoryList) {
+	tb := pcstable.NewTable(os.Stdout)
 	var (
 		fN, dN int64
 	)
 
-	if lsOptions.Total {
+	if isTotal {
 		tb.SetHeader([]string{"#", "fs_id", "文件大小", "创建日期", "修改日期", "md5(截图请打码)", "文件(目录)"})
 		tb.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})
 		for k, file := range files {
@@ -51,9 +88,21 @@ func RunLs(path string, lsOptions *LsOptions, orderOptions *baidupcs.OrderOption
 				continue
 			}
 
-			tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(file.FsID, 10), converter.ConvertFileSize(file.Size, 2), pcstime.FormatTime(file.Ctime), pcstime.FormatTime(file.Mtime), file.MD5, file.Filename})
+			var md5 string
+			if len(file.BlockList) > 1 {
+				md5 = "(可能不正确)" + file.MD5
+			} else {
+				md5 = file.MD5
+			}
+
+			switch op {
+			case opLs:
+				tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(file.FsID, 10), converter.ConvertFileSize(file.Size, 2), pcstime.FormatTime(file.Ctime), pcstime.FormatTime(file.Mtime), md5, file.Filename})
+			case opSearch:
+				tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(file.FsID, 10), converter.ConvertFileSize(file.Size, 2), pcstime.FormatTime(file.Ctime), pcstime.FormatTime(file.Mtime), md5, file.Path})
+			}
 		}
-		fN, dN := files.Count()
+		fN, dN = files.Count()
 		tb.Append([]string{"", "", "总: " + converter.ConvertFileSize(files.TotalSize(), 2), "", "", "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
 	} else {
 		tb.SetHeader([]string{"#", "文件大小", "修改日期", "文件(目录)"})
@@ -64,7 +113,12 @@ func RunLs(path string, lsOptions *LsOptions, orderOptions *baidupcs.OrderOption
 				continue
 			}
 
-			tb.Append([]string{strconv.Itoa(k), converter.ConvertFileSize(file.Size, 2), pcstime.FormatTime(file.Mtime), file.Filename})
+			switch op {
+			case opLs:
+				tb.Append([]string{strconv.Itoa(k), converter.ConvertFileSize(file.Size, 2), pcstime.FormatTime(file.Mtime), file.Filename})
+			case opSearch:
+				tb.Append([]string{strconv.Itoa(k), converter.ConvertFileSize(file.Size, 2), pcstime.FormatTime(file.Mtime), file.Path})
+			}
 		}
 		fN, dN = files.Count()
 		tb.Append([]string{"", "总: " + converter.ConvertFileSize(files.TotalSize(), 2), "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
@@ -77,5 +131,4 @@ func RunLs(path string, lsOptions *LsOptions, orderOptions *baidupcs.OrderOption
 	}
 
 	fmt.Printf("----\n")
-	return
 }

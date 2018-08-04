@@ -107,6 +107,10 @@ func (ud *UploadingDatabase) UpdateUploading(meta *checksum.LocalFileMeta, state
 	})
 }
 
+func (ud *UploadingDatabase) deleteIndex(k int) {
+	ud.UploadingList = append(ud.UploadingList[:k], ud.UploadingList[k+1:]...)
+}
+
 // Delete 删除
 func (ud *UploadingDatabase) Delete(meta *checksum.LocalFileMeta) bool {
 	if meta == nil {
@@ -119,7 +123,7 @@ func (ud *UploadingDatabase) Delete(meta *checksum.LocalFileMeta) bool {
 			continue
 		}
 		if uploading.LocalFileMeta.EqualLengthMD5(meta) || strings.Compare(uploading.LocalFileMeta.Path, meta.Path) == 0 {
-			ud.UploadingList = append(ud.UploadingList[:k], ud.UploadingList[k+1:]...)
+			ud.deleteIndex(k)
 			return true
 		}
 	}
@@ -133,6 +137,7 @@ func (ud *UploadingDatabase) Search(meta *checksum.LocalFileMeta) *uploader.Inst
 	}
 
 	meta.CompleteAbsPath()
+	ud.clearModTimeChange()
 	for _, uploading := range ud.UploadingList {
 		if uploading.LocalFileMeta == nil {
 			continue
@@ -155,6 +160,29 @@ func (ud *UploadingDatabase) Search(meta *checksum.LocalFileMeta) *uploader.Inst
 		}
 	}
 	return nil
+}
+
+func (ud *UploadingDatabase) clearModTimeChange() {
+	for k, uploading := range ud.UploadingList {
+		if uploading.LocalFileMeta == nil {
+			continue
+		}
+
+		info, err := os.Stat(uploading.LocalFileMeta.Path)
+		if err != nil {
+			ud.deleteIndex(k)
+			k--
+			pcsUploadVerbose.Infof("clear invalid file path: %s\n", uploading.LocalFileMeta.Path)
+			continue
+		}
+
+		if uploading.LocalFileMeta.ModTime != info.ModTime().Unix() {
+			ud.deleteIndex(k)
+			k--
+			pcsUploadVerbose.Infof("clear modified file path: %s\n", uploading.LocalFileMeta.Path)
+			continue
+		}
+	}
 }
 
 // Close 关闭数据库

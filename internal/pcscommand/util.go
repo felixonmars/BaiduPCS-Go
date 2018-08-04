@@ -3,6 +3,7 @@ package pcscommand
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/pcspath"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/waitgroup"
 	fpath "path"
@@ -70,7 +71,7 @@ func parsePath(path string) (paths []string, err error) {
 }
 
 // recurseParsePath 递归解析通配符
-func recurseParsePath(path string) (paths []string, err baidupcs.Error) {
+func recurseParsePath(path string) (paths []string, err pcserror.Error) {
 	if !patternRE.MatchString(path) {
 		// 检测路径是否存在
 		_, err = GetBaiduPCS().FilesDirectoriesMeta(path)

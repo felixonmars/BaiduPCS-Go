@@ -3,10 +3,9 @@ package baidupcs
 
 import (
 	"errors"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/baidu-tools/pan"
-	"github.com/json-iterator/go"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -22,6 +21,8 @@ const (
 	OperationFilesDirectoriesMeta = "获取文件/目录的元信息"
 	// OperationFilesDirectoriesList 获取目录下的文件列表
 	OperationFilesDirectoriesList = "获取目录下的文件列表"
+	// OperationSearch 搜索
+	OperationSearch = "搜索"
 	// OperationRemove 删除文件/目录
 	OperationRemove = "删除文件/目录"
 	// OperationMkdir 创建目录
@@ -40,6 +41,10 @@ const (
 	OperationUploadTmpFile = "分片上传—文件分片及上传"
 	// OperationUploadCreateSuperFile 分片上传—合并分片文件
 	OperationUploadCreateSuperFile = "分片上传—合并分片文件"
+	// OperationUploadPrecreate 分片上传—Precreate
+	OperationUploadPrecreate = "分片上传—Precreate"
+	// OperationUploadSuperfile2 分片上传—Superfile2
+	OperationUploadSuperfile2 = "分片上传—Superfile2"
 	// OperationDownloadFile 下载单个文件
 	OperationDownloadFile = "下载单个文件"
 	// OperationDownloadStreamFile 下载流式文件
@@ -62,6 +67,11 @@ const (
 	OperationShareCancel = "取消分享"
 	// OperationShareList 列出分享列表
 	OperationShareList = "列出分享列表"
+
+	// PCSBaiduCom pcs api地址
+	PCSBaiduCom = "pcs.baidu.com"
+	// PanBaiduCom 网盘首页api地址
+	PanBaiduCom = "pan.baidu.com"
 	// NetdiskUA 网盘客户端ua
 	NetdiskUA = "netdisk;7.8.1;Red;android-android;4.3"
 )
@@ -70,12 +80,21 @@ var (
 	baiduPCSVerbose = pcsverbose.New("BAIDUPCS")
 )
 
-// BaiduPCS 百度 PCS API 详情
-type BaiduPCS struct {
-	appID   int                   // app_id
-	isHTTPS bool                  // 是否启用https
-	client  *requester.HTTPClient // http 客户端
-}
+type (
+	// BaiduPCS 百度 PCS API 详情
+	BaiduPCS struct {
+		appID   int                   // app_id
+		isHTTPS bool                  // 是否启用https
+		client  *requester.HTTPClient // http 客户端
+	}
+
+	userInfoJSON struct {
+		*pcserror.PanErrorInfo
+		Records []struct {
+			Uk int64 `json:"uk"`
+		} `json:"records"`
+	}
+)
 
 // NewPCS 提供app_id, 百度BDUSS, 返回 BaiduPCS 对象
 func NewPCS(appID int, bduss string) *BaiduPCS {
@@ -83,7 +102,7 @@ func NewPCS(appID int, bduss string) *BaiduPCS {
 
 	pcsURL := &url.URL{
 		Scheme: "http",
-		Host:   "pcs.baidu.com",
+		Host:   PCSBaiduCom,
 	}
 
 	cookies := []*http.Cookie{
@@ -97,7 +116,7 @@ func NewPCS(appID int, bduss string) *BaiduPCS {
 	jar.SetCookies(pcsURL, cookies)
 	jar.SetCookies((&url.URL{
 		Scheme: "http",
-		Host:   "pan.baidu.com",
+		Host:   PanBaiduCom,
 	}), cookies)
 	client.SetCookiejar(jar)
 
@@ -156,7 +175,7 @@ func (pcs *BaiduPCS) SetHTTPS(https bool) {
 func (pcs *BaiduPCS) URL() *url.URL {
 	return &url.URL{
 		Scheme: GetHTTPScheme(pcs.isHTTPS),
-		Host:   "pcs.baidu.com",
+		Host:   PCSBaiduCom,
 	}
 }
 
@@ -180,7 +199,7 @@ func (pcs *BaiduPCS) generatePCSURL(subPath, method string, param ...map[string]
 func (pcs *BaiduPCS) generatePCSURL2(subPath, method string, param ...map[string]string) *url.URL {
 	pcsURL2 := &url.URL{
 		Scheme: GetHTTPScheme(pcs.isHTTPS),
-		Host:   "pan.baidu.com",
+		Host:   PanBaiduCom,
 		Path:   "/rest/2.0/" + subPath,
 	}
 
@@ -198,44 +217,27 @@ func (pcs *BaiduPCS) generatePCSURL2(subPath, method string, param ...map[string
 }
 
 // UK 获取用户 UK
-func (pcs *BaiduPCS) UK() (uk int64, pcsError Error) {
-	pcs.lazyInit()
-
-	pcsURL := GetHTTPScheme(pcs.isHTTPS) + "://pan.baidu.com/api/user/getinfo?need_selfinfo=1"
-
-	errInfo := NewErrorInfo(OperationGetUK)
-	body, err := pcs.client.Fetch("GET", pcsURL, nil, map[string]string{
-		"User-Agent": NetdiskUA,
-	})
-	if err != nil {
-		errInfo.errType = ErrTypeNetError
-		errInfo.err = err
-		return 0, errInfo
+func (pcs *BaiduPCS) UK() (uk int64, pcsError pcserror.Error) {
+	dataReadCloser, pcsError := pcs.PrepareUK()
+	if pcsError != nil {
+		return
 	}
 
-	jsonData := struct {
-		pan.RemoteErrInfo
-		Records []struct {
-			Uk int64 `json:"uk"`
-		} `json:"records"`
-	}{}
+	defer dataReadCloser.Close()
 
-	err = jsoniter.Unmarshal(body, &jsonData)
-	if err != nil {
-		errInfo.jsonError(err)
-		return 0, errInfo
+	errInfo := pcserror.NewPanErrorInfo(OperationGetUK)
+	jsonData := userInfoJSON{
+		PanErrorInfo: errInfo,
 	}
 
-	if jsonData.ErrNo != 0 {
-		jsonData.RemoteErrInfo.ParseErrMsg()
-		errInfo.ErrCode = jsonData.RemoteErrInfo.ErrNo
-		errInfo.ErrMsg = jsonData.RemoteErrInfo.ErrMsg
-		return 0, errInfo
+	pcsError = handleJSONParse(OperationGetUK, dataReadCloser, &jsonData)
+	if pcsError != nil {
+		return
 	}
 
 	if len(jsonData.Records) != 1 {
-		errInfo.errType = ErrTypeOthers
-		errInfo.err = errors.New("Unknown remote data")
+		errInfo.ErrType = pcserror.ErrTypeOthers
+		errInfo.Err = errors.New("Unknown remote data")
 		return 0, errInfo
 	}
 

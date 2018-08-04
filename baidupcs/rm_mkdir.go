@@ -1,7 +1,11 @@
 package baidupcs
 
+import (
+	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
+)
+
 // Remove 批量删除文件/目录
-func (pcs *BaiduPCS) Remove(paths ...string) (pcsError Error) {
+func (pcs *BaiduPCS) Remove(paths ...string) (pcsError pcserror.Error) {
 	dataReadCloser, pcsError := pcs.PrepareRemove(paths...)
 	if pcsError != nil {
 		return
@@ -9,12 +13,12 @@ func (pcs *BaiduPCS) Remove(paths ...string) (pcsError Error) {
 
 	defer dataReadCloser.Close()
 
-	errInfo := decodeJSONError(OperationRemove, dataReadCloser)
+	errInfo := pcserror.DecodePCSJSONError(OperationRemove, dataReadCloser)
 	return errInfo
 }
 
 // Mkdir 创建目录
-func (pcs *BaiduPCS) Mkdir(pcspath string) (pcsError Error) {
+func (pcs *BaiduPCS) Mkdir(pcspath string) (pcsError pcserror.Error) {
 	dataReadCloser, pcsError := pcs.PrepareMkdir(pcspath)
 	if pcsError != nil {
 		return
@@ -22,6 +26,6 @@ func (pcs *BaiduPCS) Mkdir(pcspath string) (pcsError Error) {
 
 	defer dataReadCloser.Close()
 
-	errInfo := decodeJSONError(OperationMkdir, dataReadCloser)
+	errInfo := pcserror.DecodePCSJSONError(OperationMkdir, dataReadCloser)
 	return errInfo
 }

@@ -52,7 +52,6 @@ func NewConfig(configFilePath string) *PCSConfig {
 	c := &PCSConfig{
 		configFilePath: configFilePath,
 	}
-	c.defaultConfig()
 	return c
 }
 
@@ -118,6 +117,8 @@ func (c *PCSConfig) init() error {
 	if c.configFilePath == "" {
 		return ErrConfigFileNotExist
 	}
+
+	c.initDefaultConfig()
 	err := c.loadConfigFromFile()
 	if err != nil {
 		return err
@@ -197,36 +198,27 @@ func (c *PCSConfig) loadConfigFromFile() (err error) {
 	return nil
 }
 
-func (c *PCSConfig) defaultConfig() {
-	if c.appID == 0 {
-		c.appID = 260149
-	}
-	if c.cacheSize == 0 {
-		c.cacheSize = 30000
-	}
-	if c.maxParallel == 0 {
-		c.maxParallel = 100
-	}
-	if c.maxDownloadLoad == 0 {
-		c.maxDownloadLoad = 1
-	}
+func (c *PCSConfig) initDefaultConfig() {
+	c.appID = 260149
+	c.cacheSize = 30000
+	c.maxParallel = 100
+	c.maxDownloadLoad = 1
+	c.userAgent = "netdisk;1.0"
 
 	// 设置默认的下载路径
-	if c.saveDir == "" {
-		switch runtime.GOOS {
-		case "windows":
+	switch runtime.GOOS {
+	case "windows":
+		c.saveDir = pcsutil.ExecutablePathJoin("Downloads")
+	case "android":
+		// TODO: 获取完整的的下载路径
+		c.saveDir = "/sdcard/Download"
+	default:
+		dataPath, ok := os.LookupEnv("HOME")
+		if !ok {
+			pcsConfigVerbose.Warn("Environment HOME not set")
 			c.saveDir = pcsutil.ExecutablePathJoin("Downloads")
-		case "android":
-			// TODO: 获取完整的的下载路径
-			c.saveDir = "/sdcard/Download"
-		default:
-			dataPath, ok := os.LookupEnv("HOME")
-			if !ok {
-				pcsConfigVerbose.Warn("Environment HOME not set")
-				c.saveDir = pcsutil.ExecutablePathJoin("Downloads")
-			} else {
-				c.saveDir = filepath.Join(dataPath, "Downloads")
-			}
+		} else {
+			c.saveDir = filepath.Join(dataPath, "Downloads")
 		}
 	}
 }

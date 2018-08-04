@@ -10,9 +10,10 @@ import (
 
 type (
 	worker struct {
-		id        int64
-		splitUnit SplitUnit
-		checksum  string
+		id         int
+		partOffset int64
+		splitUnit  SplitUnit
+		checksum   string
 	}
 
 	workerList []*worker
@@ -36,7 +37,12 @@ func (werl *workerList) Readed() int64 {
 	return readed
 }
 
-func (muer *MultiUploader) upload() error {
+func (muer *MultiUploader) upload() (uperr error) {
+	err := muer.multiUpload.Precreate()
+	if err != nil {
+		return err
+	}
+
 	var (
 		deque = lane.NewDeque()
 
@@ -74,7 +80,7 @@ func (muer *MultiUploader) upload() error {
 				terr        error
 			)
 			go func() {
-				checksum, terr = muer.multiUpload.TmpFile(ctx, wer.splitUnit)
+				checksum, terr = muer.multiUpload.TmpFile(ctx, int(wer.id), wer.partOffset, wer.splitUnit)
 				close(doneChan)
 			}()
 			select {
@@ -86,6 +92,14 @@ func (muer *MultiUploader) upload() error {
 			}
 			cancel()
 			if terr != nil {
+				if me, ok := terr.(*MultiError); ok {
+					if me.Terminated { // 终止
+						close(muer.canceled)
+						uperr = me.Err
+						return
+					}
+				}
+
 				uploaderVerbose.Warnf("upload err: %s, id: %d\n", terr, wer.id)
 				wer.splitUnit.Seek(0, os.SEEK_SET)
 				deque.Append(wer)
@@ -103,6 +117,9 @@ func (muer *MultiUploader) upload() error {
 
 	select {
 	case <-muer.canceled:
+		if uperr != nil {
+			return uperr
+		}
 		return context.Canceled
 	default:
 	}
@@ -112,5 +129,5 @@ func (muer *MultiUploader) upload() error {
 		return cerr
 	}
 
-	return nil
+	return
 }

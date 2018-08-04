@@ -7,7 +7,7 @@ import (
 type (
 	// BlockState 文件区块信息
 	BlockState struct {
-		ID       int64     `json:"id"`
+		ID       int       `json:"id"`
 		Range    ReadRange `json:"range"`
 		CheckSum string    `json:"checksum"`
 	}
@@ -37,13 +37,15 @@ func instanceStateToWorkerList(is *InstanceState, file io.ReaderAt) workerList {
 	for _, blockState := range is.BlockList {
 		if blockState.CheckSum == "" {
 			workers = append(workers, &worker{
-				id:        blockState.ID,
-				splitUnit: NewSplitUnit(file, blockState.Range),
-				checksum:  blockState.CheckSum,
+				id:         blockState.ID,
+				partOffset: blockState.Range.Begin,
+				splitUnit:  NewSplitUnit(file, blockState.Range),
+				checksum:   blockState.CheckSum,
 			})
 		} else {
 			workers = append(workers, &worker{
-				id: blockState.ID,
+				id:         blockState.ID,
+				partOffset: blockState.Range.Begin,
 				splitUnit: &fileBlock{
 					readRange: blockState.Range,
 					readed:    blockState.Range.End - blockState.Range.Begin,

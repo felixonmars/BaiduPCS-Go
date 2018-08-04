@@ -1,20 +1,27 @@
 package baidupcs
 
 import (
-	"github.com/json-iterator/go"
-	"net/http/cookiejar"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
+	"net/http"
 	"net/url"
 )
 
-// DownloadFunc 下载文件处理函数
-type DownloadFunc func(downloadURL string, jar *cookiejar.Jar) error
+type (
+	// DownloadFunc 下载文件处理函数
+	DownloadFunc func(downloadURL string, jar http.CookieJar) error
 
-// URLInfo 下载链接详情
-type URLInfo struct {
-	URLs []struct {
-		URL string `json:"url"`
-	} `json:"urls"`
-}
+	// URLInfo 下载链接详情
+	URLInfo struct {
+		URLs []struct {
+			URL string `json:"url"`
+		} `json:"urls"`
+	}
+
+	locateDownloadJSON struct {
+		*pcserror.PCSErrInfo
+		URLInfo
+	}
+)
 
 // URLStrings 返回下载链接数组
 func (ui *URLInfo) URLStrings(https bool) (urls []*url.URL) {
@@ -48,7 +55,7 @@ func (pcs *BaiduPCS) DownloadFile(path string, downloadFunc DownloadFunc) (err e
 	})
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationDownloadFile, pcsURL)
 
-	return downloadFunc(pcsURL.String(), pcs.client.Jar.(*cookiejar.Jar))
+	return downloadFunc(pcsURL.String(), pcs.client.Jar)
 }
 
 // DownloadStreamFile 下载流式文件
@@ -59,11 +66,11 @@ func (pcs *BaiduPCS) DownloadStreamFile(path string, downloadFunc DownloadFunc) 
 	})
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationDownloadStreamFile, pcsURL)
 
-	return downloadFunc(pcsURL.String(), pcs.client.Jar.(*cookiejar.Jar))
+	return downloadFunc(pcsURL.String(), pcs.client.Jar)
 }
 
 // LocateDownload 提取下载链接
-func (pcs *BaiduPCS) LocateDownload(pcspath string) (info *URLInfo, pcsError Error) {
+func (pcs *BaiduPCS) LocateDownload(pcspath string) (info *URLInfo, pcsError pcserror.Error) {
 	dataReadCloser, pcsError := pcs.PrepareLocateDownload(pcspath)
 	if dataReadCloser != nil {
 		defer dataReadCloser.Close()
@@ -72,23 +79,14 @@ func (pcs *BaiduPCS) LocateDownload(pcspath string) (info *URLInfo, pcsError Err
 		return nil, pcsError
 	}
 
-	errInfo := NewErrorInfo(OperationLocateDownload)
-	jsonData := struct {
-		URLInfo
-		*ErrInfo
-	}{
-		ErrInfo: errInfo,
+	errInfo := pcserror.NewPCSErrorInfo(OperationLocateDownload)
+	jsonData := locateDownloadJSON{
+		PCSErrInfo: errInfo,
 	}
 
-	d := jsoniter.NewDecoder(dataReadCloser)
-	err := d.Decode(&jsonData)
-	if err != nil {
-		errInfo.jsonError(err)
-		return nil, errInfo
-	}
-
-	if errInfo.ErrCode != 0 {
-		return nil, errInfo
+	pcsError = handleJSONParse(OperationLocateDownload, dataReadCloser, &jsonData)
+	if pcsError != nil {
+		return
 	}
 
 	return &jsonData.URLInfo, nil

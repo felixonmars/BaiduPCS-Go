@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions/pcsupload"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
@@ -28,7 +29,8 @@ const (
 type (
 	UploadOptions struct {
 		NotRapidUpload bool
-		NoFixMD5       bool
+		NotFixMD5      bool
+		NotSplitFile   bool // 禁用分片上传
 	}
 
 	// StepUpload 上传步骤
@@ -166,15 +168,15 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 		return
 	}
 
-	ud, err := pcsupload.NewUploadingDatabase()
+	uploadDatabase, err := pcsupload.NewUploadingDatabase()
 	if err != nil {
 		fmt.Printf("打开上传未完成数据库错误: %s\n", err)
 		return
 	}
-	defer ud.Close()
+	defer uploadDatabase.Close()
 
 	var (
-		handleTaskErr = func(task *utask, errManifest string, pcsError baidupcs.Error) {
+		handleTaskErr = func(task *utask, errManifest string, pcsError pcserror.Error) {
 			if task == nil {
 				panic("task is nil")
 			}
@@ -184,13 +186,18 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 			}
 
 			// 不重试的情况
-			switch {
+			switch pcsError.GetErrType() {
 			// 远程服务器错误
-			case pcsError.ErrorType() == baidupcs.ErrTypeRemoteError:
-				switch pcsError.ErrorCode() {
+			case pcserror.ErrTypeRemoteError:
+				switch pcsError.GetRemoteErrCode() {
 				case 31200: //[Method:Insert][Error:Insert Request Forbid]
 				// do nothing, continue
 				default:
+					fmt.Printf("[%d] %s, %s\n", task.ID, errManifest, pcsError)
+					return
+				}
+			case pcserror.ErrTypeNetError:
+				if strings.Contains(pcsError.GetError().Error(), "413 Request Entity Too Large") {
 					fmt.Printf("[%d] %s, %s\n", task.ID, errManifest, pcsError)
 					return
 				}
@@ -236,7 +243,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 			)
 
 			// 检测断点续传
-			state := ud.Search(&task.uploadInfo.LocalFileMeta)
+			state := uploadDatabase.Search(&task.uploadInfo.LocalFileMeta)
 			if state != nil || task.uploadInfo.LocalFileMeta.MD5 != nil { // 读取到了md5
 				task.step = StepUploadUpload
 				goto stepControl
@@ -262,8 +269,8 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 			if !pcscache.DirCache.Existed(panDir) {
 				fdl, pcsError := pcs.FilesDirectoriesList(panDir, baidupcs.DefaultOrderOptions)
 				if pcsError != nil {
-					switch pcsError.ErrorType() {
-					case baidupcs.ErrTypeRemoteError:
+					switch pcsError.GetErrType() {
+					case pcserror.ErrTypeRemoteError:
 						// do nothing
 					default:
 						fmt.Printf("%s\n", err)
@@ -313,15 +320,24 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 			fmt.Printf("[%d] 秒传失败, 开始上传文件...\n\n", task.ID)
 
 			// 保存秒传信息
-			ud.UpdateUploading(&task.uploadInfo.LocalFileMeta, nil)
-			ud.Save()
+			uploadDatabase.UpdateUploading(&task.uploadInfo.LocalFileMeta, nil)
+			uploadDatabase.Save()
 
 			// 秒传失败, 开始上传文件
 		stepUploadUpload:
 			task.step = StepUploadUpload
 			{
 				muer := uploader.NewMultiUploader(pcsupload.NewPCSUpload(pcs, task.savePath), rio.NewFileReaderAtLen64(task.uploadInfo.File))
-				muer.SetBlockSize(getBlockSize(task.uploadInfo.Length))
+
+				var blockSize int64
+				if opt.NotSplitFile {
+					blockSize = task.uploadInfo.Length
+				} else {
+					blockSize = getBlockSize(task.uploadInfo.Length)
+				}
+				muer.SetBlockSize(blockSize)
+
+				// 设置断点续传
 				if state != nil {
 					muer.SetInstanceState(state)
 				}
@@ -351,34 +367,34 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 								v.TimeElapsed(),
 							)
 						case <-updateChan:
-							ud.UpdateUploading(&task.uploadInfo.LocalFileMeta, muer.InstanceState())
-							ud.Save()
+							uploadDatabase.UpdateUploading(&task.uploadInfo.LocalFileMeta, muer.InstanceState())
+							uploadDatabase.Save()
 						}
 					}
 				})
 				muer.OnSuccess(func() {
+					close(exitChan)
 					fmt.Printf("\n")
 					fmt.Printf("[%d] 上传文件成功, 保存到网盘路径: %s\n", task.ID, task.savePath)
 					totalSize += task.uploadInfo.Length
-					ud.Delete(&task.uploadInfo.LocalFileMeta) // 删除
-					ud.Save()
+					uploadDatabase.Delete(&task.uploadInfo.LocalFileMeta) // 删除
+					uploadDatabase.Save()
 
-					if !opt.NoFixMD5 && len(task.uploadInfo.MD5) != 0 {
+					// 修复md5
+					if !opt.NotFixMD5 && len(task.uploadInfo.MD5) != 0 && task.uploadInfo.Length > blockSize {
 						task.retry = 0 // 清空重试次数
 						task.uploadedDelayChan = delay.NewDelayChan(10 * time.Second)
 						needsFixList.PushBack(task)
 					}
 				})
 				muer.OnError(func(err error) {
-					pcsError, ok := err.(baidupcs.Error)
+					close(exitChan)
+					pcsError, ok := err.(pcserror.Error)
 					if ok {
 						handleTaskErr(task, "上传文件失败", pcsError)
 						return
 					}
 					fmt.Printf("[%d] 上传文件错误: %s\n", task.ID, err)
-				})
-				muer.OnFinish(func() {
-					close(exitChan)
 				})
 				muer.Execute()
 			}
@@ -392,7 +408,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 	// 当文件分片数大于1时, 网盘端最终计算所得的md5值和本地的不一致, 这可能是百度网盘的bug
 	// 测试把上传的文件下载到本地后，对比md5值是匹配的
 	// 通过秒传的原理来修复md5值
-	if !opt.NoFixMD5 && needsFixList.Len() != 0 {
+	if !opt.NotFixMD5 && needsFixList.Len() != 0 {
 		fmt.Printf("修复上传成功文件的md5中, 共计 %d 个文件...\n", needsFixList.Len())
 		for {
 			e := needsFixList.Front()
@@ -411,11 +427,11 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 				continue
 			}
 
-			switch pcsError.ErrorType() {
+			switch pcsError.GetErrType() {
 			// 远程服务器错误
-			case baidupcs.ErrTypeRemoteError:
-				switch pcsError.ErrorCode() {
-				case 31079: //file md5 not found, you should use upload api to upload the whole file.
+			case pcserror.ErrTypeRemoteError:
+				switch pcsError.GetRemoteErrCode() {
+				case 31079: //秒传失败
 					task.retry++
 					if task.retry < task.MaxRetry {
 						fmt.Printf("[%d] 修复md5失败, 可能服务器未刷新, 重试 %d/%d\n", task.ID, task.retry, task.MaxRetry)
@@ -428,7 +444,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 					fmt.Printf("[%d] 修复md5失败, 消息: %s\n", task.ID, pcsError)
 					continue
 				}
-			case baidupcs.ErrTypeNetError:
+			case pcserror.ErrTypeNetError:
 				task.retry++
 				if task.retry < task.MaxRetry {
 					fmt.Printf("[%d] 修复md5失败, %s, 重试 %d/%d\n", task.ID, pcsError, task.retry, task.MaxRetry)

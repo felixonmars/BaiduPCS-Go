@@ -34,6 +34,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
   * [列出目录](#列出目录)
   * [列出目录树形图](#列出目录树形图)
   * [获取单个文件/目录的元信息](#获取单个文件目录的元信息)
+  * [搜索文件](#搜索文件)
   * [下载文件/目录](#下载文件目录)
   * [上传文件/目录](#上传文件目录)
   * [获取下载直链](#获取下载直链)
@@ -306,6 +307,25 @@ BaiduPCS-Go meta
 ```
 BaiduPCS-Go meta 我的资源
 BaiduPCS-Go meta /
+```
+
+## 搜索文件
+
+按文件名搜索文件（不支持查找目录）。
+```
+BaiduPCS-Go search [-path=<需要检索的目录>] [-r] <关键字>
+```
+
+#### 例子
+```
+# 搜索根目录的文件
+BaiduPCS-Go search -path=/ 关键字
+
+# 搜索当前工作目录的文件
+BaiduPCS-Go search 关键字
+
+# 递归搜索当前工作目录的文件
+BaiduPCS-Go search -r 关键字
 ```
 
 ## 下载文件/目录

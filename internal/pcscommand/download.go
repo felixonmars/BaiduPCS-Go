@@ -13,7 +13,6 @@ import (
 	"github.com/oleiade/lane"
 	"io"
 	"net/http"
-	"net/http/cookiejar"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -396,7 +395,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 				client.SetKeepAlive(true)
 				err = download(task.ID, dlink, task.savePath, dlinks, client, *cfg, options)
 			} else {
-				dfunc := func(downloadURL string, jar *cookiejar.Jar) error {
+				dfunc := func(downloadURL string, jar http.CookieJar) error {
 					h := pcsconfig.Config.HTTPClient()
 					h.SetCookiejar(jar)
 					h.SetKeepAlive(true)
@@ -463,6 +462,8 @@ func RunLocateDownload(pcspaths ...string) {
 		tb.Render()
 		fmt.Println()
 	}
+
+	fmt.Printf("提示: 访问下载链接, 需将下载器的 User-Agent 设置为: %s\n", pcsconfig.Config.UserAgent())
 }
 
 func getDownloadLinks(pcspath string) (dlinks []*url.URL) {

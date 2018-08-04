@@ -1,19 +1,14 @@
 package uploader
 
-import (
-	"errors"
-)
-
 type (
-	// ErrorControl 多线程上传的出错控制
-	ErrorControl interface {
-		error
+	// MultiError 多线程上传的错误
+	MultiError struct {
+		Err error
 		// IsRetry 是否重试,
-		// 当不重试时返回ErrTerminatd
-		IsRetry() bool
+		Terminated bool
 	}
 )
 
-var (
-	ErrTerminatd = errors.New("task terminated")
-)
+func (me *MultiError) Error() string {
+	return me.Err.Error()
+}

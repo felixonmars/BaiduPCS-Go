@@ -1,6 +1,7 @@
 package pcscommand
 
 import (
+	"container/list"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"path"
@@ -15,7 +16,10 @@ func RunExport(pcspaths []string, rootPath string) {
 		return
 	}
 
-	pcs := GetBaiduPCS()
+	var (
+		pcs         = GetBaiduPCS()
+		invalidList = list.New()
+	)
 
 	for _, pcspath := range pcspaths {
 		getPath := func(p string) string {
@@ -31,7 +35,10 @@ func RunExport(pcspaths []string, rootPath string) {
 			return path.Join(rootPath, strings.TrimPrefix(p, pcspath))
 		}
 
-		var d int
+		var (
+			d      int
+			cmdStr string
+		)
 		pcs.FilesDirectoriesRecurseList(pcspath, baidupcs.DefaultOrderOptions, func(depth int, fd *baidupcs.FileDirectory) {
 			if fd.Isdir {
 				if depth > d {
@@ -43,7 +50,21 @@ func RunExport(pcspaths []string, rootPath string) {
 				return
 			}
 
-			fmt.Printf("BaiduPCS-Go rapidupload -length=%d -md5=%s \"%s\"\n", fd.Size, fd.MD5, getPath(fd.Path))
+			cmdStr = fmt.Sprintf("BaiduPCS-Go rapidupload -length=%d -md5=%s \"%s\"\n", fd.Size, fd.MD5, getPath(fd.Path))
+
+			if len(fd.BlockList) > 1 {
+				invalidList.PushBack(cmdStr)
+			} else {
+				fmt.Print(cmdStr)
+			}
 		})
+	}
+
+	if invalidList.Len() > 0 {
+		fmt.Printf("\n以下可能无法导出: \n")
+		fmt.Printf("%s\n", strings.Repeat("-", 100))
+		for e := invalidList.Front(); e != nil; e = e.Next() {
+			fmt.Printf("%s", e.Value.(string))
+		}
 	}
 }

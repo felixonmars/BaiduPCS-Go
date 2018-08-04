@@ -30,6 +30,42 @@ type (
 	}
 )
 
+// SplitBlock 文件分块
+func SplitBlock(fileSize, blockSize int64) (blockList []*BlockState) {
+	blocksNum := int(fileSize / blockSize)
+	if fileSize%blockSize != 0 {
+		blocksNum += 1
+	}
+
+	blockList = make([]*BlockState, 0, blocksNum)
+	var (
+		id         int
+		begin, end int64
+	)
+
+	for i := 0; i < blocksNum-1; i++ {
+		end += blockSize
+		blockList = append(blockList, &BlockState{
+			ID: id,
+			Range: ReadRange{
+				Begin: begin,
+				End:   end,
+			},
+		})
+		id++
+		begin = end
+	}
+
+	blockList = append(blockList, &BlockState{
+		ID: id,
+		Range: ReadRange{
+			Begin: begin,
+			End:   fileSize,
+		},
+	})
+	return
+}
+
 // NewSplitUnit io.ReaderAt实现SplitUnit接口
 func NewSplitUnit(readerAt io.ReaderAt, readRange ReadRange) SplitUnit {
 	return &fileBlock{

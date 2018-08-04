@@ -10,7 +10,6 @@ import (
 // HTTPClient http client
 type HTTPClient struct {
 	http.Client
-	jar       *cookiejar.Jar
 	transport *http.Transport
 	https     bool
 	UserAgent string
@@ -48,9 +47,8 @@ func (h *HTTPClient) lazyInit() {
 		}
 		h.Client.Transport = h.transport
 	}
-	if h.jar == nil {
-		h.jar, _ = cookiejar.New(nil)
-		h.Client.Jar = h.jar
+	if h.Client.Jar == nil {
+		h.Client.Jar, _ = cookiejar.New(nil)
 	}
 }
 
@@ -60,20 +58,18 @@ func (h *HTTPClient) SetUserAgent(ua string) {
 }
 
 // SetCookiejar 设置 cookie
-func (h *HTTPClient) SetCookiejar(c *cookiejar.Jar) {
-	if c == nil {
+func (h *HTTPClient) SetCookiejar(jar http.CookieJar) {
+	if jar == nil {
 		h.ResetCookiejar()
 		return
 	}
 
-	h.jar = c
-	h.Client.Jar = c
+	h.Client.Jar = jar
 }
 
 // ResetCookiejar 清空 cookie
 func (h *HTTPClient) ResetCookiejar() {
-	h.jar, _ = cookiejar.New(nil)
-	h.Jar = h.jar
+	h.Jar, _ = cookiejar.New(nil)
 }
 
 // SetHTTPSecure 是否启用 https 安全检查, 默认不检查
