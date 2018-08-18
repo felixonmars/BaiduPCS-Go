@@ -76,11 +76,19 @@ func RunSearch(targetPath, keyword string, opt *SearchOptions) {
 func renderTable(op int, isTotal bool, path string, files baidupcs.FileDirectoryList) {
 	tb := pcstable.NewTable(os.Stdout)
 	var (
-		fN, dN int64
+		fN, dN   int64
+		showPath string
 	)
 
+	switch op {
+	case opLs:
+		showPath = "文件(目录)"
+	case opSearch:
+		showPath = "路径"
+	}
+
 	if isTotal {
-		tb.SetHeader([]string{"#", "fs_id", "文件大小", "创建日期", "修改日期", "md5(截图请打码)", "文件(目录)"})
+		tb.SetHeader([]string{"#", "fs_id", "文件大小", "创建日期", "修改日期", "md5(截图请打码)", showPath})
 		tb.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})
 		for k, file := range files {
 			if file.Isdir {
@@ -105,7 +113,7 @@ func renderTable(op int, isTotal bool, path string, files baidupcs.FileDirectory
 		fN, dN = files.Count()
 		tb.Append([]string{"", "", "总: " + converter.ConvertFileSize(files.TotalSize(), 2), "", "", "", fmt.Sprintf("文件总数: %d, 目录总数: %d", fN, dN)})
 	} else {
-		tb.SetHeader([]string{"#", "文件大小", "修改日期", "文件(目录)"})
+		tb.SetHeader([]string{"#", "文件大小", "修改日期", showPath})
 		tb.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_RIGHT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})
 		for k, file := range files {
 			if file.Isdir {

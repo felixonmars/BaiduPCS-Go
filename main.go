@@ -37,7 +37,7 @@ import (
 
 var (
 	// Version 版本号
-	Version = "v3.5.3-devel"
+	Version = "v3.5.4-devel"
 
 	historyFilePath = filepath.Join(pcsconfig.GetConfigDir(), "pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
@@ -756,6 +756,7 @@ func main() {
 			UsageText: app.Name + " search [-path=<需要检索的目录>] [-r] 关键字",
 			Description: `
 	按文件名搜索文件（不支持查找目录）。
+	默认在当前工作目录搜索.
 
 	示例:
 
