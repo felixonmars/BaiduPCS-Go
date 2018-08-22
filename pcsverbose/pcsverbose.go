@@ -56,7 +56,11 @@ func (pv *PCSVerbose) Warnf(format string, a ...interface{}) {
 func Verbosef(format string, a ...interface{}) (n int, err error) {
 	if IsVerbose {
 		for _, Output := range Outputs {
-			n, err = fmt.Fprintf(Output, format, a...)
+			n1, err := fmt.Fprintf(Output, TimePrefix()+" "+format, a...)
+			n += n1
+			if err != nil {
+				return n, err
+			}
 		}
 	}
 	return
@@ -66,7 +70,16 @@ func Verbosef(format string, a ...interface{}) (n int, err error) {
 func Verboseln(a ...interface{}) (n int, err error) {
 	if IsVerbose {
 		for _, Output := range Outputs {
-			n, err = fmt.Fprintln(Output, a...)
+			n1, err := fmt.Fprint(Output, TimePrefix()+" ")
+			n += n1
+			if err != nil {
+				return n, err
+			}
+			n2, err := fmt.Fprintln(Output, a...)
+			n += n2
+			if err != nil {
+				return n, err
+			}
 		}
 	}
 	return

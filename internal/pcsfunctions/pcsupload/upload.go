@@ -53,11 +53,13 @@ func (pu *PCSUpload) TmpFile(ctx context.Context, partseq int, partOffset int64,
 			resp, err = client.Req("POST", uploadURL, mr, nil)
 			doneChan <- struct{}{}
 
-			// 不可恢复的错误
-			switch resp.StatusCode {
-			case 413:
-				respErr = &uploader.MultiError{
-					Terminated: true,
+			if resp != nil {
+				// 不可恢复的错误
+				switch resp.StatusCode {
+				case 413:
+					respErr = &uploader.MultiError{
+						Terminated: true,
+					}
 				}
 			}
 		}()

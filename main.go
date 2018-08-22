@@ -1099,11 +1099,15 @@ func main() {
 			Usage:     "上传文件/目录",
 			UsageText: app.Name + " upload <本地文件/目录的路径1> <文件/目录2> <文件/目录3> ... <目标目录>",
 			Description: `
-	上传的文件将会保存到, <目标目录>.
+	上传默认采用分片上传的方式, 上传的文件将会保存到, <目标目录>.
 	遇到同名文件将会自动覆盖!!
 	当上传的文件名和网盘的目录名称相同时, 不会覆盖目录, 防止丢失数据.
 
-	注意: 在上传完成后的修复md5, 不一定能成功, 但文件本身是没问题的, 只是服务器记录的md5错误而已.
+	注意: 
+
+	分片上传之后, 服务器可能会记录到错误的文件md5, 程序会在上传完成后的修复md5, 修复md5不一定能成功, 但文件的完整性是没问题的.
+	禁用分片上传可以保证服务器记录到正确的md5.
+	禁用分片上传时只能使用单线程上传, 指定的单个文件上传最大线程数将会无效.
 
 	示例:
 
@@ -1131,6 +1135,7 @@ func main() {
 				subArgs := c.Args()
 
 				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1], &pcscommand.UploadOptions{
+					Parallel:       c.Int("p"),
 					NotRapidUpload: c.Bool("norapid"),
 					NotFixMD5:      c.Bool("nofix"),
 					NotSplitFile:   c.Bool("nosplit"),
@@ -1138,6 +1143,10 @@ func main() {
 				return nil
 			},
 			Flags: []cli.Flag{
+				cli.IntFlag{
+					Name:  "p",
+					Usage: "指定单个文件上传的最大线程数",
+				},
 				cli.BoolFlag{
 					Name:  "norapid",
 					Usage: "不检测秒传",
@@ -1554,7 +1563,7 @@ func main() {
 	例子:
 		BaiduPCS-Go config set -appid=260149
 		BaiduPCS-Go config set -enable_https=false
-		BaiduPCS-Go config set -user_agent="chrome"
+		BaiduPCS-Go config set -user_agent="netdisk;1.0"
 		BaiduPCS-Go config set -cache_size 16384 -max_parallel 200 -savedir D:/download`,
 					Action: func(c *cli.Context) error {
 						if c.NumFlags() <= 0 || c.NArg() > 0 {
@@ -1609,12 +1618,12 @@ func main() {
 							Usage: "浏览器标识",
 						},
 						cli.IntFlag{
-							Name:  "cache_size",
-							Usage: "下载缓存",
+							Name:  "max_parallel",
+							Usage: "上传/下载网络连接的最大并发量",
 						},
 						cli.IntFlag{
-							Name:  "max_parallel",
-							Usage: "下载最大并发量",
+							Name:  "cache_size",
+							Usage: "下载缓存",
 						},
 						cli.IntFlag{
 							Name:  "max_download_load",

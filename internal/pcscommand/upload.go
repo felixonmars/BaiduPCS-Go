@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
+	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions/pcsupload"
 	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
@@ -28,6 +29,7 @@ const (
 
 type (
 	UploadOptions struct {
+		Parallel       int
 		NotRapidUpload bool
 		NotFixMD5      bool
 		NotSplitFile   bool // 禁用分片上传
@@ -96,6 +98,11 @@ func RunCreateSuperFile(targetPath string, blockList ...string) {
 func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 	if opt == nil {
 		opt = &UploadOptions{}
+	}
+
+	// 检测opt
+	if opt.Parallel <= 0 {
+		opt.Parallel = pcsconfig.Config.MaxParallel()
 	}
 
 	absSavePath, err := getAbsPath(savePath)
@@ -308,7 +315,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 			task.uploadInfo.SliceMD5Sum()
 
 			// 经测试, 文件的 crc32 值并非秒传文件所必需
-			// task.uploadInfo.crc32Sum()
+			// task.uploadInfo.Crc32Sum()
 
 			err = pcs.RapidUpload(task.savePath, hex.EncodeToString(task.uploadInfo.MD5), hex.EncodeToString(task.uploadInfo.SliceMD5), fmt.Sprint(task.uploadInfo.CRC32), task.uploadInfo.Length)
 			if err == nil {
@@ -328,6 +335,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 			task.step = StepUploadUpload
 			{
 				muer := uploader.NewMultiUploader(pcsupload.NewPCSUpload(pcs, task.savePath), rio.NewFileReaderAtLen64(task.uploadInfo.File))
+				muer.SetParallel(opt.Parallel)
 
 				var blockSize int64
 				if opt.NotSplitFile {

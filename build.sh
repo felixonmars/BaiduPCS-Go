@@ -61,9 +61,6 @@ RicePack() {
     rice -i github.com/iikira/BaiduPCS-Go/internal/pcsweb append --exec "$output/$1/$2"
 }
 
-GOMIPS=softfloat Build $name-$version"-linux-mipsle" linux mipsle
-exit
-
 # Android
 export NDK_INSTALL=$ANDROID_NDK_ROOT/bin
 # CC=$NDK_INSTALL/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-gcc ArmBuild $name-$version"-android-16-armv5" android arm 5

@@ -46,8 +46,6 @@ func NewMultiUploader(multiUpload MultiUpload, file rio.ReaderAtLen64) *MultiUpl
 	return &MultiUploader{
 		multiUpload: multiUpload,
 		file:        file,
-		blockSize:   1 * converter.GB,
-		parallel:    10,
 	}
 }
 
@@ -75,6 +73,12 @@ func (muer *MultiUploader) lazyInit() {
 	}
 	if muer.updateInstanceStateChan == nil {
 		muer.updateInstanceStateChan = make(chan struct{}, 1)
+	}
+	if muer.parallel <= 0 {
+		muer.parallel = 10
+	}
+	if muer.blockSize <= 0 {
+		muer.blockSize = 1 * converter.GB
 	}
 }
 
