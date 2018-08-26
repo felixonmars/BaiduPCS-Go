@@ -158,7 +158,7 @@ func (pcs *BaiduPCS) cloudDlQueryTask(op string, taskIDs []int64) (cl CloudDlTas
 		PCSErrInfo: errInfo,
 	}
 
-	pcsError = handleJSONParse(op, dataReadCloser, &taskInfo)
+	pcsError = handleJSONParse(OperationCloudDlQueryTask, dataReadCloser, &taskInfo)
 	if pcsError != nil {
 		return
 	}

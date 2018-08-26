@@ -1420,6 +1420,7 @@ func main() {
 			Aliases: []string{"clouddl", "od"},
 			Usage:   "离线下载",
 			Description: `支持http/https/ftp/电驴/磁力链协议
+	离线下载同时进行的任务数量有限, 超出限制的部分将无法添加.
 
 	示例:
 

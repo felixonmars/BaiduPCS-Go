@@ -163,22 +163,23 @@ func (ud *UploadingDatabase) Search(meta *checksum.LocalFileMeta) *uploader.Inst
 }
 
 func (ud *UploadingDatabase) clearModTimeChange() {
-	for k, uploading := range ud.UploadingList {
+	for i := 0; i < len(ud.UploadingList); i++ {
+		uploading := ud.UploadingList[i]
 		if uploading.LocalFileMeta == nil {
 			continue
 		}
 
 		info, err := os.Stat(uploading.LocalFileMeta.Path)
 		if err != nil {
-			ud.deleteIndex(k)
-			k--
-			pcsUploadVerbose.Infof("clear invalid file path: %s\n", uploading.LocalFileMeta.Path)
+			ud.deleteIndex(i)
+			i--
+			pcsUploadVerbose.Warnf("clear invalid file path: %s, err: %s\n", uploading.LocalFileMeta.Path, err)
 			continue
 		}
 
 		if uploading.LocalFileMeta.ModTime != info.ModTime().Unix() {
-			ud.deleteIndex(k)
-			k--
+			ud.deleteIndex(i)
+			i--
 			pcsUploadVerbose.Infof("clear modified file path: %s\n", uploading.LocalFileMeta.Path)
 			continue
 		}

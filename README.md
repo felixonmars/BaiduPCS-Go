@@ -582,6 +582,8 @@ BaiduPCS-Go od
 
 离线下载支持http/https/ftp/电驴/磁力链协议
 
+离线下载同时进行的任务数量有限, 超出限制的部分将无法添加.
+
 ### 添加离线下载任务
 ```
 BaiduPCS-Go offlinedl add -path=<离线下载文件保存的路径> 资源地址1 地址2 ...
