@@ -300,6 +300,17 @@ func RunDownload(paths []string, options *DownloadOptions) {
 
 			fmt.Fprintf(options.Out, "[%d] %s, %s, 重试 %d/%d\n", task.ID, errManifest, err, task.retry, task.MaxRetry)
 
+			switch err {
+			case ErrChecksumFailed:
+				// 删去旧的文件, 重新下载
+				rerr := os.Remove(task.savePath)
+				if rerr != nil {
+					fmt.Fprintf(options.Out, "[%d] 移除文件失败, %s\n", task.ID, rerr)
+					failedList = append(failedList, task.path)
+					return
+				}
+			}
+
 			// 未达到失败重试最大次数, 将任务推送到队列末尾
 			if task.retry < task.MaxRetry {
 				task.retry++
@@ -462,6 +473,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 				err = checkFileValid(task.savePath, task.downloadInfo)
 				if err != nil {
 					handleTaskErr(task, "检验文件有效性出错", err)
+					return
 				} else {
 					fmt.Fprintf(options.Out, "[%d] 检验文件有效性成功\n", task.ID)
 				}

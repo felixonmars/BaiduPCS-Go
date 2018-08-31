@@ -1062,7 +1062,7 @@ func main() {
 				},
 				cli.BoolFlag{
 					Name:  "nocheck",
-					Usage: "下载文件完成后不检测文件的有效性",
+					Usage: "下载文件完成后不校验文件",
 				},
 				cli.BoolFlag{
 					Name:  "bg",
