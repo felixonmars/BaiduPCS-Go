@@ -1,11 +1,13 @@
 package pcscommand
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/checksum"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/waitgroup"
 	"github.com/iikira/BaiduPCS-Go/requester"
@@ -29,28 +31,38 @@ const (
 	StrDownloadInitError = "初始化下载发生错误"
 )
 
-// dtask 下载任务
-type dtask struct {
-	ListTask
-	path         string                  // 下载的路径
-	savePath     string                  // 保存的路径
-	downloadInfo *baidupcs.FileDirectory // 文件或目录详情
-}
+var (
+	// ErrNotSupportChecksum 文件不支持校验
+	ErrNotSupportChecksum = errors.New("该文件不支持校验")
+	// ErrChecksumFailed 文件校验失败
+	ErrChecksumFailed = errors.New("该文件校验失败, 文件md5值与服务器记录的不匹配")
+)
 
-//DownloadOptions 下载可选参数
-type DownloadOptions struct {
-	IsTest               bool
-	IsPrintStatus        bool
-	IsExecutedPermission bool
-	IsOverwrite          bool
-	IsShareDownload      bool
-	IsLocateDownload     bool
-	IsStreaming          bool
-	SaveTo               string
-	Parallel             int
-	Load                 int
-	Out                  io.Writer
-}
+type (
+	// dtask 下载任务
+	dtask struct {
+		ListTask
+		path         string                  // 下载的路径
+		savePath     string                  // 保存的路径
+		downloadInfo *baidupcs.FileDirectory // 文件或目录详情
+	}
+
+	//DownloadOptions 下载可选参数
+	DownloadOptions struct {
+		IsTest               bool
+		IsPrintStatus        bool
+		IsExecutedPermission bool
+		IsOverwrite          bool
+		IsShareDownload      bool
+		IsLocateDownload     bool
+		IsStreaming          bool
+		SaveTo               string
+		Parallel             int
+		Load                 int
+		NoCheck              bool
+		Out                  io.Writer
+	}
+)
 
 func downloadPrintFormat(load int) string {
 	if load <= 1 {
@@ -184,6 +196,27 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 	return nil
 }
 
+// checkFileValid 检测文件有效性
+func checkFileValid(filePath string, fileInfo *baidupcs.FileDirectory) error {
+	if len(fileInfo.BlockList) != 1 {
+		return ErrNotSupportChecksum
+	}
+
+	f := checksum.NewLocalFileInfo(filePath, int(256*converter.KB))
+	err := f.OpenPath()
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	f.Md5Sum()
+	if strings.Compare(hex.EncodeToString(f.MD5), fileInfo.MD5) != 0 {
+		return ErrChecksumFailed
+	}
+	return nil
+}
+
 // RunDownload 执行下载网盘内文件
 func RunDownload(paths []string, options *DownloadOptions) {
 	if options == nil {
@@ -258,6 +291,8 @@ func RunDownload(paths []string, options *DownloadOptions) {
 
 			// 不重试的情况
 			switch {
+			case err == ErrNotSupportChecksum:
+				fallthrough
 			case strings.Compare(errManifest, "下载文件错误") == 0 && strings.Contains(err.Error(), StrDownloadInitError):
 				fmt.Fprintf(options.Out, "[%d] %s, %s\n", task.ID, errManifest, err)
 				return
@@ -418,6 +453,18 @@ func RunDownload(paths []string, options *DownloadOptions) {
 			if err != nil {
 				handleTaskErr(task, "下载文件错误", err)
 				return
+			}
+
+			if !cfg.IsTest && !options.NoCheck {
+				if task.downloadInfo.Size >= 128*converter.MB {
+					fmt.Fprintf(options.Out, "[%d] 开始检验文件有效性, 稍后...\n", task.ID)
+				}
+				err = checkFileValid(task.savePath, task.downloadInfo)
+				if err != nil {
+					handleTaskErr(task, "检验文件有效性出错", err)
+				} else {
+					fmt.Fprintf(options.Out, "[%d] 检验文件有效性成功\n", task.ID)
+				}
 			}
 
 			atomic.AddInt64(&totalSize, task.downloadInfo.Size)

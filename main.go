@@ -954,6 +954,7 @@ func main() {
 	通过 BaiduPCS-Go config set -savedir <savedir>, 自定义保存的目录.
 	已支持目录下载.
 	已支持多个文件或目录下载.
+	已支持下载完成后自动校验文件, 但并不是所有的文件都支持校验!
 	自动跳过下载重名的文件!
 
 	示例:
@@ -1002,6 +1003,7 @@ func main() {
 					IsStreaming:          c.Bool("stream"),
 					SaveTo:               saveTo,
 					Parallel:             c.Int("p"),
+					NoCheck:              c.Bool("nocheck"),
 					Load:                 c.Int("l"),
 				}
 
@@ -1057,6 +1059,10 @@ func main() {
 				cli.IntFlag{
 					Name:  "l",
 					Usage: "指定同时进行下载文件的数量",
+				},
+				cli.BoolFlag{
+					Name:  "nocheck",
+					Usage: "下载文件完成后不检测文件的有效性",
 				},
 				cli.BoolFlag{
 					Name:  "bg",

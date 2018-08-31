@@ -53,7 +53,7 @@ func NewLocalFileInfo(localPath string, bufSize int) *LocalFile {
 }
 
 // OpenPath 检查文件状态并获取文件的大小 (Length)
-func (lf *LocalFile) OpenPath() bool {
+func (lf *LocalFile) OpenPath() error {
 	if lf.File != nil {
 		lf.File.Close()
 	}
@@ -61,13 +61,17 @@ func (lf *LocalFile) OpenPath() bool {
 	var err error
 	lf.File, err = os.Open(lf.Path)
 	if err != nil {
-		return false
+		return err
 	}
 
-	info, _ := lf.File.Stat()
+	info, err := lf.File.Stat()
+	if err != nil {
+		return err
+	}
+
 	lf.Length = info.Size()
 	lf.ModTime = info.ModTime().Unix()
-	return true
+	return nil
 }
 
 // Close 关闭文件

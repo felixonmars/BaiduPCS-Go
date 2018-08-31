@@ -237,15 +237,15 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 		func() {
 			fmt.Printf("[%d] 准备上传: %s\n", task.ID, task.uploadInfo.Path)
 
-			if !task.uploadInfo.OpenPath() {
-				fmt.Printf("[%d] 文件不可读, 跳过...\n", task.ID)
+			err = task.uploadInfo.OpenPath()
+			if err != nil {
+				fmt.Printf("[%d] 文件不可读, 错误信息: %s, 跳过...\n", task.ID, err)
 				return
 			}
 			defer task.uploadInfo.Close() // 关闭文件
 
 			// 步骤控制
 			var (
-				err             error
 				panDir, panFile = path.Split(task.savePath)
 			)
 
