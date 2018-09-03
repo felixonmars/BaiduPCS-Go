@@ -67,7 +67,7 @@ func IntToBool(i int) bool {
 // SliceInt64ToString []int64 转换为 []string
 func SliceInt64ToString(si []int64) (ss []string) {
 	ss = make([]string, 0, len(si))
-	for k := range ss {
+	for k := range si {
 		ss = append(ss, strconv.FormatInt(si[k], 10))
 	}
 	return ss

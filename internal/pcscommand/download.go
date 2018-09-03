@@ -298,27 +298,28 @@ func RunDownload(paths []string, options *DownloadOptions) {
 				return
 			}
 
-			fmt.Fprintf(options.Out, "[%d] %s, %s, 重试 %d/%d\n", task.ID, errManifest, err, task.retry, task.MaxRetry)
+			// 未达到失败重试最大次数, 将任务推送到队列末尾
+			if task.retry < task.MaxRetry {
+				task.retry++
+				fmt.Fprintf(options.Out, "[%d] %s, %s, 重试 %d/%d\n", task.ID, errManifest, err, task.retry, task.MaxRetry)
+				dlist.Append(task)
+				time.Sleep(3 * time.Duration(task.retry) * time.Second)
+			} else {
+				failedList = append(failedList, task.path)
+			}
 
 			switch err {
 			case ErrChecksumFailed:
 				// 删去旧的文件, 重新下载
 				rerr := os.Remove(task.savePath)
 				if rerr != nil {
-					fmt.Fprintf(options.Out, "[%d] 移除文件失败, %s\n", task.ID, rerr)
+					fmt.Fprintf(options.Out, "[%d] 删除校验失败的文件出错, %s\n", task.ID, rerr)
 					failedList = append(failedList, task.path)
 					return
 				}
-			}
 
-			// 未达到失败重试最大次数, 将任务推送到队列末尾
-			if task.retry < task.MaxRetry {
-				task.retry++
-				dlist.Append(task)
-			} else {
-				failedList = append(failedList, task.path)
+				fmt.Fprintf(options.Out, "[%d] 已删除校验失败的文件\n", task.ID)
 			}
-			time.Sleep(3 * time.Duration(task.retry) * time.Second)
 		}
 		startTime = time.Now()
 		wg        = waitgroup.NewWaitGroup(options.Load)

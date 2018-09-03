@@ -210,11 +210,10 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 				}
 			}
 
-			fmt.Printf("[%d] %s, %s, 重试 %d/%d\n", task.ID, errManifest, pcsError, task.retry, task.MaxRetry)
-
 			// 未达到失败重试最大次数, 将任务推送到队列末尾
 			if task.retry < task.MaxRetry {
 				task.retry++
+				fmt.Printf("[%d] %s, %s, 重试 %d/%d\n", task.ID, errManifest, pcsError, task.retry, task.MaxRetry)
 				ulist.PushBack(task)
 				time.Sleep(3 * time.Duration(task.retry) * time.Second)
 			} else {

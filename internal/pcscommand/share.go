@@ -5,6 +5,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
+	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/baidu-tools/pan"
 	"net/url"
 	"os"
@@ -124,7 +125,8 @@ func getShareDLink(pcspath string) (dlink string) {
 
 func getLink(shareID int64, shareLink, passwd, rootSharePath, filePath string) (dlink string) {
 	sInfo := pan.NewSharedInfo(shareLink)
-	sInfo.Client = pcsconfig.Config.HTTPClient()
+	sInfo.Client = requester.NewHTTPClient()
+	sInfo.Client.SetHTTPSecure(pcsconfig.Config.EnableHTTPS())
 
 	if passwd != "" {
 		err := sInfo.Auth(passwd)
@@ -136,6 +138,7 @@ func getLink(shareID int64, shareLink, passwd, rootSharePath, filePath string) (
 
 	uk, pcsError := GetBaiduPCS().UK()
 	if pcsError != nil {
+		// 获取UK失败, 从分享链接获取信息
 		pcsCommandVerbose.Warn(pcsError.Error())
 		err := sInfo.InitInfo()
 		if err != nil {
