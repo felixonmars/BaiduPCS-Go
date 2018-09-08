@@ -2,6 +2,7 @@ package pcscommand
 
 import (
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/baidupcs"
 )
 
 // RunCloudDlAddTask 执行添加离线下载任务
@@ -71,4 +72,16 @@ func RunCloudDlDeleteTask(taskIDs []int64) {
 
 		fmt.Printf("[%d] 删除成功\n", id)
 	}
+}
+
+// RunCloudDlClearTask 清空离线下载任务记录
+func RunCloudDlClearTask() {
+	total, err := GetBaiduPCS().CloudDlClearTask()
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		return
+	}
+
+	fmt.Printf("%s成功, 共清除 %d 条记录\n", baidupcs.OperationCloudDlClearTask, total)
+	return
 }

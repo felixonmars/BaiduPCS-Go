@@ -593,6 +593,25 @@ func (pcs *BaiduPCS) PrepareCloudDlDeleteTask(taskID int64) (dataReadCloser io.R
 	return pcs.prepareCloudDlCDTask(OperationCloudDlDeleteTask, "delete_task", taskID)
 }
 
+// PrepareCloudDlClearTask 清空离线下载任务记录, 只返回服务器响应数据和错误信息
+func (pcs *BaiduPCS) PrepareCloudDlClearTask() (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+	pcs.lazyInit()
+	pcsURL2 := pcs.generatePCSURL2("services/cloud_dl", "clear_task")
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationCloudDlClearTask, pcsURL2)
+
+	resp, err := pcs.client.Req("POST", pcsURL2.String(), nil, nil)
+	if err != nil {
+		handleRespClose(resp)
+		return nil, &pcserror.PCSErrInfo{
+			Operation: OperationCloudDlClearTask,
+			ErrType:   pcserror.ErrTypeNetError,
+			Err:       err,
+		}
+	}
+
+	return resp.Body, nil
+}
+
 // PrepareSharePSet 私密分享文件, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareSharePSet(paths []string, period int) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
 	pcs.lazyInit()

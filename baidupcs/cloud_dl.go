@@ -7,6 +7,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/pcstime"
 	"io"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -80,6 +81,11 @@ type (
 		TaskInfo []*taskIDJSON `json:"task_info"`
 		*pcserror.PCSErrInfo
 	}
+
+	cloudDlClearJSON struct {
+		Total int `json:"total"`
+		*pcserror.PCSErrInfo
+	}
 )
 
 func (ci *cloudDlTaskInfo) convert() *CloudDlTaskInfo {
@@ -140,6 +146,11 @@ func (pcs *BaiduPCS) cloudDlQueryTask(op string, taskIDs []int64) (cl CloudDlTas
 		errInfo.ErrType = pcserror.ErrTypeOthers
 		errInfo.Err = errors.New("no input any task_ids")
 		return nil, errInfo
+	}
+
+	// TODO: 支持100条以上的task_id查询
+	if len(taskIDs) > 100 {
+		taskIDs = taskIDs[:100]
 	}
 
 	taskStrIDs := make([]string, len(taskIDs))
@@ -229,7 +240,12 @@ func (pcs *BaiduPCS) CloudDlListTask() (cl CloudDlTaskList, pcsError pcserror.Er
 		}
 	}
 
-	return pcs.cloudDlQueryTask(OperationCloudDlListTask, taskIDs)
+	cl, pcsError = pcs.cloudDlQueryTask(OperationCloudDlListTask, taskIDs)
+	if pcsError != nil {
+		return nil, pcsError
+	}
+
+	return cl, nil
 }
 
 func (pcs *BaiduPCS) cloudDlManipTask(op string, taskID int64) (pcsError pcserror.Error) {
@@ -263,6 +279,28 @@ func (pcs *BaiduPCS) CloudDlDeleteTask(taskID int64) (pcsError pcserror.Error) {
 	return pcs.cloudDlManipTask(OperationCloudDlDeleteTask, taskID)
 }
 
+// CloudDlClearTask 清空离线下载任务记录
+func (pcs *BaiduPCS) CloudDlClearTask() (total int, pcsError pcserror.Error) {
+	dataReadCloser, pcsError := pcs.PrepareCloudDlClearTask()
+	if pcsError != nil {
+		return
+	}
+
+	defer dataReadCloser.Close()
+
+	errInfo := pcserror.NewPCSErrorInfo(OperationCloudDlClearTask)
+	clearInfo := cloudDlClearJSON{
+		PCSErrInfo: errInfo,
+	}
+
+	pcsError = handleJSONParse(OperationCloudDlClearTask, dataReadCloser, &clearInfo)
+	if pcsError != nil {
+		return
+	}
+
+	return clearInfo.Total, nil
+}
+
 // ParseText 解析状态码
 func (ci *CloudDlTaskInfo) ParseText() {
 	switch ci.Status {
@@ -292,7 +330,7 @@ func (cl CloudDlTaskList) String() string {
 	tb := pcstable.NewTable(builder)
 	tb.SetHeader([]string{"#", "任务ID", "任务名称", "文件大小", "创建日期", "保存路径", "资源地址", "状态"})
 	for k, v := range cl {
-		tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(v.TaskID, 10), v.TaskName, converter.ConvertFileSize(v.FileSize), pcstime.FormatTime(v.CreateTime), v.SavePath, v.SourceURL, v.StatusText})
+		tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(v.TaskID, 10), v.TaskName, converter.ConvertFileSize(v.FileSize), pcstime.FormatTime(v.CreateTime), path.Clean(v.SavePath), v.SourceURL, v.StatusText})
 	}
 	tb.Render()
 	return builder.String()

@@ -137,6 +137,11 @@ func handleJSONParse(op string, data io.Reader, info interface{}) (pcsError pcse
 		err = d.Decode(jsonData)
 		errInfo = jsonData.PCSErrInfo
 
+	case OperationCloudDlClearTask:
+		jsonData := info.(*cloudDlClearJSON)
+		err = d.Decode(jsonData)
+		errInfo = jsonData.PCSErrInfo
+
 	case OperationShareSet:
 		jsonData := info.(*sharePSetJSON)
 		err = d.Decode(jsonData)

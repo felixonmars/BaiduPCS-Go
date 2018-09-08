@@ -61,6 +61,8 @@ const (
 	OperationCloudDlCancelTask = "取消离线下载任务"
 	// OperationCloudDlDeleteTask 删除离线下载任务
 	OperationCloudDlDeleteTask = "删除离线下载任务"
+	// OperationCloudDlClearTask 清空离线下载任务记录
+	OperationCloudDlClearTask = "清空离线下载任务记录"
 	// OperationShareSet 创建分享链接
 	OperationShareSet = "创建分享链接"
 	// OperationShareCancel 取消分享

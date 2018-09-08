@@ -13,11 +13,6 @@ const (
 	CaptchaName = "captcha.png"
 )
 
-// CaptchaPath 返回验证码存放路径
-func CaptchaPath() string {
-	return filepath.Join(os.TempDir(), CaptchaName)
-}
-
 // RemoveOldCaptchaPath 移除旧的验证码路径
 func RemoveOldCaptchaPath() error {
 	return os.Remove(filepath.Join(pcsconfig.GetConfigDir(), CaptchaName))

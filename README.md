@@ -609,6 +609,9 @@ BaiduPCS-Go offlinedl cancel 任务ID1 任务ID2 ...
 ### 删除离线下载任务
 ```
 BaiduPCS-Go offlinedl delete 任务ID1 任务ID2 ...
+
+# 清空离线下载任务记录, 程序不会进行二次确认, 谨慎操作!!!
+BaiduPCS-Go offlinedl delete -all
 ```
 
 #### 例子

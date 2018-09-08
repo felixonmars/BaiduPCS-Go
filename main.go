@@ -1531,13 +1531,20 @@ func main() {
 					Usage:     "删除离线下载任务",
 					UsageText: app.Name + " offlinedl delete 任务ID1 任务ID2 ...",
 					Action: func(c *cli.Context) error {
-						if c.NArg() < 1 {
+						isClear := c.Bool("all")
+						if c.NArg() < 1 && !isClear {
 							cli.ShowCommandHelp(c, c.Command.Name)
 							return nil
 						}
 
-						taskIDs := converter.SliceStringToInt64(c.Args())
+						// 清空离线下载任务记录
+						if isClear {
+							pcscommand.RunCloudDlClearTask()
+							return nil
+						}
 
+						// 删除特定的离线下载任务记录
+						taskIDs := converter.SliceStringToInt64(c.Args())
 						if len(taskIDs) == 0 {
 							fmt.Printf("未找到合法的任务ID, task_id\n")
 							return nil
@@ -1545,6 +1552,12 @@ func main() {
 
 						pcscommand.RunCloudDlDeleteTask(taskIDs)
 						return nil
+					},
+					Flags: []cli.Flag{
+						cli.BoolFlag{
+							Name:  "all",
+							Usage: "清空离线下载任务记录, 程序不会进行二次确认, 谨慎操作!!!",
+						},
 					},
 				},
 			},
