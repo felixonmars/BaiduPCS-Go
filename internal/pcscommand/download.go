@@ -29,6 +29,8 @@ const (
 	DownloadSuffix = ".BaiduPCS-Go-downloading"
 	//StrDownloadInitError 初始化下载发生错误
 	StrDownloadInitError = "初始化下载发生错误"
+	// DefaultDownloadMaxRetry 默认下载失败最大重试次数
+	DefaultDownloadMaxRetry = 3
 )
 
 var (
@@ -59,6 +61,7 @@ type (
 		SaveTo               string
 		Parallel             int
 		Load                 int
+		MaxRetry             int
 		NoCheck              bool
 		Out                  io.Writer
 	}
@@ -231,6 +234,10 @@ func RunDownload(paths []string, options *DownloadOptions) {
 		options.Load = pcsconfig.Config.MaxDownloadLoad()
 	}
 
+	if options.MaxRetry < 0 {
+		options.MaxRetry = DefaultDownloadMaxRetry
+	}
+
 	// 设置下载配置
 	cfg := &downloader.Config{
 		IsTest:    options.IsTest,
@@ -264,7 +271,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 		ptask := &dtask{
 			ListTask: ListTask{
 				ID:       lastID,
-				MaxRetry: 3,
+				MaxRetry: options.MaxRetry,
 			},
 			path: paths[k],
 		}

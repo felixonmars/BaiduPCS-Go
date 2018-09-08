@@ -25,11 +25,14 @@ import (
 
 const (
 	requiredSliceSize = 256 * converter.KB // 256 KB
+	// DefaultUploadMaxRetry 默认上传失败最大重试次数
+	DefaultUploadMaxRetry = 3
 )
 
 type (
 	UploadOptions struct {
 		Parallel       int
+		MaxRetry       int
 		NotRapidUpload bool
 		NotFixMD5      bool
 		NotSplitFile   bool // 禁用分片上传
@@ -105,6 +108,10 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 		opt.Parallel = pcsconfig.Config.MaxParallel()
 	}
 
+	if opt.MaxRetry < 0 {
+		opt.MaxRetry = DefaultUploadMaxRetry
+	}
+
 	absSavePath, err := getAbsPath(savePath)
 	if err != nil {
 		fmt.Printf("警告: 上传文件, 获取网盘路径 %s 错误, %s\n", savePath, err)
@@ -159,7 +166,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 				ulist.PushBack(&utask{
 					ListTask: ListTask{
 						ID:       lastID,
-						MaxRetry: 3,
+						MaxRetry: opt.MaxRetry,
 					},
 					uploadInfo: checksum.NewLocalFileInfo(walkedFiles[k3], int(requiredSliceSize)),
 					savePath:   path.Clean(absSavePath + "/" + subSavePath),

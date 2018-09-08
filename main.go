@@ -1003,8 +1003,9 @@ func main() {
 					IsStreaming:          c.Bool("stream"),
 					SaveTo:               saveTo,
 					Parallel:             c.Int("p"),
-					NoCheck:              c.Bool("nocheck"),
 					Load:                 c.Int("l"),
+					MaxRetry:             c.Int("retry"),
+					NoCheck:              c.Bool("nocheck"),
 				}
 
 				if c.Bool("bg") && isCli {
@@ -1059,6 +1060,11 @@ func main() {
 				cli.IntFlag{
 					Name:  "l",
 					Usage: "指定同时进行下载文件的数量",
+				},
+				cli.IntFlag{
+					Name:  "retry",
+					Usage: "下载失败最大重试次数",
+					Value: 3,
 				},
 				cli.BoolFlag{
 					Name:  "nocheck",
@@ -1142,6 +1148,7 @@ func main() {
 
 				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1], &pcscommand.UploadOptions{
 					Parallel:       c.Int("p"),
+					MaxRetry:       c.Int("retry"),
 					NotRapidUpload: c.Bool("norapid"),
 					NotFixMD5:      c.Bool("nofix"),
 					NotSplitFile:   c.Bool("nosplit"),
@@ -1152,6 +1159,11 @@ func main() {
 				cli.IntFlag{
 					Name:  "p",
 					Usage: "指定单个文件上传的最大线程数",
+				},
+				cli.IntFlag{
+					Name:  "retry",
+					Usage: "上传失败最大重试次数",
+					Value: 3,
 				},
 				cli.BoolFlag{
 					Name:  "norapid",
