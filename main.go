@@ -37,7 +37,7 @@ import (
 
 var (
 	// Version 版本号
-	Version = "v3.5.4-devel"
+	Version = "v3.5.5-devel"
 
 	historyFilePath = filepath.Join(pcsconfig.GetConfigDir(), "pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
@@ -1064,7 +1064,7 @@ func main() {
 				cli.IntFlag{
 					Name:  "retry",
 					Usage: "下载失败最大重试次数",
-					Value: 3,
+					Value: pcscommand.DefaultDownloadMaxRetry,
 				},
 				cli.BoolFlag{
 					Name:  "nocheck",
@@ -1163,7 +1163,7 @@ func main() {
 				cli.IntFlag{
 					Name:  "retry",
 					Usage: "上传失败最大重试次数",
-					Value: 3,
+					Value: pcscommand.DefaultUploadMaxRetry,
 				},
 				cli.BoolFlag{
 					Name:  "norapid",

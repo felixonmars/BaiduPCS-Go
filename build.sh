@@ -3,8 +3,11 @@
 name="BaiduPCS-Go"
 version=$1
 
+GOROOT=/usr/local/go1.10.4
+go=$GOROOT/bin/go
+
 if [ "$1" = "" ];then
-    version=v3.5.4
+    version=v3.5.5
 fi
 
 output="out/"
@@ -19,10 +22,10 @@ Build() {
     export GOOS=$2 GOARCH=$3 GO386=sse2 CGO_ENABLED=0 GOARM=$4
     if [ $2 = "windows" ];then
         goversioninfo -icon=assets/$name.ico -manifest="$name".exe.manifest -product-name="$name" -file-version="$version" -product-version="$version" -company=iikira -copyright="© 2016-2018 iikira." -o=resource_windows.syso
-        go build -ldflags "-X main.Version=$version -s -w" -o "$output/$1/$name.exe"
+        $go build -ldflags "-X main.Version=$version -s -w" -o "$output/$1/$name.exe"
         RicePack $1 $name.exe
     else
-        go build -ldflags "-X main.Version=$version -s -w" -o "$output/$1/$name"
+        $go build -ldflags "-X main.Version=$version -s -w" -o "$output/$1/$name"
         RicePack $1 $name
     fi
 
@@ -32,7 +35,7 @@ Build() {
 ArmBuild() {
     echo "Building $1..."
     export GOOS=$2 GOARCH=$3 GOARM=$4 CGO_ENABLED=1
-    go build -ldflags "-X main.Version=$version -s -w -linkmode=external -extldflags=-pie" -o "$output/$1/$name"
+    $go build -ldflags "-X main.Version=$version -s -w -linkmode=external -extldflags=-pie" -o "$output/$1/$name"
     if [ $2 = "darwin" ] && [ $3 = "arm" -o $3 = "arm64" ];then
         # cp Info.plist "$output/$1"
         ldid -S "$output/$1/$name"
