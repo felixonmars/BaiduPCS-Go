@@ -199,11 +199,11 @@ func (c *PCSConfig) loadConfigFromFile() (err error) {
 }
 
 func (c *PCSConfig) initDefaultConfig() {
-	c.appID = 260149
+	c.appID = 266719
 	c.cacheSize = 30000
 	c.maxParallel = 100
 	c.maxDownloadLoad = 1
-	c.userAgent = "netdisk;1.0"
+	c.userAgent = "netdisk;8.3.1;android-android"
 
 	// 设置默认的下载路径
 	switch runtime.GOOS {
