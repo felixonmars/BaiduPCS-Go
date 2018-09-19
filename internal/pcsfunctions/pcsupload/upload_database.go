@@ -49,9 +49,12 @@ func NewUploadingDatabase() (ud *UploadingDatabase, err error) {
 	}
 
 	d := jsoniter.NewDecoder(file)
-
 	err = d.Decode(ud)
-	return ud, err
+	if err != nil {
+		return nil, err
+	}
+
+	return ud, nil
 }
 
 // Save 保存内容

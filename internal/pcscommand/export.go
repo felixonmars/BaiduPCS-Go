@@ -39,7 +39,7 @@ func RunExport(pcspaths []string, rootPath string) {
 			d      int
 			cmdStr string
 		)
-		pcs.FilesDirectoriesRecurseList(pcspath, baidupcs.DefaultOrderOptions, func(depth int, fd *baidupcs.FileDirectory) {
+		pcs.FilesDirectoriesRecurseList(pcspath, baidupcs.DefaultOrderOptions, func(depth int, fd *baidupcs.FileDirectory) bool {
 			if fd.Isdir {
 				if depth > d {
 					d = depth
@@ -47,7 +47,7 @@ func RunExport(pcspaths []string, rootPath string) {
 					fmt.Printf("BaiduPCS-Go mkdir \"%s\"\n", getPath(fd.Path))
 					d = 0
 				}
-				return
+				return true
 			}
 
 			cmdStr = fmt.Sprintf("BaiduPCS-Go rapidupload -length=%d -md5=%s \"%s\"\n", fd.Size, fd.MD5, getPath(fd.Path))
@@ -57,6 +57,7 @@ func RunExport(pcspaths []string, rootPath string) {
 			} else {
 				fmt.Print(cmdStr)
 			}
+			return true
 		})
 	}
 

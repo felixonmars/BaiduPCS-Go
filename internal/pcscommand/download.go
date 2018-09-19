@@ -230,7 +230,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 		options.Out = os.Stdout
 	}
 
-	if options.Load < 1 {
+	if options.Load <= 0 {
 		options.Load = pcsconfig.Config.MaxDownloadLoad()
 	}
 
@@ -249,8 +249,6 @@ func RunDownload(paths []string, options *DownloadOptions) {
 		options.Parallel = pcsconfig.Config.MaxParallel()
 	}
 
-	cfg.MaxParallel = pcsconfig.AverageParallel(options.Parallel, options.Load)
-
 	paths, err := getAllAbsPaths(paths...)
 	if err != nil {
 		fmt.Println(err)
@@ -258,14 +256,42 @@ func RunDownload(paths []string, options *DownloadOptions) {
 	}
 
 	fmt.Fprintf(options.Out, "\n")
-	fmt.Fprintf(options.Out, "[0] 提示: 当前下载最大并发量为: %d, 下载缓存为: %d\n", cfg.MaxParallel, cfg.CacheSize)
+	fmt.Fprintf(options.Out, "[0] 提示: 当前下载最大并发量为: %d, 下载缓存为: %d\n", options.Parallel, cfg.CacheSize)
 
 	var (
-		pcs    = GetBaiduPCS()
-		dlist  = lane.NewDeque()
-		lastID = 0
+		pcs       = GetBaiduPCS()
+		dlist     = lane.NewDeque()
+		lastID    = 0
+		loadCount = 0
 	)
 
+	// 预测要下载的文件数量
+	// TODO: pcscache
+	for k := range paths {
+		pcs.FilesDirectoriesRecurseList(paths[k], baidupcs.DefaultOrderOptions, func(depth int, fd *baidupcs.FileDirectory) bool {
+			if !fd.Isdir {
+				loadCount++
+				if loadCount >= options.Load {
+					return false
+				}
+			}
+			return true
+		})
+
+		if loadCount >= options.Load {
+			break
+		}
+	}
+	// 修改Load, 设置MaxParallel
+	if loadCount > 0 {
+		options.Load = loadCount
+		// 取平均值
+		cfg.MaxParallel = pcsconfig.AverageParallel(options.Parallel, loadCount)
+	} else {
+		cfg.MaxParallel = options.Parallel
+	}
+
+	// 处理队列
 	for k := range paths {
 		lastID++
 		ptask := &dtask{

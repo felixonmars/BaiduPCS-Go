@@ -34,12 +34,13 @@ const (
 )
 
 type (
-	// HandleFileDirectoryFunc 处理文件或目录的元信息
-	HandleFileDirectoryFunc func(depth int, fd *FileDirectory)
+	// HandleFileDirectoryFunc 处理文件或目录的元信息, 返回值控制是否退出递归
+	HandleFileDirectoryFunc func(depth int, fd *FileDirectory) bool
 
 	// FileDirectory 文件或目录的元信息
 	FileDirectory struct {
 		FsID     int64  // fs_id
+		AppID    int64  // app_id
 		Path     string // 路径
 		Filename string // 文件名 或 目录名
 		Ctime    int64  // 创建日期
@@ -59,7 +60,8 @@ type (
 
 	// fdJSON 用于解析远程JSON数据
 	fdJSON struct {
-		FsID     int64  `json:"fs_id"`           // fs_id
+		FsID     int64  `json:"fs_id"` // fs_id
+		AppID    int64  `json:"app_id"`
 		Path     string `json:"path"`            // 路径
 		Filename string `json:"server_filename"` // 文件名 或 目录名
 		Ctime    int64  `json:"ctime"`           // 创建日期
@@ -211,30 +213,39 @@ func (pcs *BaiduPCS) Search(targetPath, keyword string, recursive bool) (fdl Fil
 	return
 }
 
-func (pcs *BaiduPCS) recurseList(path string, depth int, options *OrderOptions, handleFileDirectoryFunc HandleFileDirectoryFunc) (data FileDirectoryList, pcsError pcserror.Error) {
-	fdl, pcsError := pcs.FilesDirectoriesList(path, options)
+func (pcs *BaiduPCS) recurseList(path string, depth int, options *OrderOptions, handleFileDirectoryFunc HandleFileDirectoryFunc) (fdl FileDirectoryList, ok bool, pcsError pcserror.Error) {
+	fdl, pcsError = pcs.FilesDirectoriesList(path, options)
 	if pcsError != nil {
-		return nil, pcsError
+		return nil, true, pcsError
 	}
 
 	for k := range fdl {
-		handleFileDirectoryFunc(depth+1, fdl[k])
+		ok = handleFileDirectoryFunc(depth+1, fdl[k])
+		if !ok {
+			return
+		}
+
 		if !fdl[k].Isdir {
 			continue
 		}
 
-		fdl[k].Children, pcsError = pcs.recurseList(fdl[k].Path, depth+1, options, handleFileDirectoryFunc)
+		fdl[k].Children, ok, pcsError = pcs.recurseList(fdl[k].Path, depth+1, options, handleFileDirectoryFunc)
+		if !ok {
+			return
+		}
 		if pcsError != nil {
+			// 未进行错误处理
 			pcsverbose.Verboseln(pcsError)
 		}
 	}
 
-	return fdl, nil
+	return fdl, true, nil
 }
 
 // FilesDirectoriesRecurseList 递归获取目录下的文件和目录列表
 func (pcs *BaiduPCS) FilesDirectoriesRecurseList(path string, options *OrderOptions, handleFileDirectoryFunc HandleFileDirectoryFunc) (data FileDirectoryList, pcsError pcserror.Error) {
-	return pcs.recurseList(path, 0, options, handleFileDirectoryFunc)
+	data, _, pcsError = pcs.recurseList(path, 0, options, handleFileDirectoryFunc)
+	return data, pcsError
 }
 
 func (f *FileDirectory) String() string {
@@ -264,6 +275,7 @@ func (f *FileDirectory) String() string {
 		})
 	}
 
+	tb.Append([]string{"app_id", strconv.FormatInt(f.AppID, 10)})
 	tb.Append([]string{"fs_id", strconv.FormatInt(f.FsID, 10)})
 	tb.AppendBulk([][]string{
 		[]string{"创建日期", pcstime.FormatTime(f.Ctime)},
