@@ -1,7 +1,6 @@
 package tieba
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/bitly/go-simplejson"
 	"github.com/iikira/BaiduPCS-Go/requester"
@@ -9,6 +8,8 @@ import (
 	"log"
 	"regexp"
 	"strconv"
+	"strings"
+	"unsafe"
 )
 
 // GetBars 获取贴吧列表
@@ -38,7 +39,7 @@ func GetBars(uid uint64) ([]*Bar, error) {
 			return nil, fmt.Errorf("获取贴吧列表网络错误, %s", err)
 		}
 
-		if !bytes.Contains(body, []byte("has_more")) { // 贴吧服务器响应有误, 再试一次
+		if !strings.Contains(*(*string)(unsafe.Pointer(&body)), "has_more") { // 贴吧服务器响应有误, 再试一次
 			pageNo--
 			continue
 		}
@@ -92,5 +93,5 @@ func IsTiebaExist(tiebaName string) bool {
 		log.Println(err)
 	}
 
-	return !bytes.Contains(b, []byte(`class="tip_text2">欢迎创建此吧，和朋友们在这里交流</p>`))
+	return !strings.Contains(*(*string)(unsafe.Pointer(&b)), `class="tip_text2">欢迎创建此吧，和朋友们在这里交流</p>`)
 }

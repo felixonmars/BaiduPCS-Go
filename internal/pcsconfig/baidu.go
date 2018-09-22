@@ -80,7 +80,7 @@ func NewUserInfoByBDUSS(bduss string) (b *Baidu, err error) {
 		},
 		Sex:     t.Baidu.Sex,
 		Age:     t.Baidu.Age,
-		BDUSS:   t.Baidu.Auth.BDUSS,
+		BDUSS:   bduss,
 		Workdir: "/",
 	}
 	return b, nil
