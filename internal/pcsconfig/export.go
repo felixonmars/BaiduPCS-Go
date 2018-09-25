@@ -47,6 +47,7 @@ func (c *PCSConfig) BaiduUserList() BaiduUserList {
 	return c.baiduUserList
 }
 
+// HTTPClient 返回设置好的HTTPClient
 func (c *PCSConfig) HTTPClient() *requester.HTTPClient {
 	client := requester.NewHTTPClient()
 	client.SetHTTPSecure(c.enableHTTPS)

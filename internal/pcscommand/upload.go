@@ -30,6 +30,7 @@ const (
 )
 
 type (
+	// UploadOptions 上传可选项
 	UploadOptions struct {
 		Parallel       int
 		MaxRetry       int

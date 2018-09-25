@@ -6,7 +6,6 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/pcstime"
-	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/olekukonko/tablewriter"
 	"strconv"
 	"strings"
@@ -35,7 +34,7 @@ const (
 
 type (
 	// HandleFileDirectoryFunc 处理文件或目录的元信息, 返回值控制是否退出递归
-	HandleFileDirectoryFunc func(depth int, fd *FileDirectory) bool
+	HandleFileDirectoryFunc func(depth int, fdPath string, fd *FileDirectory, pcsError pcserror.Error) bool
 
 	// FileDirectory 文件或目录的元信息
 	FileDirectory struct {
@@ -213,14 +212,15 @@ func (pcs *BaiduPCS) Search(targetPath, keyword string, recursive bool) (fdl Fil
 	return
 }
 
-func (pcs *BaiduPCS) recurseList(path string, depth int, options *OrderOptions, handleFileDirectoryFunc HandleFileDirectoryFunc) (fdl FileDirectoryList, ok bool, pcsError pcserror.Error) {
-	fdl, pcsError = pcs.FilesDirectoriesList(path, options)
+func (pcs *BaiduPCS) recurseList(path string, depth int, options *OrderOptions, handleFileDirectoryFunc HandleFileDirectoryFunc) (fdl FileDirectoryList, ok bool) {
+	fdl, pcsError := pcs.FilesDirectoriesList(path, options)
 	if pcsError != nil {
-		return nil, true, pcsError
+		ok := handleFileDirectoryFunc(depth, path, nil, pcsError)
+		return nil, ok
 	}
 
 	for k := range fdl {
-		ok = handleFileDirectoryFunc(depth+1, fdl[k])
+		ok = handleFileDirectoryFunc(depth+1, fdl[k].Path, fdl[k], nil)
 		if !ok {
 			return
 		}
@@ -229,23 +229,19 @@ func (pcs *BaiduPCS) recurseList(path string, depth int, options *OrderOptions, 
 			continue
 		}
 
-		fdl[k].Children, ok, pcsError = pcs.recurseList(fdl[k].Path, depth+1, options, handleFileDirectoryFunc)
+		fdl[k].Children, ok = pcs.recurseList(fdl[k].Path, depth+1, options, handleFileDirectoryFunc)
 		if !ok {
 			return
 		}
-		if pcsError != nil {
-			// 未进行错误处理
-			pcsverbose.Verboseln(pcsError)
-		}
 	}
 
-	return fdl, true, nil
+	return fdl, true
 }
 
 // FilesDirectoriesRecurseList 递归获取目录下的文件和目录列表
-func (pcs *BaiduPCS) FilesDirectoriesRecurseList(path string, options *OrderOptions, handleFileDirectoryFunc HandleFileDirectoryFunc) (data FileDirectoryList, pcsError pcserror.Error) {
-	data, _, pcsError = pcs.recurseList(path, 0, options, handleFileDirectoryFunc)
-	return data, pcsError
+func (pcs *BaiduPCS) FilesDirectoriesRecurseList(path string, options *OrderOptions, handleFileDirectoryFunc HandleFileDirectoryFunc) (data FileDirectoryList) {
+	data, _ = pcs.recurseList(path, 0, options, handleFileDirectoryFunc)
+	return data
 }
 
 func (f *FileDirectory) String() string {

@@ -12,7 +12,7 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 BaiduPCS-Go config set -appid 266719
 ```
 
-详见讨论 #387
+详见讨论 [#387](https://github.com/iikira/BaiduPCS-Go/issues/387)
 
 ## 注意
 

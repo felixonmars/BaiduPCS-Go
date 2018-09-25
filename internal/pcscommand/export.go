@@ -4,8 +4,17 @@ import (
 	"container/list"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"path"
 	"strings"
+)
+
+type (
+	etask struct {
+		*ListTask
+		path string
+		err  pcserror.Error
+	}
 )
 
 // RunExport 执行导出文件和目录
@@ -19,6 +28,7 @@ func RunExport(pcspaths []string, rootPath string) {
 	var (
 		pcs         = GetBaiduPCS()
 		invalidList = list.New()
+		failedList  = list.New()
 	)
 
 	for _, pcspath := range pcspaths {
@@ -39,7 +49,19 @@ func RunExport(pcspaths []string, rootPath string) {
 			d      int
 			cmdStr string
 		)
-		pcs.FilesDirectoriesRecurseList(pcspath, baidupcs.DefaultOrderOptions, func(depth int, fd *baidupcs.FileDirectory) bool {
+		pcs.FilesDirectoriesRecurseList(pcspath, baidupcs.DefaultOrderOptions, func(depth int, fdPath string, fd *baidupcs.FileDirectory, pcsError pcserror.Error) bool {
+			if pcsError != nil {
+				pcsCommandVerbose.Warnf("%s\n", pcsError)
+				failedList.PushBack(&etask{
+					ListTask: &ListTask{
+						MaxRetry: DefaultDownloadMaxRetry,
+					},
+					path: fdPath,
+					err:  pcsError,
+				})
+				return true
+			}
+
 			if fd.Isdir {
 				if depth > d {
 					d = depth
@@ -50,22 +72,31 @@ func RunExport(pcspaths []string, rootPath string) {
 				return true
 			}
 
-			cmdStr = fmt.Sprintf("BaiduPCS-Go rapidupload -length=%d -md5=%s \"%s\"\n", fd.Size, fd.MD5, getPath(fd.Path))
+			cmdStr = fmt.Sprintf("BaiduPCS-Go rapidupload -length=%d -md5=%s \"%s\"", fd.Size, fd.MD5, getPath(fd.Path))
 
 			if len(fd.BlockList) > 1 {
 				invalidList.PushBack(cmdStr)
 			} else {
-				fmt.Print(cmdStr)
+				fmt.Print(cmdStr + "\n")
 			}
 			return true
 		})
 	}
 
+	if failedList.Len() > 0 {
+		// 暂不重试
+		fmt.Printf("\n以下目录加载失败: \n")
+		fmt.Printf("%s\n", strings.Repeat("-", 100))
+		for e := failedList.Front(); e != nil; e = e.Next() {
+			fmt.Printf("%s\n", e.Value.(*etask).path)
+		}
+	}
+
 	if invalidList.Len() > 0 {
-		fmt.Printf("\n以下可能无法导出: \n")
+		fmt.Printf("\n以下文件可能无法导出: \n")
 		fmt.Printf("%s\n", strings.Repeat("-", 100))
 		for e := invalidList.Front(); e != nil; e = e.Next() {
-			fmt.Printf("%s", e.Value.(string))
+			fmt.Printf("%s\n", e.Value.(string))
 		}
 	}
 }

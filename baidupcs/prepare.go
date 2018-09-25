@@ -459,6 +459,7 @@ func (pcs *BaiduPCS) PrepareUploadPrecreate(targetPath, contentMD5, sliceMD5, cr
 	return resp.Body, nil
 }
 
+// PrepareUploadSuperfile2 另一个上传接口
 func (pcs *BaiduPCS) PrepareUploadSuperfile2(uploadid, targetPath string, partseq int, partOffset int64, uploadFunc UploadFunc) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
 	pcs.lazyInit()
 	pcsURL := pcs.generatePCSURL("superfile2", "upload", map[string]string{

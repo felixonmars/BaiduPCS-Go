@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/checksum"
@@ -268,7 +269,12 @@ func RunDownload(paths []string, options *DownloadOptions) {
 	// 预测要下载的文件数量
 	// TODO: pcscache
 	for k := range paths {
-		pcs.FilesDirectoriesRecurseList(paths[k], baidupcs.DefaultOrderOptions, func(depth int, fd *baidupcs.FileDirectory) bool {
+		pcs.FilesDirectoriesRecurseList(paths[k], baidupcs.DefaultOrderOptions, func(depth int, _ string, fd *baidupcs.FileDirectory, pcsError pcserror.Error) bool {
+			if pcsError != nil {
+				pcsCommandVerbose.Warnf("%s\n", pcsError)
+				return true
+			}
+
 			if !fd.Isdir {
 				loadCount++
 				if loadCount >= options.Load {
@@ -404,7 +410,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 					subTask := &dtask{
 						ListTask: ListTask{
 							ID:       lastID,
-							MaxRetry: 3,
+							MaxRetry: options.MaxRetry,
 						},
 						path:         fileList[k].Path,
 						downloadInfo: fileList[k],
@@ -508,9 +514,9 @@ func RunDownload(paths []string, options *DownloadOptions) {
 				if err != nil {
 					handleTaskErr(task, "检验文件有效性出错", err)
 					return
-				} else {
-					fmt.Fprintf(options.Out, "[%d] 检验文件有效性成功\n", task.ID)
 				}
+
+				fmt.Fprintf(options.Out, "[%d] 检验文件有效性成功\n", task.ID)
 			}
 
 			atomic.AddInt64(&totalSize, task.downloadInfo.Size)

@@ -17,6 +17,7 @@ type (
 		Total bool
 	}
 
+	// SearchOptions 搜索可选项
 	SearchOptions struct {
 		Total   bool
 		Recurse bool
@@ -52,6 +53,7 @@ func RunLs(path string, lsOptions *LsOptions, orderOptions *baidupcs.OrderOption
 	return
 }
 
+// RunSearch 执行搜索
 func RunSearch(targetPath, keyword string, opt *SearchOptions) {
 	targetPath, err := getAbsPath(targetPath)
 	if err != nil {
