@@ -7,7 +7,7 @@ GOROOT=/usr/local/go1.10.4
 go=$GOROOT/bin/go
 
 if [ "$1" = "" ];then
-    version=v3.5.5
+    version=v3.5.6
 fi
 
 output="out/"

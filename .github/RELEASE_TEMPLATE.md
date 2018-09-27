@@ -1,10 +1,14 @@
 # 更新日志: 
 
-1. 修复上传的崩溃问题;
-2. 修复无法查询离线下载任务列表;
-3. 修复取消分享失败;
-4. 支持下载完成后自动校验文件;
-5. 支持调整上传和下载的重试次数;
+1. 修复登录成功后, 无法正常使用的问题 ([#399](https://github.com/iikira/BaiduPCS-Go/issues/399));
+2. 修复文件夹下载无法调整重试次数;
+3. 使用 export 导出, 会输出导出错误的文件或目录了;
+4. 更换失效的默认app_id, 对于不是全新安装此程序的用户, 仍然需要手动更改默认的app_id, ([#387](https://github.com/iikira/BaiduPCS-Go/issues/387))
+
+```
+BaiduPCS-Go config set -appid 266719
+```
+
 
 个人项目bug在所难免! 欢迎提 issue 和 pull request!!.
 
