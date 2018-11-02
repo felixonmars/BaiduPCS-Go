@@ -10,24 +10,7 @@ type (
 	// ErrType 错误类型
 	ErrType int
 
-	// PCSErrInfo 错误信息
-	PCSErrInfo struct {
-		Operation string // 正在进行的操作
-		ErrType   ErrType
-		Err       error
-		ErrCode   int    `json:"error_code"` // 错误代码
-		ErrMsg    string `json:"error_msg"`  // 错误消息
-	}
-
-	// PanErrorInfo 网盘网页的api错误
-	PanErrorInfo struct {
-		Operation string
-		ErrType   ErrType
-		Err       error
-		ErrNo     int `json:"errno"`
-		// ErrMsg    string `json:"err_msg"`
-	}
-
+	// Error 错误信息接口
 	Error interface {
 		error
 		SetJSONError(err error)

@@ -9,7 +9,6 @@ import (
 	_ "github.com/iikira/BaiduPCS-Go/internal/pcsinit"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsupdate"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsweb"
-	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
 	"github.com/iikira/BaiduPCS-Go/pcspath"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
@@ -32,12 +31,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 )
 
 var (
 	// Version 版本号
-	Version = "v3.5.6-devel"
+	Version = "v3.5.5-devel"
 
 	historyFilePath = filepath.Join(pcsconfig.GetConfigDir(), "pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
@@ -86,8 +84,6 @@ func init() {
 	}
 
 	// 启动缓存回收
-	pcscache.DirCache.SetLifeTime(10 * time.Second)
-	pcscache.DirCache.GC()
 	requester.TCPAddrCache.GC()
 }
 
@@ -224,20 +220,14 @@ func main() {
 					targetDir = path.Dir(targetDir)
 				}
 			}
-			filesPtr := pcscache.DirCache.Get(targetDir)
-
-			if filesPtr == nil {
-				files, err := pcs.FilesDirectoriesList(targetDir, baidupcs.DefaultOrderOptions)
-				if err != nil {
-					return
-				}
-				pcscache.DirCache.Set(targetDir, &files)
-				filesPtr = &files
+			files, err := pcs.CacheFilesDirectoriesList(targetDir, baidupcs.DefaultOrderOptions)
+			if err != nil {
+				return
 			}
 
 			// fmt.Println("-", targetDir, targetPath, "-")
 
-			for _, file := range *filesPtr {
+			for _, file := range files {
 				if file == nil {
 					continue
 				}
@@ -1344,10 +1334,7 @@ func main() {
 			Category:  "百度网盘",
 			Before:    reloadFn,
 			Action: func(c *cli.Context) error {
-				if c.NArg() < 2 {
-					cli.ShowCommandHelp(c, c.Command.Name)
-					return nil
-				}
+				cli.ShowCommandHelp(c, c.Command.Name)
 				return nil
 			},
 			Subcommands: []cli.Command{
@@ -1372,8 +1359,15 @@ func main() {
 					Usage:     "列出已分享文件/目录",
 					UsageText: app.Name + " share list",
 					Action: func(c *cli.Context) error {
-						pcscommand.RunShareList()
+						pcscommand.RunShareList(c.Int("page"))
 						return nil
+					},
+					Flags: []cli.Flag{
+						cli.IntFlag{
+							Name:  "page",
+							Usage: "分享列表的页数",
+							Value: 1,
+						},
 					},
 				},
 				{

@@ -2,6 +2,7 @@ package baidupcs
 
 import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
+	"unsafe"
 )
 
 // Rename 重命名文件/目录
@@ -31,5 +32,11 @@ func (pcs *BaiduPCS) cpmvOp(op string, cpmvJSON ...*CpMvJSON) (pcsError pcserror
 	defer dataReadCloser.Close()
 
 	errInfo := pcserror.DecodePCSJSONError(op, dataReadCloser)
-	return errInfo
+	if errInfo != nil {
+		return errInfo
+	}
+
+	// 更新缓存
+	pcs.updateFilesDirectoriesCache((*CpMvJSONList)(unsafe.Pointer(&cpmvJSON)).AllRelatedDir())
+	return nil
 }

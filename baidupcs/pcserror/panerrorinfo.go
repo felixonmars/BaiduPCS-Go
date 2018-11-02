@@ -4,6 +4,17 @@ import (
 	"fmt"
 )
 
+type (
+	// PanErrorInfo 网盘网页的api错误
+	PanErrorInfo struct {
+		Operation string
+		ErrType   ErrType
+		Err       error
+		ErrNo     int `json:"errno"`
+		// ErrMsg    string `json:"err_msg"`
+	}
+)
+
 // NewPanErrorInfo 提供operation操作名称, 返回 *PanErrorInfo
 func NewPanErrorInfo(operation string) *PanErrorInfo {
 	return &PanErrorInfo{

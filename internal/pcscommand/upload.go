@@ -9,7 +9,6 @@ import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions/pcsupload"
-	"github.com/iikira/BaiduPCS-Go/pcscache"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/checksum"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
@@ -226,6 +225,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 				time.Sleep(3 * time.Duration(task.retry) * time.Second)
 			} else {
 				// on failed
+				fmt.Printf("[%d] %s, %s\n", task.ID, errManifest, pcsError)
 			}
 		}
 		totalSize int64
@@ -255,6 +255,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 			var (
 				panDir, panFile = path.Split(task.savePath)
 			)
+			panDir = path.Clean(panDir)
 
 			// 检测断点续传
 			state := uploadDatabase.Search(&task.uploadInfo.LocalFileMeta)
@@ -278,36 +279,34 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 
 		stepUploadRapidUpload:
 			task.step = StepUploadRapidUpload
-
-			// 设置缓存
-			if !pcscache.DirCache.Existed(panDir) {
-				fdl, pcsError := pcs.FilesDirectoriesList(panDir, baidupcs.DefaultOrderOptions)
+			{
+				fdl, pcsError := pcs.CacheFilesDirectoriesList(panDir, baidupcs.DefaultOrderOptions)
 				if pcsError != nil {
 					switch pcsError.GetErrType() {
 					case pcserror.ErrTypeRemoteError:
 						// do nothing
 					default:
-						fmt.Printf("%s\n", err)
+						fmt.Printf("获取文件列表错误, %s\n", pcsError)
 						return
 					}
 				}
-				pcscache.DirCache.Set(panDir, &fdl)
-			}
 
-			if task.uploadInfo.Length >= 128*converter.MB {
-				fmt.Printf("[%d] 检测秒传中, 请稍候...\n", task.ID)
-			}
+				if task.uploadInfo.Length >= 128*converter.MB {
+					fmt.Printf("[%d] 检测秒传中, 请稍候...\n", task.ID)
+				}
 
-			task.uploadInfo.Md5Sum()
+				task.uploadInfo.Md5Sum()
 
-			// 检测缓存, 通过文件的md5值判断本地文件和网盘文件是否一样
-			{
-				fd := pcscache.DirCache.FindFileDirectory(panDir, panFile)
-				if fd != nil {
-					decodedMD5, _ := hex.DecodeString(fd.MD5)
-					if bytes.Compare(decodedMD5, task.uploadInfo.MD5) == 0 {
-						fmt.Printf("[%d] 目标文件, %s, 已存在, 跳过...\n", task.ID, task.savePath)
-						return
+				// 检测缓存, 通过文件的md5值判断本地文件和网盘文件是否一样
+				if fdl != nil {
+					for _, fd := range fdl {
+						if strings.Compare(fd.Filename, panFile) == 0 {
+							decodedMD5, _ := hex.DecodeString(fd.MD5)
+							if bytes.Compare(decodedMD5, task.uploadInfo.MD5) == 0 {
+								fmt.Printf("[%d] 目标文件, %s, 已存在, 跳过...\n", task.ID, task.savePath)
+								return
+							}
+						}
 					}
 				}
 			}

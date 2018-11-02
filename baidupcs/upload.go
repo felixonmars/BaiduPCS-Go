@@ -5,6 +5,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"net/http"
+	"path"
 )
 
 const (
@@ -82,6 +83,8 @@ func (pcs *BaiduPCS) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string,
 		return
 	}
 
+	// 更新缓存
+	pcs.updateFilesDirectoriesCache([]string{path.Dir(targetPath)})
 	return nil
 }
 
@@ -110,6 +113,8 @@ func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (pcsError 
 		return jsonData.PCSErrInfo
 	}
 
+	// 更新缓存
+	pcs.updateFilesDirectoriesCache([]string{path.Dir(targetPath)})
 	return nil
 }
 
@@ -152,7 +157,13 @@ func (pcs *BaiduPCS) UploadCreateSuperFile(targetPath string, blockList ...strin
 	defer dataReadCloser.Close()
 
 	errInfo := pcserror.DecodePCSJSONError(OperationUploadCreateSuperFile, dataReadCloser)
-	return errInfo
+	if errInfo != nil {
+		return errInfo
+	}
+
+	// 更新缓存
+	pcs.updateFilesDirectoriesCache([]string{path.Dir(targetPath)})
+	return nil
 }
 
 // UploadPrecreate 分片上传—Precreate,

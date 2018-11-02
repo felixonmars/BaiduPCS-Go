@@ -26,16 +26,18 @@ type (
 		onCancelEvent     requester.Event //取消下载事件
 		monitorCancelFunc context.CancelFunc
 
-		executeTime   time.Time
-		executed      bool
-		durl          string
-		loadBalansers []string
-		tryHTTP       bool
-		writer        io.WriterAt
-		client        *requester.HTTPClient
-		config        *Config
-		monitor       *Monitor
-		instanceState *InstanceState
+		firstCheckMethod        string
+		statusCodeBodyCheckFunc func(respBody io.Reader) error
+		executeTime             time.Time
+		executed                bool
+		durl                    string
+		loadBalansers           []string
+		tryHTTP                 bool
+		writer                  io.WriterAt
+		client                  *requester.HTTPClient
+		config                  *Config
+		monitor                 *Monitor
+		instanceState           *InstanceState
 	}
 )
 
@@ -54,6 +56,16 @@ func (der *Downloader) SetClient(client *requester.HTTPClient) {
 	der.client = client
 }
 
+//SetFirstCheckMethod 设置初始检查url状态的请求方法, 默认为HEAD
+func (der *Downloader) SetFirstCheckMethod(method string) {
+	der.firstCheckMethod = method
+}
+
+//SetStatusCodeBodyCheckFunc 设置响应状态码出错的检查函数, 当FirstCheckMethod不为HEAD时才有效
+func (der *Downloader) SetStatusCodeBodyCheckFunc(f func(respBody io.Reader) error) {
+	der.statusCodeBodyCheckFunc = f
+}
+
 //TryHTTP 尝试使用 http 连接
 func (der *Downloader) TryHTTP(t bool) {
 	der.tryHTTP = t
@@ -65,6 +77,10 @@ func (der *Downloader) lazyInit() {
 	}
 	if der.client == nil {
 		der.client = requester.NewHTTPClient()
+		der.client.SetTimeout(20 * time.Minute)
+	}
+	if der.firstCheckMethod == "" {
+		der.firstCheckMethod = "HEAD"
 	}
 	if der.monitor == nil {
 		der.monitor = NewMonitor()
@@ -76,7 +92,7 @@ func (der *Downloader) Execute() error {
 	der.lazyInit()
 
 	// 检测
-	resp, err := der.client.Req("HEAD", der.durl, nil, nil)
+	resp, err := der.client.Req(der.firstCheckMethod, der.durl, nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -88,6 +104,12 @@ func (der *Downloader) Execute() error {
 	switch resp.StatusCode / 100 {
 	case 2: // succeed
 	case 4, 5: // error
+		if der.statusCodeBodyCheckFunc != nil && der.firstCheckMethod != "HEAD" {
+			err = der.statusCodeBodyCheckFunc(resp.Body)
+			if err != nil {
+				return err
+			}
+		}
 		return errors.New(resp.Status)
 	}
 
@@ -135,7 +157,7 @@ func (der *Downloader) Execute() error {
 		go func(loadBalanser string) {
 			defer wg.Done()
 
-			subResp, subErr := der.client.Req("HEAD", loadBalanser, nil, nil)
+			subResp, subErr := der.client.Req(der.firstCheckMethod, loadBalanser, nil, nil)
 			if subResp != nil {
 				defer subResp.Body.Close()
 			}

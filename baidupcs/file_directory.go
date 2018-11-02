@@ -2,6 +2,7 @@ package baidupcs
 
 import (
 	"errors"
+	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
@@ -93,11 +94,15 @@ type (
 	}
 )
 
-// DefaultOrderOptions 默认的排序
-var DefaultOrderOptions = &OrderOptions{
-	By:    OrderByName,
-	Order: OrderAsc,
-}
+var (
+	// DefaultOrderOptions 默认的排序
+	DefaultOrderOptions = &OrderOptions{
+		By:    OrderByName,
+		Order: OrderAsc,
+	}
+
+	DefaultOrderOptionsStr = fmt.Sprint(DefaultOrderOptions)
+)
 
 // FilesDirectoriesMeta 获取单个文件/目录的元信息
 func (pcs *BaiduPCS) FilesDirectoriesMeta(path string) (data *FileDirectory, pcsError pcserror.Error) {

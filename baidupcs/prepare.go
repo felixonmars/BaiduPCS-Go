@@ -104,6 +104,9 @@ func (pcs *BaiduPCS) PrepareFilesDirectoriesBatchMeta(paths ...string) (dataRead
 // PrepareFilesDirectoriesList 获取目录下的文件和目录列表, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareFilesDirectoriesList(path string, options *OrderOptions) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
 	pcs.lazyInit()
+	if options == nil {
+		options = DefaultOrderOptions
+	}
 	if path == "" {
 		path = "/"
 	}

@@ -55,6 +55,9 @@ func DoDownload(durl string, savePath string, cfg *Config) {
 		}
 	})
 
-	download.Execute()
+	err = download.Execute()
 	close(exitDownloadFunc)
+	if err != nil {
+		fmt.Printf("err: %s\n", err)
+	}
 }

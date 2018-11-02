@@ -50,14 +50,14 @@ func resolveTCP(ctx context.Context, address string) (tcpaddr *net.TCPAddr, err 
 func dialContext(ctx context.Context, network, address string) (conn net.Conn, err error) {
 	switch network {
 	case "tcp", "tcp4", "tcp6":
-		// 检测缓存
-		if TCPAddrCache.Existed(address) {
-			return net.DialTCP(network, nil, TCPAddrCache.Get(address))
-		}
-
 		var (
-			ta *net.TCPAddr
+			ta = TCPAddrCache.Get(address)
 		)
+
+		// 检测缓存
+		if ta != nil {
+			return net.DialTCP(network, nil, ta)
+		}
 
 		// Resolve TCP address
 		ta, err = resolveTCP(ctx, address)

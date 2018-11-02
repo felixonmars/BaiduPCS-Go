@@ -7,6 +7,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions/pcsdownload"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/checksum"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
@@ -35,10 +36,12 @@ const (
 )
 
 var (
-	// ErrNotSupportChecksum 文件不支持校验
-	ErrNotSupportChecksum = errors.New("该文件不支持校验")
-	// ErrChecksumFailed 文件校验失败
-	ErrChecksumFailed = errors.New("该文件校验失败, 文件md5值与服务器记录的不匹配")
+	// ErrDownloadNotSupportChecksum 文件不支持校验
+	ErrDownloadNotSupportChecksum = errors.New("该文件不支持校验")
+	// ErrDownloadChecksumFailed 文件校验失败
+	ErrDownloadChecksumFailed = errors.New("该文件校验失败, 文件md5值与服务器记录的不匹配")
+	// ErrDownloadFileBanned 违规文件
+	ErrDownloadFileBanned = errors.New("该文件可能是违规文件, 不支持校验")
 )
 
 type (
@@ -116,6 +119,10 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 	download.SetClient(client)
 	download.TryHTTP(!pcsconfig.Config.EnableHTTPS())
 	download.AddLoadBalanceServer(loadBalansers...)
+	download.SetFirstCheckMethod("GET")
+	download.SetStatusCodeBodyCheckFunc(func(respBody io.Reader) error {
+		return pcserror.DecodePCSJSONError(baidupcs.OperationDownloadFile, respBody)
+	})
 
 	exitChan = make(chan struct{})
 
@@ -203,7 +210,7 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 // checkFileValid 检测文件有效性
 func checkFileValid(filePath string, fileInfo *baidupcs.FileDirectory) error {
 	if len(fileInfo.BlockList) != 1 {
-		return ErrNotSupportChecksum
+		return ErrDownloadNotSupportChecksum
 	}
 
 	f := checksum.NewLocalFileInfo(filePath, int(256*converter.KB))
@@ -215,8 +222,14 @@ func checkFileValid(filePath string, fileInfo *baidupcs.FileDirectory) error {
 	defer f.Close()
 
 	f.Md5Sum()
-	if strings.Compare(hex.EncodeToString(f.MD5), fileInfo.MD5) != 0 {
-		return ErrChecksumFailed
+	md5Str := hex.EncodeToString(f.MD5)
+
+	if strings.Compare(md5Str, fileInfo.MD5) != 0 {
+		// 检测是否为违规文件
+		if pcsdownload.IsSkipMd5Checksum(f.Length, md5Str) {
+			return ErrDownloadFileBanned
+		}
+		return ErrDownloadChecksumFailed
 	}
 	return nil
 }
@@ -330,7 +343,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 
 			// 不重试的情况
 			switch {
-			case err == ErrNotSupportChecksum:
+			case err == ErrDownloadNotSupportChecksum:
 				fallthrough
 			case strings.Compare(errManifest, "下载文件错误") == 0 && strings.Contains(err.Error(), StrDownloadInitError):
 				fmt.Fprintf(options.Out, "[%d] %s, %s\n", task.ID, errManifest, err)
@@ -344,11 +357,12 @@ func RunDownload(paths []string, options *DownloadOptions) {
 				dlist.Append(task)
 				time.Sleep(3 * time.Duration(task.retry) * time.Second)
 			} else {
+				fmt.Fprintf(options.Out, "[%d] %s, %s\n", task.ID, errManifest, err)
 				failedList = append(failedList, task.path)
 			}
 
 			switch err {
-			case ErrChecksumFailed:
+			case ErrDownloadChecksumFailed:
 				// 删去旧的文件, 重新下载
 				rerr := os.Remove(task.savePath)
 				if rerr != nil {
@@ -447,7 +461,8 @@ func RunDownload(paths []string, options *DownloadOptions) {
 
 			if options.IsLocateDownload {
 				// 提取直链下载
-				rawDlinks := getDownloadLinks(task.path)
+				var rawDlinks []*url.URL
+				rawDlinks, err = getDownloadLinks(task.path)
 				if len(rawDlinks) > 0 {
 					dlink = rawDlinks[0].String()
 					dlinks = make([]string, 0, len(rawDlinks)-1)
@@ -456,15 +471,23 @@ func RunDownload(paths []string, options *DownloadOptions) {
 							continue
 						}
 
+						if pcsconfig.Config.EnableHTTPS() {
+							// 使用https
+							if rawDlink.Scheme == "http" {
+								rawDlink.Scheme = "https"
+							}
+						}
+
 						dlinks = append(dlinks, rawDlink.String())
 					}
 				}
 			} else if options.IsShareDownload {
 				// 分享下载
-				dlink = getShareDLink(task.path)
+				dlink, err = getShareDLink(task.path)
 			}
 
-			if dlink != "" {
+			if (options.IsShareDownload || options.IsLocateDownload) && err == nil {
+				dlink = handleHTTPLink(dlink)
 				pcsCommandVerbose.Infof("[%d] 获取到下载链接: %s\n", task.ID, dlink)
 				client := pcsconfig.Config.HTTPClient()
 				client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
@@ -481,6 +504,10 @@ func RunDownload(paths []string, options *DownloadOptions) {
 				client.SetKeepAlive(true)
 				err = download(task.ID, dlink, task.savePath, dlinks, client, *cfg, options)
 			} else {
+				if options.IsShareDownload || options.IsLocateDownload {
+					fmt.Fprintf(options.Out, "[%d] 错误: %s, 将使用默认的下载方式\n", task.ID, err)
+				}
+
 				dfunc := func(downloadURL string, jar http.CookieJar) error {
 					h := pcsconfig.Config.HTTPClient()
 					h.SetCookiejar(jar)
@@ -506,14 +533,21 @@ func RunDownload(paths []string, options *DownloadOptions) {
 				return
 			}
 
+			// 检验文件有效性
 			if !cfg.IsTest && !options.NoCheck {
 				if task.downloadInfo.Size >= 128*converter.MB {
 					fmt.Fprintf(options.Out, "[%d] 开始检验文件有效性, 稍后...\n", task.ID)
 				}
 				err = checkFileValid(task.savePath, task.downloadInfo)
 				if err != nil {
-					handleTaskErr(task, "检验文件有效性出错", err)
-					return
+					switch err {
+					case ErrDownloadFileBanned:
+						fmt.Fprintf(options.Out, "[%d] 检验文件有效性: %s\n", task.ID, err)
+						return
+					default:
+						handleTaskErr(task, "检验文件有效性出错", err)
+						return
+					}
 				}
 
 				fmt.Fprintf(options.Out, "[%d] 检验文件有效性成功\n", task.ID)
@@ -565,21 +599,34 @@ func RunLocateDownload(pcspaths ...string) {
 	fmt.Printf("提示: 访问下载链接, 需将下载器的 User-Agent 设置为: %s\n", pcsconfig.Config.UserAgent())
 }
 
-func getDownloadLinks(pcspath string) (dlinks []*url.URL) {
+func getDownloadLinks(pcspath string) (dlinks []*url.URL, err error) {
 	pcs := GetBaiduPCS()
 	dInfo, pcsError := pcs.LocateDownload(pcspath)
 	if pcsError != nil {
-		pcsCommandVerbose.Warn(pcsError.Error())
-		return
+		return nil, pcsError
 	}
 
 	us := dInfo.URLStrings(pcsconfig.Config.EnableHTTPS())
 	if len(us) == 0 {
-		pcsCommandVerbose.Warn("no any url")
-		return
+		return nil, errors.New("未提取到任何链接")
 	}
 
-	return us
+	return us, nil
+}
+
+func handleHTTPLink(link string) (nlink string) {
+	if pcsconfig.Config.EnableHTTPS() {
+		u, err := url.Parse(link)
+		if err != nil {
+			return link
+		}
+
+		if u.Scheme == "http" {
+			u.Scheme = "https"
+		}
+		return u.String()
+	}
+	return link
 }
 
 // fileExist 检查文件是否存在,

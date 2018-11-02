@@ -1,13 +1,13 @@
 package pcscommand
 
 import (
+	"errors"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/dlinkclient"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
+	ppath "github.com/iikira/BaiduPCS-Go/pcspath"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
-	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/baidu-tools/pan"
-	"net/url"
 	"os"
 	"path"
 	"strconv"
@@ -48,8 +48,11 @@ func RunShareCancel(shareIDs []int64) {
 }
 
 // RunShareList 执行列出分享列表
-func RunShareList() {
-	records, err := GetBaiduPCS().ShareList(1)
+func RunShareList(page int) {
+	if page < 1 {
+		page = 1
+	}
+	records, err := GetBaiduPCS().ShareList(page)
 	if err != nil {
 		fmt.Printf("%s失败: %s\n", baidupcs.OperationShareList, err)
 		return
@@ -62,12 +65,12 @@ func RunShareList() {
 			continue
 		}
 
-		tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(record.ShareID, 10), record.Shortlink, record.Passwd, record.TypicalPath[:strings.LastIndex(record.TypicalPath, "/")+1], record.TypicalPath})
+		tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(record.ShareID, 10), record.Shortlink, record.Passwd, strings.TrimSuffix(record.TypicalPath[:strings.LastIndex(record.TypicalPath, "/")+1], "/"), record.TypicalPath})
 	}
 	tb.Render()
 }
 
-func getShareDLink(pcspath string) (dlink string) {
+func getShareDLink(pcspath string) (dlink string, err error) {
 	var (
 		pcs = GetBaiduPCS()
 	)
@@ -75,8 +78,7 @@ func getShareDLink(pcspath string) (dlink string) {
 	for page := 1; ; page++ {
 		records, pcsError := pcs.ShareList(page)
 		if pcsError != nil {
-			pcsCommandVerbose.Warn(pcsError.Error())
-			break
+			return "", pcsError
 		}
 
 		// 完成
@@ -92,15 +94,17 @@ func getShareDLink(pcspath string) (dlink string) {
 			rootSharePath := path.Dir(record.TypicalPath)
 			if len(record.FsIds) == 1 {
 				if strings.HasPrefix(pcspath, record.TypicalPath) {
-					dlink = getLink(record.ShareID, record.Shortlink, record.Passwd, rootSharePath, strings.TrimPrefix(pcspath, rootSharePath))
-					return
+					dlink = getLink(record.Shortlink, record.Passwd, ppath.TrimPrefix(pcspath, rootSharePath))
+					if dlink != "" {
+						return
+					}
 				}
 				continue
 			}
 
 			// 尝试获取
 			if strings.HasPrefix(pcspath, rootSharePath) {
-				dlink = getLink(record.ShareID, record.Shortlink, record.Passwd, rootSharePath, strings.TrimPrefix(pcspath, rootSharePath))
+				dlink = getLink(record.Shortlink, record.Passwd, ppath.TrimPrefix(pcspath, rootSharePath))
 				if dlink != "" {
 					return
 				}
@@ -109,65 +113,38 @@ func getShareDLink(pcspath string) (dlink string) {
 		}
 	}
 
-	pcsCommandVerbose.Infof("%s: 未在已分享列表中找到分享信息\n", pcspath)
-	s, pcsError := pcs.ShareSet([]string{pcspath}, nil)
-	if pcsError != nil {
-		pcsCommandVerbose.Warn(pcsError.Error())
-		return ""
-	}
-
-	// 取消分享
-	defer pcs.ShareCancel([]int64{s.ShareID})
-
-	dlink = getLink(s.ShareID, s.Link, "", path.Dir(pcspath), path.Base(pcspath))
-	return
+	return "", errors.New("未在已分享列表中找到分享信息")
 }
 
-func getLink(shareID int64, shareLink, passwd, rootSharePath, filePath string) (dlink string) {
-	sInfo := pan.NewSharedInfo(shareLink)
-	sInfo.Client = requester.NewHTTPClient()
-	sInfo.Client.SetHTTPSecure(pcsconfig.Config.EnableHTTPS())
+func getLink(shareLink, passwd, filePath string) (dlink string) {
+	dc := dlinkclient.NewDlinkClient()
+	dc.SetClient(pcsconfig.Config.HTTPClient())
+	short, err := dc.CacheShareReg(shareLink, passwd)
+	if err != nil {
+		pcsCommandVerbose.Warnf("%s\n", err)
+		return
+	}
 
-	if passwd != "" {
-		err := sInfo.Auth(passwd)
+	for page := 1; ; page++ {
+		list, err := dc.CacheShareList(short, path.Dir(filePath), page)
 		if err != nil {
-			pcsCommandVerbose.Warn(err.Error())
-			return ""
+			pcsCommandVerbose.Warnf("%s\n", err)
+			return
+		}
+		if len(list) == 0 {
+			break
+		}
+
+		for _, f := range list {
+			if strings.Compare(f.Filename, path.Base(filePath)) == 0 {
+				dlink, err = dc.CacheLinkRedirect(f.Link)
+				if err != nil {
+					pcsCommandVerbose.Warnf("%s\n", err)
+				}
+				return
+			}
 		}
 	}
 
-	uk, pcsError := GetBaiduPCS().UK()
-	if pcsError != nil {
-		// 获取UK失败, 从分享链接获取信息
-		pcsCommandVerbose.Warn(pcsError.Error())
-		err := sInfo.InitInfo()
-		if err != nil {
-			pcsCommandVerbose.Warn(err.Error())
-			return ""
-		}
-	} else {
-		sInfo.UK = uk
-		sInfo.ShareID = shareID
-		sInfo.RootSharePath = rootSharePath
-	}
-
-	fd, err := sInfo.Meta(filePath)
-	if err != nil {
-		pcsCommandVerbose.Warn(err.Error())
-		return ""
-	}
-
-	u, err := url.Parse(fd.Dlink)
-	if err != nil {
-		pcsCommandVerbose.Warn(err.Error())
-		return ""
-	}
-
-	if pcsconfig.Config.EnableHTTPS() {
-		u.Scheme = "https"
-	} else {
-		u.Scheme = "http"
-	}
-
-	return u.String()
+	return
 }

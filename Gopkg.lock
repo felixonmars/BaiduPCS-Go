@@ -73,7 +73,6 @@
   name = "github.com/iikira/baidu-tools"
   packages = [
     ".",
-    "pan",
     "randominfo",
     "tieba",
     "tieba/tiebautil",
@@ -170,7 +169,6 @@
     "github.com/iikira/Baidu-Login",
     "github.com/iikira/Baidu-Login/bdcrypto",
     "github.com/iikira/args",
-    "github.com/iikira/baidu-tools/pan",
     "github.com/iikira/baidu-tools/tieba",
     "github.com/json-iterator/go",
     "github.com/kardianos/osext",

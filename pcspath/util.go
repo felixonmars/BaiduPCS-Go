@@ -6,6 +6,14 @@ import (
 	"unicode"
 )
 
+// TrimPrefix 去除目录的前缀
+func TrimPrefix(pcspath, prefixPath string) string {
+	if prefixPath == "/" {
+		return pcspath
+	}
+	return strings.TrimPrefix(pcspath, prefixPath)
+}
+
 // EscapeBracketOne 转义中括号, 加一个反斜杠
 func EscapeBracketOne(s string) string {
 	if !strings.Contains(s, "[") && !strings.Contains(s, "]") {

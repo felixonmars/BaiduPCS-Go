@@ -3,6 +3,7 @@ package baidupcs
 
 import (
 	"errors"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/expires/cachemap"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
@@ -85,9 +86,10 @@ var (
 type (
 	// BaiduPCS 百度 PCS API 详情
 	BaiduPCS struct {
-		appID   int                   // app_id
-		isHTTPS bool                  // 是否启用https
-		client  *requester.HTTPClient // http 客户端
+		appID    int                   // app_id
+		isHTTPS  bool                  // 是否启用https
+		client   *requester.HTTPClient // http 客户端
+		cacheMap cachemap.CacheMap
 	}
 
 	userInfoJSON struct {

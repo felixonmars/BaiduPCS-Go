@@ -1,3 +1,5 @@
+// Package pcscache 缓存包
+// Deprecated.
 package pcscache
 
 import (

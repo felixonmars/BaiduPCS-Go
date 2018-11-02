@@ -2,6 +2,7 @@ package baidupcs
 
 import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
+	"path"
 )
 
 // Remove 批量删除文件/目录
@@ -14,7 +15,13 @@ func (pcs *BaiduPCS) Remove(paths ...string) (pcsError pcserror.Error) {
 	defer dataReadCloser.Close()
 
 	errInfo := pcserror.DecodePCSJSONError(OperationRemove, dataReadCloser)
-	return errInfo
+	if errInfo != nil {
+		return errInfo
+	}
+
+	// 更新缓存
+	pcs.updateFilesDirectoriesCache(allRelatedDir(paths))
+	return nil
 }
 
 // Mkdir 创建目录
@@ -27,5 +34,11 @@ func (pcs *BaiduPCS) Mkdir(pcspath string) (pcsError pcserror.Error) {
 	defer dataReadCloser.Close()
 
 	errInfo := pcserror.DecodePCSJSONError(OperationMkdir, dataReadCloser)
-	return errInfo
+	if errInfo != nil {
+		return errInfo
+	}
+
+	// 更新缓存
+	pcs.updateFilesDirectoriesCache([]string{path.Dir(pcspath)})
+	return
 }

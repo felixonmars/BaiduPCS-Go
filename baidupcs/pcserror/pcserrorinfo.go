@@ -4,6 +4,17 @@ import (
 	"fmt"
 )
 
+type (
+	// PCSErrInfo PCS错误信息
+	PCSErrInfo struct {
+		Operation string // 正在进行的操作
+		ErrType   ErrType
+		Err       error
+		ErrCode   int    `json:"error_code"` // 错误代码
+		ErrMsg    string `json:"error_msg"`  // 错误消息
+	}
+)
+
 // NewPCSErrorInfo 提供operation操作名称, 返回 *PCSErrInfo
 func NewPCSErrorInfo(operation string) *PCSErrInfo {
 	return &PCSErrInfo{

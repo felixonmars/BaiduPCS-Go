@@ -3,8 +3,10 @@ package baidupcs
 import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/json-iterator/go"
 	"io"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -26,9 +28,12 @@ type (
 		To   string `json:"to"`   // 目标文件或目录
 	}
 
+	// CpMvJSONList CpMvJSON 列表
+	CpMvJSONList []*CpMvJSON
+
 	// CpMvListJSON []*CpMvJSON 对象数组
 	CpMvListJSON struct {
-		List []*CpMvJSON `json:"list"`
+		List CpMvJSONList `json:"list"`
 	}
 
 	// BlockListJSON 文件分块信息JSON
@@ -80,81 +85,26 @@ func (clj *CpMvListJSON) String() string {
 	return builder.String()
 }
 
+// AllRelatedDir 获取所有相关的目录
+func (cjl *CpMvJSONList) AllRelatedDir() (dirs []string) {
+	for _, cj := range *cjl {
+		fromDir, toDir := path.Dir(cj.From), path.Dir(cj.To)
+		if !pcsutil.ContainsString(dirs, fromDir) {
+			dirs = append(dirs, fromDir)
+		}
+		if !pcsutil.ContainsString(dirs, toDir) {
+			dirs = append(dirs, toDir)
+		}
+	}
+	return
+}
+
 func handleJSONParse(op string, data io.Reader, info interface{}) (pcsError pcserror.Error) {
 	var (
 		d       = jsoniter.NewDecoder(data)
-		err     error
-		errInfo pcserror.Error
+		err     = d.Decode(info)
+		errInfo = info.(pcserror.Error)
 	)
-	switch op {
-	case OperationGetUK:
-		userInfo := info.(*userInfoJSON)
-		err = d.Decode(userInfo)
-		errInfo = userInfo.PanErrorInfo
-
-	case OperationQuotaInfo:
-		jsonData := info.(*quotaInfo)
-		err = d.Decode(jsonData)
-		errInfo = jsonData.PCSErrInfo
-
-	case OperationFilesDirectoriesMeta, OperationFilesDirectoriesList, OperationSearch:
-		jsonData := info.(*fdDataJSONExport)
-		err = d.Decode(jsonData)
-		errInfo = jsonData.PCSErrInfo
-
-	case OperationUpload:
-		jsonData := info.(*uploadJSON)
-		err = d.Decode(jsonData)
-		errInfo = jsonData.PCSErrInfo
-
-	case OperationUploadTmpFile:
-		jsonData := info.(*uploadTmpFileJSON)
-		err = d.Decode(jsonData)
-		errInfo = jsonData.PCSErrInfo
-
-	case OperationUploadPrecreate:
-		jsonData := info.(*uploadPrecreateJSON)
-		err = d.Decode(jsonData)
-		errInfo = jsonData.PanErrorInfo
-
-	case OperationLocateDownload:
-		jsonData := info.(*locateDownloadJSON)
-		err = d.Decode(jsonData)
-		errInfo = jsonData.PCSErrInfo
-
-	case OperationCloudDlAddTask:
-		jsonData := info.(*cloudDlAddTaskJSON)
-		err = d.Decode(jsonData)
-		errInfo = jsonData.PCSErrInfo
-
-	case OperationCloudDlQueryTask:
-		jsonData := info.(*cloudDlQueryTaskJSON)
-		err = d.Decode(jsonData)
-		errInfo = jsonData.PCSErrInfo
-
-	case OperationCloudDlListTask:
-		jsonData := info.(*cloudDlListTaskJSON)
-		err = d.Decode(jsonData)
-		errInfo = jsonData.PCSErrInfo
-
-	case OperationCloudDlClearTask:
-		jsonData := info.(*cloudDlClearJSON)
-		err = d.Decode(jsonData)
-		errInfo = jsonData.PCSErrInfo
-
-	case OperationShareSet:
-		jsonData := info.(*sharePSetJSON)
-		err = d.Decode(jsonData)
-		errInfo = jsonData.PanErrorInfo
-
-	case OperationShareList:
-		jsonData := info.(*shareListJSON)
-		err = d.Decode(jsonData)
-		errInfo = jsonData.PanErrorInfo
-
-	default:
-		panic("unknown op")
-	}
 
 	if errInfo == nil {
 		errInfo = pcserror.NewPCSErrorInfo(op)
@@ -165,6 +115,7 @@ func handleJSONParse(op string, data io.Reader, info interface{}) (pcsError pcse
 		return errInfo
 	}
 
+	// 设置出错类型为远程错误
 	if errInfo.GetRemoteErrCode() != 0 {
 		errInfo.SetRemoteError()
 		return errInfo
