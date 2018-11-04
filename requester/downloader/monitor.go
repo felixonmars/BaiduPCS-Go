@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -20,13 +20,14 @@ var (
 
 //Monitor 线程监控器
 type Monitor struct {
-	workers        []*Worker
-	status         *DownloadStatus
-	instanceState  *InstanceState
-	completed      <-chan struct{}
-	err            error
-	dymanicMu      sync.Mutex
-	isReloadWorker bool //是否重载worker, 单线程模式不重载
+	workers         WorkerList
+	status          *DownloadStatus
+	instanceState   *InstanceState
+	completed       <-chan struct{}
+	err             error
+	dymanicMu       sync.Mutex
+	resetController *ResetController
+	isReloadWorker  bool //是否重载worker, 单线程模式不重载
 }
 
 //NewMonitor 初始化Monitor
@@ -37,16 +38,19 @@ func NewMonitor() *Monitor {
 
 func (mt *Monitor) lazyInit() {
 	if mt.workers == nil {
-		mt.workers = make([]*Worker, 0, 100)
+		mt.workers = make(WorkerList, 0, 100)
 	}
 	if mt.status == nil {
 		mt.status = NewDownloadStatus()
+	}
+	if mt.resetController == nil {
+		mt.resetController = NewResetController(80)
 	}
 }
 
 //InitMonitorCapacity 初始化workers, 用于Append
 func (mt *Monitor) InitMonitorCapacity(capacity int) {
-	mt.workers = make([]*Worker, 0, capacity)
+	mt.workers = make(WorkerList, 0, capacity)
 }
 
 //Append 增加Worker
@@ -58,7 +62,7 @@ func (mt *Monitor) Append(worker *Worker) {
 }
 
 //SetWorkers 设置workers, 此操作会覆盖原有的workers
-func (mt *Monitor) SetWorkers(workers []*Worker) {
+func (mt *Monitor) SetWorkers(workers WorkerList) {
 	mt.workers = workers
 }
 
@@ -204,21 +208,27 @@ func (mt *Monitor) AllCompleted() <-chan struct{} {
 	return c
 }
 
-//ResetAllFailedAndNetErrorWorkers 重设所有网络错误的worker
-func (mt *Monitor) ResetAllFailedAndNetErrorWorkers() {
+//ResetFailedAndNetErrorWorkers 重设部分网络错误的worker
+func (mt *Monitor) ResetFailedAndNetErrorWorkers() {
 	for k := range mt.workers {
-		if mt.workers[k] == nil {
+		if !mt.resetController.CanReset() || mt.workers[k] == nil {
 			continue
 		}
 
 		switch mt.workers[k].GetStatus().StatusCode() {
 		case StatusCodeNetError:
-			pcsverbose.Verbosef("DEBUG: monitor: ResetAllFailedAndNetErrorWorkers: reset StatusCodeNetError worker, id: %d\n", mt.workers[k].id)
-			mt.workers[k].Reset()
+			pcsverbose.Verbosef("DEBUG: monitor: ResetFailedAndNetErrorWorkers: reset StatusCodeNetError worker, id: %d\n", mt.workers[k].id)
+			goto reset
 		case StatusCodeFailed:
-			pcsverbose.Verbosef("DEBUG: monitor: ResetAllFailedAndNetErrorWorkers: reset StatusCodeFailed worker, id: %d\n", mt.workers[k].id)
-			mt.workers[k].Reset()
+			pcsverbose.Verbosef("DEBUG: monitor: ResetFailedAndNetErrorWorkers: reset StatusCodeFailed worker, id: %d\n", mt.workers[k].id)
+			goto reset
+		default:
+			continue
 		}
+
+	reset:
+		mt.workers[k].Reset()
+		mt.resetController.AddResetNum()
 	}
 }
 
@@ -274,25 +284,6 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 
 	mt.completed = mt.AllCompleted()
 
-	var (
-		maxReloadNumFunc = func() int32 {
-			total := len(mt.workers)
-			num := int32(32 * float64(total-mt.NumLeftWorkers()) / float64(total))
-			return num + 5
-		}
-		reloadNum int32
-		// 重设所有网络错误的worker, 30s间隔
-		nowTime                          = time.Now()
-		resetAllFailedAndNetErrorWorkers = func() {
-			if time.Since(nowTime) < 10*time.Second {
-				return
-			}
-			pcsverbose.Verbosef("DEBUG: monitor: resetAllFailedAndNetErrorWorkers start\n")
-			nowTime = time.Now()
-			mt.ResetAllFailedAndNetErrorWorkers()
-		}
-	)
-
 	//开始监控
 	for {
 		select {
@@ -314,8 +305,9 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 			time.Sleep(1 * time.Second)
 
 			// 初始化监控工作
-			resetAllFailedAndNetErrorWorkers()
-			atomic.StoreInt32(&reloadNum, 0)
+			pcsverbose.Verbosef("DEBUG: monitor: ResetFailedAndNetErrorWorkers start\n")
+			mt.ResetFailedAndNetErrorWorkers()
+
 			mt.status.updateSpeeds()
 
 			if mt.instanceState != nil {
@@ -332,79 +324,71 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 
 			// 速度减慢或者全部失败, 开始监控
 			isLeftWorkersAllFailed := mt.IsLeftWorkersAllFailed()
-			if mt.status.SpeedsPerSecond() < mt.status.MaxSpeeds()/20 || isLeftWorkersAllFailed {
+			if mt.status.SpeedsPerSecond() < mt.status.MaxSpeeds()/5 || isLeftWorkersAllFailed {
 				if isLeftWorkersAllFailed {
 					pcsverbose.Verbosef("DEBUG: monitor: All workers failed\n")
 				}
 				mt.status.ResetMaxSpeeds() //清空统计
 
 				// 先进行动态分配线程
+				pcsverbose.Verbosef("DEBUG: monitor: start duplicate.\n")
 
-				//下载快完成了, 动态分配线程
-				if float64(mt.status.Downloaded()) > float64(mt.status.TotalSize())*0.7 {
-					pcsverbose.Verbosef("DEBUG: monitor: start duplicate.\n")
+				sort.Sort(ByLeftDesc{mt.workers})
+				for k := range mt.workers {
+					if mt.workers[k] == nil {
+						continue
+					}
+					//动态分配线程
 
-					var (
-						dwg    = sync.WaitGroup{}
-						dupNum int32
-					)
-					for k := range mt.workers {
-						if mt.workers[k] == nil {
-							continue
+					func(worker *Worker) {
+						if !mt.resetController.CanReset() {
+							return
 						}
-						//动态分配线程
 
-						dwg.Add(1)
-						go func(worker *Worker) {
-							defer dwg.Done()
+						switch worker.status.statusCode {
+						case StatusCodeDownloading, StatusCodeFailed, StatusCodeNetError:
+						//pass
+						default:
+							return
+						}
 
-							mt.dymanicMu.Lock()
-							defer mt.dymanicMu.Unlock()
+						// 筛选空闲的Worker
+						avaliableWorker := mt.GetAvaliableWorker()
+						if avaliableWorker == nil || worker == avaliableWorker { // 没有空的
+							return
+						}
 
-							if atomic.LoadInt32(&dupNum) >= 32 {
-								return
-							}
+						workerRange := worker.GetRange()
 
-							// 筛选空闲的Worker
-							avaliableWorker := mt.GetAvaliableWorker()
-							if avaliableWorker == nil || worker == avaliableWorker { // 没有空的
-								return
-							}
+						end := workerRange.LoadEnd()
+						middle := (workerRange.LoadBegin() + end) / 2
 
-							workerRange := worker.GetRange()
+						if end-middle < MinParallelSize/5 { // 如果线程剩余的下载量太少, 不分配空闲线程
+							return
+						}
 
-							end := workerRange.LoadEnd()
-							middle := (workerRange.LoadBegin() + end) / 2
+						mt.resetController.AddResetNum()
 
-							if end-middle < MinParallelSize/5 { // 如果线程剩余的下载量太少, 不分配空闲线程
-								return
-							}
+						// 折半
 
-							atomic.AddInt32(&dupNum, 1)
+						avaliableWorkerRange := avaliableWorker.GetRange()
+						avaliableWorkerRange.StoreBegin(middle + 1)
+						avaliableWorkerRange.StoreEnd(end)
 
-							// 折半
+						avaliableWorker.CleanStatus()
 
-							avaliableWorkerRange := avaliableWorker.GetRange()
-							avaliableWorkerRange.StoreBegin(middle + 1)
-							avaliableWorkerRange.StoreEnd(end)
+						workerRange.StoreEnd(middle)
 
-							avaliableWorker.CleanStatus()
-
-							workerRange.StoreEnd(middle)
-
-							pcsverbose.Verbosef("MONITER: worker duplicated: %d <- %d\n", avaliableWorker.ID(), worker.ID())
-							go avaliableWorker.Execute()
-							time.Sleep(10 * time.Microsecond)
-						}(mt.workers[k])
-					} //end for
-					dwg.Wait()
-				} // end if 1
+						pcsverbose.Verbosef("MONITER: worker duplicated: %d <- %d\n", avaliableWorker.ID(), worker.ID())
+						go avaliableWorker.Execute()
+					}(mt.workers[k])
+				} //end for
 
 				// 重设长时间无响应, 和下载速度为 0 的线程
 				pcsverbose.Verbosef("DEBUG: monitor: start reload.\n")
 				for _, worker := range mt.workers {
-					go func(worker *Worker) {
-						if atomic.LoadInt32(&reloadNum) > maxReloadNumFunc() { //达到最大重载次数
+					func(worker *Worker) {
+						if !mt.resetController.CanReset() { //达到最大重载次数
 							return
 						}
 
@@ -430,7 +414,7 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 							return
 						}
 
-						atomic.AddInt32(&reloadNum, 1) // 增加重载次数
+						mt.resetController.AddResetNum()
 
 						// 重设连接
 						pcsverbose.Verbosef("MONITER: worker reload, worker id: %d\n", worker.ID())

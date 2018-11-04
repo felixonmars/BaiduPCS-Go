@@ -218,7 +218,7 @@ func (der *Downloader) Execute() error {
 		}
 	}
 
-	if der.config.parallel <= 0 {
+	if der.config.parallel < 1 {
 		der.config.parallel = 1
 	}
 

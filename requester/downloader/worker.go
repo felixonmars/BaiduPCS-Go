@@ -15,29 +15,41 @@ import (
 	"time"
 )
 
-//Worker 工作单元
-type Worker struct {
-	speedsPerSecond int64 //速度
-	wrange          Range
-	speedsStat      speeds.Speeds
-	id              int    //id
-	cacheSize       int    //下载缓存
-	url             string //下载地址
-	referer         string //来源地址
-	acceptRanges    string
-	client          *requester.HTTPClient
-	writerAt        io.WriterAt
-	writeMu         *sync.Mutex
-	execMu          sync.Mutex
+type (
+	//Worker 工作单元
+	Worker struct {
+		speedsPerSecond int64 //速度
+		wrange          Range
+		speedsStat      speeds.Speeds
+		id              int    //id
+		cacheSize       int    //下载缓存
+		url             string //下载地址
+		referer         string //来源地址
+		acceptRanges    string
+		client          *requester.HTTPClient
+		writerAt        io.WriterAt
+		writeMu         *sync.Mutex
+		execMu          sync.Mutex
 
-	paused                 bool
-	pauseChan              chan struct{}
-	workerCancelFunc       context.CancelFunc
-	resetFunc              context.CancelFunc
-	readRespBodyCancelFunc func()
-	err                    error //错误信息
-	status                 WorkerStatus
-	downloadStatus         *DownloadStatus //总的下载状态
+		paused                 bool
+		pauseChan              chan struct{}
+		workerCancelFunc       context.CancelFunc
+		resetFunc              context.CancelFunc
+		readRespBodyCancelFunc func()
+		err                    error //错误信息
+		status                 WorkerStatus
+		downloadStatus         *DownloadStatus //总的下载状态
+	}
+
+	// WorkerList worker列表
+	WorkerList []*Worker
+)
+
+// Duplicate 构造新的列表
+func (wl WorkerList) Duplicate() WorkerList {
+	n := make(WorkerList, len(wl))
+	copy(n, wl)
+	return n
 }
 
 //NewWorker 初始化Worker
@@ -232,13 +244,15 @@ func (wer *Worker) Execute() {
 		return
 	}
 
-	// 已完成
-	if rlen := wer.wrange.Len(); rlen <= 0 {
-		if rlen < 0 {
-			pcsverbose.Verbosef("DEBUG: RangeLen is negative at begin: %v, %d\n", wer.wrange, wer.wrange.Len())
+	if !single {
+		// 已完成
+		if rlen := wer.wrange.Len(); rlen <= 0 {
+			if rlen < 0 {
+				pcsverbose.Verbosef("DEBUG: RangeLen is negative at begin: %v, %d\n", wer.wrange, wer.wrange.Len())
+			}
+			wer.status.statusCode = StatusCodeSuccessed
+			return
 		}
-		wer.status.statusCode = StatusCodeSuccessed
-		return
 	}
 
 	workerCancelCtx, workerCancelFunc := context.WithCancel(context.Background())
