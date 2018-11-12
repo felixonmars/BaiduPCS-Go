@@ -474,21 +474,12 @@ func RunDownload(paths []string, options *DownloadOptions) {
 				// 获取直链下载
 				var rawDlinks []*url.URL
 				rawDlinks, err = getLocateDownloadLinks(task.path)
-				if err != nil {
+				if err == nil {
+					handleHTTPLinkURL(rawDlinks[0])
 					dlink = rawDlinks[0].String()
 					dlinks = make([]string, 0, len(rawDlinks)-1)
 					for _, rawDlink := range rawDlinks[1:len(rawDlinks)] {
-						if rawDlink == nil {
-							continue
-						}
-
-						if pcsconfig.Config.EnableHTTPS() {
-							// 使用https
-							if rawDlink.Scheme == "http" {
-								rawDlink.Scheme = "https"
-							}
-						}
-
+						handleHTTPLinkURL(rawDlink)
 						dlinks = append(dlinks, rawDlink.String())
 					}
 				}
@@ -509,7 +500,6 @@ func RunDownload(paths []string, options *DownloadOptions) {
 			}
 
 			if (options.IsShareDownload || options.IsLocateDownload || options.IsLocatePanAPIDownload) && err == nil {
-				dlink = handleHTTPLink(dlink)
 				pcsCommandVerbose.Infof("[%d] 获取到下载链接: %s\n", task.ID, dlink)
 				client := pcsconfig.Config.HTTPClient()
 				client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
@@ -733,19 +723,12 @@ func getLocatePanLink(pcs *baidupcs.BaiduPCS, fsID int64) (dlink string, err err
 	return
 }
 
-func handleHTTPLink(link string) (nlink string) {
+func handleHTTPLinkURL(linkURL *url.URL) {
 	if pcsconfig.Config.EnableHTTPS() {
-		u, err := url.Parse(link)
-		if err != nil {
-			return link
+		if linkURL.Scheme == "http" {
+			linkURL.Scheme = "https"
 		}
-
-		if u.Scheme == "http" {
-			u.Scheme = "https"
-		}
-		return u.String()
 	}
-	return link
 }
 
 // fileExist 检查文件是否存在,
