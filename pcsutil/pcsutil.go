@@ -25,6 +25,14 @@ func init() {
 	PipeInput = (fileInfo.Mode() & os.ModeNamedPipe) == os.ModeNamedPipe
 }
 
+// TrimPathPrefix 去除目录的前缀
+func TrimPathPrefix(path, prefixPath string) string {
+	if prefixPath == "/" {
+		return path
+	}
+	return strings.TrimPrefix(path, prefixPath)
+}
+
 // ContainsString 检测字符串是否在字符串数组里
 func ContainsString(ss []string, s string) bool {
 	for k := range ss {

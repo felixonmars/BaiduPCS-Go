@@ -4,6 +4,7 @@ package baidupcs
 import (
 	"errors"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/expires/cachemap"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/internal/panhome"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
@@ -50,8 +51,10 @@ const (
 	OperationDownloadFile = "下载单个文件"
 	// OperationDownloadStreamFile 下载流式文件
 	OperationDownloadStreamFile = "下载流式文件"
-	// OperationLocateDownload 提取下载链接
-	OperationLocateDownload = "提取下载链接"
+	// OperationLocateDownload 获取下载链接
+	OperationLocateDownload = "获取下载链接"
+	// OperationLocatePanAPIDownload 从百度网盘首页获取下载链接
+	OperationLocatePanAPIDownload = "获取下载链接2"
 	// OperationCloudDlAddTask 添加离线下载任务
 	OperationCloudDlAddTask = "添加离线下载任务"
 	// OperationCloudDlQueryTask 精确查询离线下载任务
@@ -70,17 +73,48 @@ const (
 	OperationShareCancel = "取消分享"
 	// OperationShareList 列出分享列表
 	OperationShareList = "列出分享列表"
+	// OperationRecycleList 列出回收站文件列表
+	OperationRecycleList = "列出回收站文件列表"
+	// OperationRecycleRestore 还原回收站文件或目录
+	OperationRecycleRestore = "还原回收站文件或目录"
+	// OperationRecycleDelete 删除回收站文件或目录
+	OperationRecycleDelete = "删除回收站文件或目录"
+	// OperationRecycleClear 清空回收站
+	OperationRecycleClear = "清空回收站"
+
+	// OperationFixMD5 修复文件md5
+	OperationFixMD5 = "修复文件md5"
+	// OperrationMatchPathByShellPattern 通配符匹配文件路径
+	OperrationMatchPathByShellPattern = "通配符匹配文件路径"
 
 	// PCSBaiduCom pcs api地址
 	PCSBaiduCom = "pcs.baidu.com"
 	// PanBaiduCom 网盘首页api地址
 	PanBaiduCom = "pan.baidu.com"
+	// PanAppID 百度网盘appid
+	PanAppID = "250528"
 	// NetdiskUA 网盘客户端ua
-	NetdiskUA = "netdisk;7.8.1;Red;android-android;4.3"
+	NetdiskUA = "netdisk;8.12.9;;android-android;7.0;JSbridge3.0.0"
+	// PathSeparator 路径分隔符
+	PathSeparator = "/"
 )
 
 var (
 	baiduPCSVerbose = pcsverbose.New("BAIDUPCS")
+
+	baiduComURL = &url.URL{
+		Scheme: "http",
+		Host:   "baidu.com",
+	}
+
+	baiduPcsComURL = &url.URL{
+		Scheme: "http",
+		Host:   "baidupcs.com",
+	}
+
+	netdiskUAHeader = map[string]string{
+		"User-Agent": NetdiskUA,
+	}
 )
 
 type (
@@ -89,6 +123,7 @@ type (
 		appID    int                   // app_id
 		isHTTPS  bool                  // 是否启用https
 		client   *requester.HTTPClient // http 客户端
+		ph       *panhome.PanHome
 		cacheMap cachemap.CacheMap
 	}
 
@@ -103,26 +138,14 @@ type (
 // NewPCS 提供app_id, 百度BDUSS, 返回 BaiduPCS 对象
 func NewPCS(appID int, bduss string) *BaiduPCS {
 	client := requester.NewHTTPClient()
-
-	pcsURL := &url.URL{
-		Scheme: "http",
-		Host:   PCSBaiduCom,
-	}
-
-	cookies := []*http.Cookie{
+	client.ResetCookiejar()
+	client.Jar.SetCookies(baiduComURL, []*http.Cookie{
 		&http.Cookie{
-			Name:  "BDUSS",
-			Value: bduss,
+			Name:   "BDUSS",
+			Value:  bduss,
+			Domain: ".baidu.com",
 		},
-	}
-
-	jar, _ := cookiejar.New(nil)
-	jar.SetCookies(pcsURL, cookies)
-	jar.SetCookies((&url.URL{
-		Scheme: "http",
-		Host:   PanBaiduCom,
-	}), cookies)
-	client.SetCookiejar(jar)
+	})
 
 	return &BaiduPCS{
 		appID:  appID,
@@ -147,8 +170,12 @@ func NewPCSWithCookieStr(appID int, cookieStr string) *BaiduPCS {
 	}
 
 	cookies := requester.ParseCookieStr(cookieStr)
+	for _, cookie := range cookies {
+		cookie.Domain = ".baidu.com"
+	}
+
 	jar, _ := cookiejar.New(nil)
-	jar.SetCookies(pcs.URL(), cookies)
+	jar.SetCookies(baiduComURL, cookies)
 	pcs.client.SetCookiejar(jar)
 
 	return pcs
@@ -158,11 +185,36 @@ func (pcs *BaiduPCS) lazyInit() {
 	if pcs.client == nil {
 		pcs.client = requester.NewHTTPClient()
 	}
+	if pcs.ph == nil {
+		pcs.ph = panhome.NewPanHome(pcs.client)
+	}
+}
+
+// GetClient 获取当前的http client
+func (pcs *BaiduPCS) GetClient() *requester.HTTPClient {
+	pcs.lazyInit()
+	return pcs.client
 }
 
 // SetAPPID 设置app_id
 func (pcs *BaiduPCS) SetAPPID(appID int) {
 	pcs.appID = appID
+}
+
+// SetStoken 设置stoken
+func (pcs *BaiduPCS) SetStoken(stoken string) {
+	pcs.lazyInit()
+	if pcs.client.Jar == nil {
+		pcs.client.ResetCookiejar()
+	}
+
+	pcs.client.Jar.SetCookies(baiduComURL, []*http.Cookie{
+		&http.Cookie{
+			Name:   "STOKEN",
+			Value:  stoken,
+			Domain: ".baidu.com",
+		},
+	})
 }
 
 // SetUserAgent 设置 User-Agent
@@ -208,7 +260,7 @@ func (pcs *BaiduPCS) generatePCSURL2(subPath, method string, param ...map[string
 	}
 
 	uv := pcsURL2.Query()
-	uv.Set("app_id", "250528")
+	uv.Set("app_id", PanAppID)
 	uv.Set("method", method)
 	for k := range param {
 		for k2 := range param[k] {
@@ -218,6 +270,23 @@ func (pcs *BaiduPCS) generatePCSURL2(subPath, method string, param ...map[string
 
 	pcsURL2.RawQuery = uv.Encode()
 	return pcsURL2
+}
+
+func (pcs *BaiduPCS) generatePanURL(subPath string, param map[string]string) *url.URL {
+	panURL := url.URL{
+		Scheme: GetHTTPScheme(pcs.isHTTPS),
+		Host:   PanBaiduCom,
+		Path:   "/api/" + subPath,
+	}
+
+	if param != nil {
+		uv := url.Values{}
+		for k := range param {
+			uv.Set(k, param[k])
+		}
+		panURL.RawQuery = uv.Encode()
+	}
+	return &panURL
 }
 
 // UK 获取用户 UK

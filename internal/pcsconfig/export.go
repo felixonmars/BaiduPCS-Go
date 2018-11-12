@@ -17,13 +17,15 @@ type pcsConfigJSONExport struct {
 
 	AppID int `json:"appid"` // appid
 
-	CacheSize   int `json:"cache_size"`        // 下载缓存
-	MaxParallel int `json:"max_parallel"`      // 最大下载并发量
-	MaxLoad     int `json:"max_download_load"` // 同时进行下载文件的最大数量
+	CacheSize         int `json:"cache_size"`          // 下载缓存
+	MaxParallel       int `json:"max_parallel"`        // 最大下载并发量
+	MaxUploadParallel int `json:"max_upload_parallel"` // 最大上传并发量
+	MaxLoad           int `json:"max_download_load"`   // 同时进行下载文件的最大数量
 
 	UserAgent   string `json:"user_agent"`   // 浏览器标识
 	SaveDir     string `json:"savedir"`      // 下载储存路径
 	EnableHTTPS bool   `json:"enable_https"` // 启用https
+	Proxy       string `json:"proxy"`        // 代理
 }
 
 // ActiveUser 获取当前登录的用户
@@ -75,6 +77,11 @@ func (c *PCSConfig) MaxParallel() int {
 	return c.maxParallel
 }
 
+// MaxUploadParallel 返回max_upload_parallel, 上传最大并发量
+func (c *PCSConfig) MaxUploadParallel() int {
+	return c.maxUploadParallel
+}
+
 // MaxDownloadLoad 返回max_download_load, 同时进行下载文件的最大数量
 func (c *PCSConfig) MaxDownloadLoad() int {
 	return c.maxDownloadLoad
@@ -95,6 +102,11 @@ func (c *PCSConfig) EnableHTTPS() bool {
 	return c.enableHTTPS
 }
 
+// Proxy 返回代理地址
+func (c *PCSConfig) Proxy() string {
+	return c.proxy
+}
+
 // AverageParallel 返回平均的下载最大并发量
 func (c *PCSConfig) AverageParallel() int {
 	return AverageParallel(c.maxParallel, c.maxDownloadLoad)
@@ -107,12 +119,14 @@ func (c *PCSConfig) PrintTable() {
 	tb.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_CENTER, tablewriter.ALIGN_LEFT})
 	tb.AppendBulk([][]string{
 		[]string{"appid", fmt.Sprint(c.appID), "", "百度 PCS 应用ID"},
-		[]string{"enable_https", fmt.Sprint(c.enableHTTPS), "true", "启用 https"},
-		[]string{"user_agent", c.userAgent, "", "浏览器标识"},
 		[]string{"cache_size", strconv.Itoa(c.cacheSize), "1024 ~ 262144", "下载缓存, 如果硬盘占用高或下载速度慢, 请尝试调大此值"},
 		[]string{"max_parallel", strconv.Itoa(c.maxParallel), "50 ~ 500", "下载最大并发量"},
+		[]string{"max_upload_parallel", strconv.Itoa(c.maxUploadParallel), "1 ~ 100", "上传最大并发量"},
 		[]string{"max_download_load", strconv.Itoa(c.maxDownloadLoad), "1 ~ 5", "同时进行下载文件的最大数量"},
 		[]string{"savedir", c.saveDir, "", "下载文件的储存目录"},
+		[]string{"enable_https", fmt.Sprint(c.enableHTTPS), "true", "启用 https"},
+		[]string{"user_agent", c.userAgent, "", "浏览器标识"},
+		[]string{"proxy", c.proxy, "", "设置代理, 支持 http/socks5 代理"},
 	})
 	tb.Render()
 }

@@ -10,9 +10,10 @@ const (
 	// DlinkHost 服务器
 	DlinkHost = "dlink.iikira.com"
 
-	OperationReg      = "注册分享信息"
-	OperationList     = "获取目录下的文件列表"
-	OperationRedirect = "重定向"
+	OperationReg        = "注册分享信息"
+	OperationList       = "获取目录下的文件列表"
+	OperationRedirect   = "重定向"
+	OperationRedirectPr = "重定向(pr)"
 )
 
 // DlinkClient 客户端

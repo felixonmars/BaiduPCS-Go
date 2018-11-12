@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/dlinkclient"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions/pcsdownload"
@@ -31,6 +32,8 @@ const (
 	DownloadSuffix = ".BaiduPCS-Go-downloading"
 	//StrDownloadInitError 初始化下载发生错误
 	StrDownloadInitError = "初始化下载发生错误"
+	// StrDownloadFailed 下载文件错误
+	StrDownloadFailed = "下载文件错误"
 	// DefaultDownloadMaxRetry 默认下载失败最大重试次数
 	DefaultDownloadMaxRetry = 3
 )
@@ -42,6 +45,8 @@ var (
 	ErrDownloadChecksumFailed = errors.New("该文件校验失败, 文件md5值与服务器记录的不匹配")
 	// ErrDownloadFileBanned 违规文件
 	ErrDownloadFileBanned = errors.New("该文件可能是违规文件, 不支持校验")
+	// ErrDlinkNotFound 未取得下载链接
+	ErrDlinkNotFound = errors.New("未取得下载链接")
 )
 
 type (
@@ -55,19 +60,25 @@ type (
 
 	//DownloadOptions 下载可选参数
 	DownloadOptions struct {
-		IsTest               bool
-		IsPrintStatus        bool
-		IsExecutedPermission bool
-		IsOverwrite          bool
-		IsShareDownload      bool
-		IsLocateDownload     bool
-		IsStreaming          bool
-		SaveTo               string
-		Parallel             int
-		Load                 int
-		MaxRetry             int
-		NoCheck              bool
-		Out                  io.Writer
+		IsTest                 bool
+		IsPrintStatus          bool
+		IsExecutedPermission   bool
+		IsOverwrite            bool
+		IsShareDownload        bool
+		IsLocateDownload       bool
+		IsLocatePanAPIDownload bool
+		IsStreaming            bool
+		SaveTo                 string
+		Parallel               int
+		Load                   int
+		MaxRetry               int
+		NoCheck                bool
+		Out                    io.Writer
+	}
+
+	// LocateDownloadOption 获取下载链接可选参数
+	LocateDownloadOption struct {
+		FromPan bool
 	}
 )
 
@@ -119,7 +130,6 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 	download.SetClient(client)
 	download.TryHTTP(!pcsconfig.Config.EnableHTTPS())
 	download.AddLoadBalanceServer(loadBalansers...)
-	download.SetFirstCheckMethod("GET")
 	download.SetStatusCodeBodyCheckFunc(func(respBody io.Reader) error {
 		return pcserror.DecodePCSJSONError(baidupcs.OperationDownloadFile, respBody)
 	})
@@ -263,7 +273,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 		options.Parallel = pcsconfig.Config.MaxParallel()
 	}
 
-	paths, err := getAllAbsPaths(paths...)
+	paths, err := matchPathByShellPattern(paths...)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -345,7 +355,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 			switch {
 			case err == ErrDownloadNotSupportChecksum:
 				fallthrough
-			case strings.Compare(errManifest, "下载文件错误") == 0 && strings.Contains(err.Error(), StrDownloadInitError):
+			case strings.Compare(errManifest, StrDownloadFailed) == 0 && strings.Contains(err.Error(), StrDownloadInitError):
 				fmt.Fprintf(options.Out, "[%d] %s, %s\n", task.ID, errManifest, err)
 				return
 			}
@@ -459,11 +469,12 @@ func RunDownload(paths []string, options *DownloadOptions) {
 				dlinks []string
 			)
 
-			if options.IsLocateDownload {
-				// 提取直链下载
+			switch {
+			case options.IsLocateDownload:
+				// 获取直链下载
 				var rawDlinks []*url.URL
-				rawDlinks, err = getDownloadLinks(task.path)
-				if len(rawDlinks) > 0 {
+				rawDlinks, err = getLocateDownloadLinks(task.path)
+				if err != nil {
 					dlink = rawDlinks[0].String()
 					dlinks = make([]string, 0, len(rawDlinks)-1)
 					for _, rawDlink := range rawDlinks[1:len(rawDlinks)] {
@@ -481,12 +492,23 @@ func RunDownload(paths []string, options *DownloadOptions) {
 						dlinks = append(dlinks, rawDlink.String())
 					}
 				}
-			} else if options.IsShareDownload {
-				// 分享下载
+			case options.IsShareDownload: // 分享下载
 				dlink, err = getShareDLink(task.path)
+				switch err {
+				case nil, ErrShareInfoNotFound: // 未分享, 采用默认下载方式
+				default:
+					handleTaskErr(task, StrDownloadFailed, err)
+					return
+				}
+			case options.IsLocatePanAPIDownload: // 由第三方服务器处理
+				dlink, err = getLocatePanLink(pcs, task.downloadInfo.FsID)
+				if err != nil {
+					handleTaskErr(task, StrDownloadFailed, err)
+					return
+				}
 			}
 
-			if (options.IsShareDownload || options.IsLocateDownload) && err == nil {
+			if (options.IsShareDownload || options.IsLocateDownload || options.IsLocatePanAPIDownload) && err == nil {
 				dlink = handleHTTPLink(dlink)
 				pcsCommandVerbose.Infof("[%d] 获取到下载链接: %s\n", task.ID, dlink)
 				client := pcsconfig.Config.HTTPClient()
@@ -504,7 +526,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 				client.SetKeepAlive(true)
 				err = download(task.ID, dlink, task.savePath, dlinks, client, *cfg, options)
 			} else {
-				if options.IsShareDownload || options.IsLocateDownload {
+				if options.IsShareDownload || options.IsLocateDownload || options.IsLocatePanAPIDownload {
 					fmt.Fprintf(options.Out, "[%d] 错误: %s, 将使用默认的下载方式\n", task.ID, err)
 				}
 
@@ -529,7 +551,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 			}
 
 			if err != nil {
-				handleTaskErr(task, "下载文件错误", err)
+				handleTaskErr(task, StrDownloadFailed, err)
 				return
 			}
 
@@ -570,14 +592,57 @@ func RunDownload(paths []string, options *DownloadOptions) {
 }
 
 // RunLocateDownload 执行获取直链
-func RunLocateDownload(pcspaths ...string) {
-	absPaths, err := getAllAbsPaths(pcspaths...)
+func RunLocateDownload(pcspaths []string, opt *LocateDownloadOption) {
+	if opt == nil {
+		opt = &LocateDownloadOption{}
+	}
+
+	absPaths, err := matchPathByShellPattern(pcspaths...)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
 	pcs := GetBaiduPCS()
+
+	if opt.FromPan {
+		fds, err := pcs.FilesDirectoriesBatchMeta(absPaths...)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			return
+		}
+
+		fidList := make([]int64, 0, len(fds))
+		for i := range fds {
+			fidList = append(fidList, fds[i].FsID)
+		}
+
+		list, err := pcs.LocatePanAPIDownload(fidList...)
+		if err != nil {
+			fmt.Printf("%s\n", err)
+			return
+		}
+
+		tb := pcstable.NewTable(os.Stdout)
+		tb.SetHeader([]string{"#", "fs_id", "路径", "链接"})
+
+		var (
+			i          int
+			fidStrList = converter.SliceInt64ToString(fidList)
+		)
+		for k := range fidStrList {
+			for i = range list {
+				if fidStrList[k] == list[i].FsID {
+					tb.Append([]string{strconv.Itoa(k), list[i].FsID, fds[k].Path, list[i].Dlink})
+					list = append(list[:i], list[i+1:]...)
+					break
+				}
+			}
+		}
+		tb.Render()
+		fmt.Printf("\n注意: 以上链接不能直接访问, 需要登录百度帐号才可以下载\n")
+		return
+	}
 
 	for i, pcspath := range absPaths {
 		info, err := pcs.LocateDownload(pcspath)
@@ -595,11 +660,40 @@ func RunLocateDownload(pcspaths ...string) {
 		tb.Render()
 		fmt.Println()
 	}
-
 	fmt.Printf("提示: 访问下载链接, 需将下载器的 User-Agent 设置为: %s\n", pcsconfig.Config.UserAgent())
 }
 
-func getDownloadLinks(pcspath string) (dlinks []*url.URL, err error) {
+// RunFixMD5 执行修复md5
+func RunFixMD5(pcspaths ...string) {
+	absPaths, err := matchPathByShellPattern(pcspaths...)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	pcs := GetBaiduPCS()
+	finfoList, err := pcs.FilesDirectoriesBatchMeta(absPaths...)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	for k, finfo := range finfoList {
+		err := pcs.FixMD5ByFileInfo(finfo)
+		if err == nil {
+			fmt.Printf("[%d] - [%s] 修复md5成功\n", k, finfo.Path)
+			continue
+		}
+
+		if err.GetError() == baidupcs.ErrFixMD5Failed {
+			fmt.Printf("[%d] - [%s] 修复md5失败, 可能是服务器未刷新\n", k, finfo.Path)
+			continue
+		}
+		fmt.Printf("[%d] - [%s] 修复md5失败, 错误信息: %s\n", k, finfo.Path, err)
+	}
+}
+
+func getLocateDownloadLinks(pcspath string) (dlinks []*url.URL, err error) {
 	pcs := GetBaiduPCS()
 	dInfo, pcsError := pcs.LocateDownload(pcspath)
 	if pcsError != nil {
@@ -608,10 +702,35 @@ func getDownloadLinks(pcspath string) (dlinks []*url.URL, err error) {
 
 	us := dInfo.URLStrings(pcsconfig.Config.EnableHTTPS())
 	if len(us) == 0 {
-		return nil, errors.New("未提取到任何链接")
+		return nil, ErrDlinkNotFound
 	}
 
 	return us, nil
+}
+
+func getLocatePanLink(pcs *baidupcs.BaiduPCS, fsID int64) (dlink string, err error) {
+	list, err := pcs.LocatePanAPIDownload(fsID)
+	if err != nil {
+		return
+	}
+
+	var link string
+	for k := range list {
+		if strconv.FormatInt(fsID, 10) == list[k].FsID {
+			link = list[k].Dlink
+		}
+	}
+
+	if link == "" {
+		return "", ErrDlinkNotFound
+	}
+
+	dc := dlinkclient.NewDlinkClient()
+	c := pcsconfig.Config.HTTPClient()
+	c.SetResponseHeaderTimeout(30 * time.Second)
+	dc.SetClient(c)
+	dlink, err = dc.CacheLinkRedirectPr(link)
+	return
 }
 
 func handleHTTPLink(link string) (nlink string) {

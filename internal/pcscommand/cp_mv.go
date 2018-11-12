@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
-	"github.com/iikira/BaiduPCS-Go/pcspath"
 	"path"
+	"strings"
 )
 
 // RunCopy 执行 批量拷贝文件/目录
@@ -27,18 +27,16 @@ func runCpMvOp(op string, paths ...string) {
 
 	froms, to := cpmvParsePath(paths...) // 分割
 
-	froms, err = getAllAbsPaths(froms...)
+	froms, err = matchPathByShellPattern(froms...)
 	if err != nil {
-		fmt.Printf("解析路径出错, %s\n", err)
+		fmt.Println(err)
 		return
 	}
-
-	pcsPath := pcspath.NewPCSPath(&GetActiveUser().Workdir, to)
-	to = pcsPath.AbsPathNoMatch()
+	to = GetActiveUser().PathJoin(to)
 
 	// 尝试匹配
-	if patternRE.MatchString(to) {
-		tos, _ := getAllAbsPaths(to)
+	if strings.ContainsAny(to, baidupcs.ShellPatternCharacters) {
+		tos, _ := matchPathByShellPattern(to)
 
 		switch len(tos) {
 		case 0:
@@ -46,7 +44,7 @@ func runCpMvOp(op string, paths ...string) {
 		case 1:
 			to = tos[0]
 		default:
-			fmt.Printf("目标目录有 %d 条匹配结果, 请检查通配符", len(tos))
+			fmt.Printf("目标目录有 %d 条匹配结果, 请检查通配符\n", len(tos))
 			return
 		}
 	}

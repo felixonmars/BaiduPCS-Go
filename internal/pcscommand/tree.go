@@ -12,20 +12,20 @@ const (
 	lastFilePrefix = "└──"
 )
 
-func getTree(path string, depth int) {
+func getTree(pcspath string, depth int) {
 	var (
 		err   error
 		files baidupcs.FileDirectoryList
 	)
 	if depth == 0 {
-		path, err = getAbsPath(path)
+		err := matchPathByShellPatternOnce(&pcspath)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 	}
 
-	files, err = GetBaiduPCS().FilesDirectoriesList(path, baidupcs.DefaultOrderOptions)
+	files, err = GetBaiduPCS().FilesDirectoriesList(pcspath, baidupcs.DefaultOrderOptions)
 	if err != nil {
 		fmt.Println(err)
 		return

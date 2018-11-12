@@ -38,6 +38,11 @@ type (
 	}
 )
 
+var (
+	// ErrShareLinkNotFound 未找到分享链接
+	ErrShareLinkNotFound = errors.New("未找到分享链接")
+)
+
 // Clean 清理
 func (sri *ShareRecordInfo) Clean() {
 	if sri.Passwd == "0" {
@@ -90,7 +95,7 @@ func (pcs *BaiduPCS) ShareSet(paths []string, option *ShareOption) (s *Shared, p
 
 	if jsonData.Link == "" {
 		errInfo.ErrType = pcserror.ErrTypeOthers
-		errInfo.Err = errors.New("未找到分享链接")
+		errInfo.Err = ErrShareLinkNotFound
 		return nil, errInfo
 	}
 

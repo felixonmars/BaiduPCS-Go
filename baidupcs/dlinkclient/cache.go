@@ -64,13 +64,13 @@ func (dc *DlinkClient) CacheShareList(short, dir string, page int) (fds []*FileD
 	return listValidateItf.(*listValidate).fds, nil
 }
 
-func (dc *DlinkClient) CacheLinkRedirect(link string) (nlink string, dlinkError pcserror.Error) {
+func (dc *DlinkClient) cacheLinkRedirect(op string, link string) (nlink string, dlinkError pcserror.Error) {
 	var (
-		cache                       = dc.cacheMap.LazyInitCachePoolOp(OperationRedirect)
+		cache                       = dc.cacheMap.LazyInitCachePoolOp(op)
 		linkRedirectValidateItf, ok = cache.Load(link)
 	)
 	if !ok {
-		nlink, dlinkError = dc.LinkRedirect(link)
+		nlink, dlinkError = dc.linkRedirect(op, link)
 		if dlinkError != nil {
 			return
 		}
@@ -81,4 +81,11 @@ func (dc *DlinkClient) CacheLinkRedirect(link string) (nlink string, dlinkError 
 		return
 	}
 	return linkRedirectValidateItf.(*linkRedirectValidate).nlink, nil
+}
+
+func (dc *DlinkClient) CacheLinkRedirect(link string) (nlink string, dlinkError pcserror.Error) {
+	return dc.cacheLinkRedirect(OperationRedirect, link)
+}
+func (dc *DlinkClient) CacheLinkRedirectPr(link string) (nlink string, dlinkError pcserror.Error) {
+	return dc.cacheLinkRedirect(OperationRedirectPr, link)
 }

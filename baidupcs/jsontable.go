@@ -1,6 +1,7 @@
 package baidupcs
 
 import (
+	"errors"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
@@ -22,6 +23,16 @@ type (
 		List []*PathJSON `json:"list"`
 	}
 
+	// FsIDJSON 文件或目录ID
+	FsIDJSON struct {
+		FsID int64 `json:"fs_id"` // fs_id
+	}
+
+	// FsIDListJSON fs_id 列表
+	FsIDListJSON struct {
+		List []*FsIDJSON `json:"list"`
+	}
+
 	// CpMvJSON 源文件目录的地址和目标文件目录的地址
 	CpMvJSON struct {
 		From string `json:"from"` // 源文件或目录
@@ -40,6 +51,11 @@ type (
 	BlockListJSON struct {
 		BlockList []string `json:"block_list"`
 	}
+)
+
+var (
+	// ErrNilJSONValue 解析出的json值为空
+	ErrNilJSONValue = errors.New("json value is nil")
 )
 
 // JSON json 数据构造

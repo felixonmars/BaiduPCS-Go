@@ -164,6 +164,8 @@ func findPanErr(errno int) (errmsg string) {
 		return "当前任务不存在，保存失败"
 	case 115:
 		return "该文件禁止分享"
+	case 132:
+		return "您的帐号可能存在安全风险，为了确保为您本人操作，请先进行安全验证。"
 	default:
 		return "未知错误"
 	}

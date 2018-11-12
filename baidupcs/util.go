@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"path"
 	"strings"
 )
@@ -45,6 +46,12 @@ func (pcs *BaiduPCS) checkIsdir(op string, targetPath string) pcserror.Error {
 func mergeStringList(a ...string) string {
 	s := strings.Join(a, `","`)
 	return `["` + s + `"]`
+}
+
+func mergeInt64List(si ...int64) string {
+	i := converter.SliceInt64ToString(si)
+	s := strings.Join(i, ",")
+	return "[" + s + "]"
 }
 
 func allRelatedDir(pcspaths []string) (dirs []string) {

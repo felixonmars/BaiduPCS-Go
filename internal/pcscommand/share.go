@@ -6,17 +6,22 @@ import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/dlinkclient"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
-	ppath "github.com/iikira/BaiduPCS-Go/pcspath"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
+	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"os"
 	"path"
 	"strconv"
 	"strings"
 )
 
+var (
+	// ErrShareInfoNotFound 未在已分享列表中找到分享信息
+	ErrShareInfoNotFound = errors.New("未在已分享列表中找到分享信息")
+)
+
 // RunShareSet 执行分享
 func RunShareSet(paths []string, option *baidupcs.ShareOption) {
-	pcspaths, err := getAllAbsPaths(paths...)
+	pcspaths, err := matchPathByShellPattern(paths...)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -92,44 +97,47 @@ func getShareDLink(pcspath string) (dlink string, err error) {
 			}
 
 			rootSharePath := path.Dir(record.TypicalPath)
+			if rootSharePath == "" { // 分享状态异常
+				continue
+			}
+
 			if len(record.FsIds) == 1 {
 				if strings.HasPrefix(pcspath, record.TypicalPath) {
-					dlink = getLink(record.Shortlink, record.Passwd, ppath.TrimPrefix(pcspath, rootSharePath))
-					if dlink != "" {
-						return
-					}
+					dlink, err = getLink(record.Shortlink, record.Passwd, pcsutil.TrimPathPrefix(pcspath, rootSharePath))
+					return
 				}
 				continue
 			}
 
 			// 尝试获取
 			if strings.HasPrefix(pcspath, rootSharePath) {
-				dlink = getLink(record.Shortlink, record.Passwd, ppath.TrimPrefix(pcspath, rootSharePath))
-				if dlink != "" {
-					return
+				dlink, err = getLink(record.Shortlink, record.Passwd, pcsutil.TrimPathPrefix(pcspath, rootSharePath))
+				if err != nil {
+					continue
 				}
-				continue
+				return
 			}
 		}
 	}
 
-	return "", errors.New("未在已分享列表中找到分享信息")
+	if err != nil {
+		return
+	}
+	return "", ErrShareInfoNotFound
 }
 
-func getLink(shareLink, passwd, filePath string) (dlink string) {
+func getLink(shareLink, passwd, filePath string) (dlink string, err error) {
 	dc := dlinkclient.NewDlinkClient()
 	dc.SetClient(pcsconfig.Config.HTTPClient())
 	short, err := dc.CacheShareReg(shareLink, passwd)
 	if err != nil {
-		pcsCommandVerbose.Warnf("%s\n", err)
 		return
 	}
 
 	for page := 1; ; page++ {
 		list, err := dc.CacheShareList(short, path.Dir(filePath), page)
 		if err != nil {
-			pcsCommandVerbose.Warnf("%s\n", err)
-			return
+			return "", err
 		}
 		if len(list) == 0 {
 			break
@@ -139,9 +147,9 @@ func getLink(shareLink, passwd, filePath string) (dlink string) {
 			if strings.Compare(f.Filename, path.Base(filePath)) == 0 {
 				dlink, err = dc.CacheLinkRedirect(f.Link)
 				if err != nil {
-					pcsCommandVerbose.Warnf("%s\n", err)
+					return "", ErrDlinkNotFound
 				}
-				return
+				return dlink, err
 			}
 		}
 	}

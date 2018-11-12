@@ -42,9 +42,7 @@ func (pcs *BaiduPCS) PrepareUK() (dataReadCloser io.ReadCloser, pcsError pcserro
 	pcsURL := GetHTTPScheme(pcs.isHTTPS) + "://pan.baidu.com/api/user/getinfo?need_selfinfo=1"
 
 	errInfo := pcserror.NewPanErrorInfo(OperationGetUK)
-	resp, err := pcs.client.Req("GET", pcsURL, nil, map[string]string{
-		"User-Agent": NetdiskUA,
-	})
+	resp, err := pcs.client.Req("GET", pcsURL, nil, netdiskUAHeader)
 	if err != nil {
 		handleRespClose(resp)
 		errInfo.SetNetError(err)
@@ -267,14 +265,9 @@ func (pcs *BaiduPCS) PrepareMove(cpmvJSON ...*CpMvJSON) (dataReadCloser io.ReadC
 	return pcs.prepareCpMvOp(OperationMove, cpmvJSON...)
 }
 
-// PrepareRapidUpload 秒传文件, 只返回服务器响应数据和错误信息
-func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+// prepareRapidUpload 秒传文件, 不进行文件夹检查
+func (pcs *BaiduPCS) prepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
 	pcs.lazyInit()
-	pcsError = pcs.checkIsdir(OperationRapidUpload, targetPath)
-	if pcsError != nil {
-		return nil, pcsError
-	}
-
 	pcsURL := pcs.generatePCSURL("file", "rapidupload", map[string]string{
 		"path":           targetPath,                    // 上传文件的全路径名
 		"content-length": strconv.FormatInt(length, 10), // 待秒传的文件长度
@@ -298,22 +291,86 @@ func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 
 	return resp.Body, nil
 }
 
-// PrepareLocateDownload 提取下载链接, 只返回服务器响应数据和错误信息
-func (pcs *BaiduPCS) PrepareLocateDownload(pcspath string) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+// PrepareRapidUpload 秒传文件, 只返回服务器响应数据和错误信息
+func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
 	pcs.lazyInit()
-	pcsURL := pcs.generatePCSURL("file", "locatedownload", map[string]string{
-		"path":         pcspath,
-		"ver":          "2",
-		"vip":          "1",
-		"network_type": "wifi",
-	})
+	pcsError = pcs.checkIsdir(OperationRapidUpload, targetPath)
+	if pcsError != nil {
+		return nil, pcsError
+	}
+
+	return pcs.prepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32, length)
+}
+
+// prepareLocateDownload 获取下载链接, 可指定 User-Agent
+func (pcs *BaiduPCS) prepareLocateDownload(pcspath, userAgent string) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+	pcs.lazyInit()
+	pcsURL := &url.URL{
+		Scheme: GetHTTPScheme(pcs.isHTTPS),
+		Host:   PCSBaiduCom,
+		Path:   "/rest/2.0/pcs/file",
+		RawQuery: (url.Values{
+			"app_id": []string{PanAppID},
+			"method": []string{"locatedownload"},
+			"path":   []string{pcspath},
+			"ver":    []string{"2"},
+		}).Encode(),
+	}
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationLocateDownload, pcsURL)
 
-	resp, err := pcs.client.Req("POST", pcsURL.String(), nil, nil)
+	var header map[string]string
+	if userAgent != "" {
+		header = netdiskUAHeader
+	}
+
+	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, header)
 	if err != nil {
 		handleRespClose(resp)
 		return nil, &pcserror.PCSErrInfo{
 			Operation: OperationLocateDownload,
+			ErrType:   pcserror.ErrTypeNetError,
+			Err:       err,
+		}
+	}
+
+	return resp.Body, nil
+}
+
+// PrepareLocateDownload 获取下载链接, 只返回服务器响应数据和错误信息
+func (pcs *BaiduPCS) PrepareLocateDownload(pcspath string) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+	return pcs.prepareLocateDownload(pcspath, "")
+}
+
+// PrepareLocatePanAPIDownload 从百度网盘首页获取下载链接, 只返回服务器响应数据和错误信息
+func (pcs *BaiduPCS) PrepareLocatePanAPIDownload(fidList ...int64) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+	pcs.lazyInit()
+	// 初始化
+	var (
+		sign, err = pcs.ph.CacheSignature()
+	)
+	if err != nil {
+		return nil, &pcserror.PanErrorInfo{
+			Operation: OperationLocatePanAPIDownload,
+			ErrType:   pcserror.ErrTypeOthers,
+			Err:       err,
+		}
+	}
+
+	panURL := pcs.generatePanURL("download", nil)
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationLocatePanAPIDownload, panURL)
+
+	resp, err := pcs.client.Req("POST", panURL.String(), map[string]string{
+		"sign":      sign.Sign(),
+		"timestamp": sign.Timestamp(),
+		"fidlist":   mergeInt64List(fidList...),
+	}, map[string]string{
+		"Content-Type": "application/x-www-form-urlencoded",
+		"User-Agent":   NetdiskUA,
+	})
+	if err != nil {
+		handleRespClose(resp)
+		return nil, &pcserror.PanErrorInfo{
+			Operation: OperationLocatePanAPIDownload,
 			ErrType:   pcserror.ErrTypeNetError,
 			Err:       err,
 		}
@@ -693,9 +750,109 @@ func (pcs *BaiduPCS) PrepareShareList(page int) (dataReadCloser io.ReadCloser, p
 	errInfo := pcserror.NewPanErrorInfo(OperationShareList)
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationShareList, pcsURL)
 
-	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, map[string]string{
-		"User-Agent": NetdiskUA,
+	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, netdiskUAHeader)
+	if err != nil {
+		handleRespClose(resp)
+		errInfo.SetNetError(err)
+		return nil, errInfo
+	}
+	return resp.Body, nil
+}
+
+// PrepareRecycleList 列出回收站文件列表, 只返回服务器响应数据和错误信息
+func (pcs *BaiduPCS) PrepareRecycleList(page int) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+	pcs.lazyInit()
+
+	panURL := pcs.generatePanURL("recycle/list", map[string]string{
+		"num":  "100",
+		"page": strconv.Itoa(page),
 	})
+
+	errInfo := pcserror.NewPanErrorInfo(OperationRecycleList)
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationRecycleList, panURL)
+
+	resp, err := pcs.client.Req("GET", panURL.String(), nil, netdiskUAHeader)
+	if err != nil {
+		handleRespClose(resp)
+		errInfo.SetNetError(err)
+		return nil, errInfo
+	}
+	return resp.Body, nil
+}
+
+// PrepareRecycleRestore 还原回收站文件或目录, 只返回服务器响应数据和错误信息
+func (pcs *BaiduPCS) PrepareRecycleRestore(fidList ...int64) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+	pcs.lazyInit()
+
+	pcsURL := pcs.generatePCSURL("file", "restore")
+
+	errInfo := pcserror.NewPCSErrorInfo(OperationRecycleRestore)
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationRecycleRestore, pcsURL)
+
+	fsIDList := make([]*FsIDJSON, 0, len(fidList))
+	for k := range fidList {
+		fsIDList = append(fsIDList, &FsIDJSON{
+			FsID: fidList[k],
+		})
+	}
+	fsIDListJSON := FsIDListJSON{
+		List: fsIDList,
+	}
+
+	sendData, err := jsoniter.Marshal(&fsIDListJSON)
+	if err != nil {
+		panic(err)
+	}
+
+	// 表单上传
+	mr := multipartreader.NewMultipartReader()
+	mr.AddFormFeild("param", bytes.NewReader(sendData))
+	mr.CloseMultipart()
+
+	resp, err := pcs.client.Req("POST", pcsURL.String(), mr, nil)
+	if err != nil {
+		handleRespClose(resp)
+		errInfo.SetNetError(err)
+		return nil, errInfo
+	}
+	return resp.Body, nil
+}
+
+// PrepareRecycleDelete 删除回收站文件或目录, 只返回服务器响应数据和错误信息
+func (pcs *BaiduPCS) PrepareRecycleDelete(fidList ...int64) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+	pcs.lazyInit()
+
+	panURL := pcs.generatePanURL("recycle/delete", nil)
+
+	errInfo := pcserror.NewPanErrorInfo(OperationRecycleDelete)
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationRecycleDelete, panURL)
+
+	resp, err := pcs.client.Req("POST", panURL.String(), map[string]string{
+		"fidlist": mergeInt64List(fidList...),
+	}, map[string]string{
+		"Content-Type": "application/x-www-form-urlencoded",
+		"User-Agent":   NetdiskUA,
+	})
+	if err != nil {
+		handleRespClose(resp)
+		errInfo.SetNetError(err)
+		return nil, errInfo
+	}
+	return resp.Body, nil
+}
+
+// PrepareRecycleClear 清空回收站, 只返回服务器响应数据和错误信息
+func (pcs *BaiduPCS) PrepareRecycleClear() (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+	pcs.lazyInit()
+
+	pcsURL := pcs.generatePCSURL("file", "delete", map[string]string{
+		"type": "recycle",
+	})
+
+	errInfo := pcserror.NewPCSErrorInfo(OperationRecycleClear)
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationRecycleClear, pcsURL)
+
+	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, nil)
 	if err != nil {
 		handleRespClose(resp)
 		errInfo.SetNetError(err)

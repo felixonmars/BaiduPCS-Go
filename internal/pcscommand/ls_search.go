@@ -30,32 +30,32 @@ const (
 )
 
 // RunLs 执行列目录
-func RunLs(path string, lsOptions *LsOptions, orderOptions *baidupcs.OrderOptions) {
-	path, err := getAbsPath(path)
+func RunLs(pcspath string, lsOptions *LsOptions, orderOptions *baidupcs.OrderOptions) {
+	err := matchPathByShellPatternOnce(&pcspath)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	files, err := GetBaiduPCS().FilesDirectoriesList(path, orderOptions)
+	files, err := GetBaiduPCS().FilesDirectoriesList(pcspath, orderOptions)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	fmt.Printf("\n当前目录: %s\n----\n", path)
+	fmt.Printf("\n当前目录: %s\n----\n", pcspath)
 
 	if lsOptions == nil {
 		lsOptions = &LsOptions{}
 	}
 
-	renderTable(opLs, lsOptions.Total, path, files)
+	renderTable(opLs, lsOptions.Total, pcspath, files)
 	return
 }
 
 // RunSearch 执行搜索
 func RunSearch(targetPath, keyword string, opt *SearchOptions) {
-	targetPath, err := getAbsPath(targetPath)
+	err := matchPathByShellPatternOnce(&targetPath)
 	if err != nil {
 		fmt.Println(err)
 		return

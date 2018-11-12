@@ -7,16 +7,19 @@ import (
 
 // RunCloudDlAddTask 执行添加离线下载任务
 func RunCloudDlAddTask(sourceURLs []string, savePath string) {
-	var err error
-	savePath, err = getAbsPath(savePath)
+	var (
+		err error
+		pcs = GetBaiduPCS()
+	)
+	err = matchPathByShellPatternOnce(&savePath)
 	if err != nil {
-		fmt.Printf("%s\n", err)
+		fmt.Println(err)
 		return
 	}
 
 	var taskid int64
 	for k := range sourceURLs {
-		taskid, err = GetBaiduPCS().CloudDlAddTask(sourceURLs[k], savePath+"/")
+		taskid, err = pcs.CloudDlAddTask(sourceURLs[k], savePath+"/")
 		if err != nil {
 			fmt.Printf("[%d] %s, 地址: %s\n", k+1, err, sourceURLs[k])
 			continue

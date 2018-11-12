@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"unicode"
 	"unsafe"
 )
 
@@ -127,10 +128,16 @@ func MustInt64(s string) (i int64) {
 
 // ShortDisplay 缩略显示字符串s, 显示长度为num, 缩略的内容用"..."填充
 func ShortDisplay(s string, num int) string {
-	for k := range s {
+	rs := []rune(s)
+	for k := 0; k < len(rs); k++ {
+		if unicode.Is(unicode.C, rs[k]) { // 去除无效字符
+			rs = append(rs[:k], rs[k+1:]...)
+			k--
+			continue
+		}
 		if k >= num {
-			return string(s[:k]) + "..."
+			return string(rs[:k]) + "..."
 		}
 	}
-	return s
+	return string(rs)
 }

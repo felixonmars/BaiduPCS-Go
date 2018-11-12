@@ -1,6 +1,7 @@
 package pcsconfig
 
 import (
+	"github.com/iikira/BaiduPCS-Go/requester"
 	"strings"
 )
 
@@ -149,6 +150,11 @@ func (c *PCSConfig) SetMaxParallel(maxParallel int) {
 	c.maxParallel = maxParallel
 }
 
+// SetMaxUploadParallel 设置上传最大并发量
+func (c *PCSConfig) SetMaxUploadParallel(maxUploadParallel int) {
+	c.maxUploadParallel = maxUploadParallel
+}
+
 // SetMaxDownloadLoad 设置max_download_load, 同时进行下载文件的最大数量
 func (c *PCSConfig) SetMaxDownloadLoad(maxDownloadLoad int) {
 	c.maxDownloadLoad = maxDownloadLoad
@@ -173,4 +179,10 @@ func (c *PCSConfig) SetEnableHTTPS(https bool) {
 	if c.pcs != nil {
 		c.pcs.SetHTTPS(https)
 	}
+}
+
+// SetProxy 设置代理
+func (c *PCSConfig) SetProxy(proxy string) {
+	c.proxy = proxy
+	requester.SetGlobalProxy(proxy)
 }

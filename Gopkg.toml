@@ -39,10 +39,6 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/iikira/args"
-
-[[constraint]]
-  branch = "master"
   name = "github.com/iikira/baidu-tools"
 
 [[constraint]]

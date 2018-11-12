@@ -61,15 +61,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:85fc1fa8627648cbacfe19906175c74e374b6e6ba12e45cdd3daf6b5c2d76a84"
-  name = "github.com/iikira/args"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "9c7ef813cfacd8912dde29967d9e4ffb45ae1495"
-
-[[projects]]
-  branch = "master"
-  digest = "1:91452088a50fc9ebf738e8e507dbd6540565ea682c4c4e0287cdda6ecdc982b5"
+  digest = "1:de85ab79419619af58baebf5b477e4dd471234fc8ad2d6750b9fae27d75eee8e"
   name = "github.com/iikira/baidu-tools"
   packages = [
     ".",
@@ -130,11 +122,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f611266e3ac01ab4adb6f1d67f6c1be82998d02f452faff450596658712d860b"
+  digest = "1:abcdbf03ca6ca13d3697e2186edc1f33863bbdac2b3a44dfa39015e8903f7409"
   name = "github.com/olekukonko/tablewriter"
   packages = ["."]
   pruneopts = "UT"
-  revision = "be2c049b30ccd4d3fd795d6bf7dce74e42eeedaa"
+  revision = "e6d60cf7ba1f42d86d54cdf5508611c4aafb3970"
 
 [[projects]]
   branch = "master"
@@ -168,7 +160,6 @@
     "github.com/fatih/color",
     "github.com/iikira/Baidu-Login",
     "github.com/iikira/Baidu-Login/bdcrypto",
-    "github.com/iikira/args",
     "github.com/iikira/baidu-tools/tieba",
     "github.com/json-iterator/go",
     "github.com/kardianos/osext",

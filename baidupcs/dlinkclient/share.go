@@ -2,7 +2,6 @@ package dlinkclient
 
 import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
-	"net/url"
 	"strconv"
 )
 
@@ -52,6 +51,9 @@ func (dc *DlinkClient) ShareReg(shareURL, passwd string) (short string, dlinkErr
 	)
 
 	resp, err := dc.client.Req("GET", u.String(), nil, nil)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		regStat.SetNetError(err)
 		return "", regStat.DlinkErrInfo
@@ -80,6 +82,9 @@ func (dc *DlinkClient) ShareList(short, dir string, page int) (fds []*FileDirect
 	)
 
 	resp, err := dc.client.Req("GET", u.String(), nil, nil)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		fdList.SetNetError(err)
 		return nil, fdList.DlinkErrInfo
@@ -91,32 +96,4 @@ func (dc *DlinkClient) ShareList(short, dir string, page int) (fds []*FileDirect
 	}
 
 	return fdList.List, nil
-}
-
-func (dc *DlinkClient) LinkRedirect(link string) (nlink string, dlinkError pcserror.Error) {
-	dc.lazyInit()
-
-	var (
-		u           = dc.genCgiBinURL("redirect", nil)
-		redirectRes = RedirectRes{
-			DlinkErrInfo: pcserror.NewDlinkErrInfo(OperationRedirect),
-		}
-		uv = url.Values{}
-	)
-	uv.Set("link", link)
-
-	resp, err := dc.client.Req("POST", u.String(), uv.Encode(), map[string]string{
-		"Content-Type": "application/x-www-form-urlencoded",
-	})
-	if err != nil {
-		redirectRes.SetNetError(err)
-		return "", redirectRes.DlinkErrInfo
-	}
-
-	dlinkError = handleJSONParse(OperationRedirect, resp.Body, &redirectRes)
-	if dlinkError != nil {
-		return
-	}
-
-	return redirectRes.Link, nil
 }

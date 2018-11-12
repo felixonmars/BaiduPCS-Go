@@ -9,7 +9,6 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
-	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"github.com/json-iterator/go"
@@ -39,8 +38,7 @@ func CheckUpdate(version string, yes bool) {
 		return
 	}
 	fmt.Println("检测更新中, 稍候...")
-	c := requester.NewHTTPClient()
-	c.SetHTTPSecure(pcsconfig.Config.EnableHTTPS())
+	c := pcsconfig.Config.HTTPClient()
 	resp, err := c.Req("GET", "https://api.github.com/repos/iikira/BaiduPCS-Go/releases/latest", nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -171,7 +169,6 @@ func CheckUpdate(version string, yes bool) {
 		CacheSize:   10000,
 	})
 	der.SetClient(c)
-	der.SetFirstCheckMethod("GET")
 
 	exitChan := make(chan struct{})
 	der.OnExecute(func() {

@@ -27,6 +27,7 @@ type (
 		referer         string //来源地址
 		acceptRanges    string
 		client          *requester.HTTPClient
+		firstResp       *http.Response // 第一个响应
 		writerAt        io.WriterAt
 		writeMu         *sync.Mutex
 		execMu          sync.Mutex
@@ -272,9 +273,16 @@ func (wer *Worker) Execute() {
 	wer.status.statusCode = StatusCodePending
 
 	var resp *http.Response
-	resp, wer.err = wer.client.Req("GET", wer.url, nil, header)
+	if wer.firstResp != nil {
+		resp = wer.firstResp // 使用第一个连接
+	} else {
+		resp, wer.err = wer.client.Req("GET", wer.url, nil, header)
+	}
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() {
+			resp.Body.Close()
+			wer.firstResp = nil // 去掉第一个连接
+		}()
 		wer.readRespBodyCancelFunc = func() {
 			resp.Body.Close()
 		}
@@ -290,7 +298,7 @@ func (wer *Worker) Execute() {
 	)
 
 	if !single {
-		if contentLength != rangeLength {
+		if contentLength != rangeLength && wer.firstResp == nil { // 跳过检查第一个连接
 			wer.status.statusCode = StatusCodeNetError
 			wer.err = fmt.Errorf("Content-Length is unexpected: %d, need %d", contentLength, rangeLength)
 			return
@@ -329,7 +337,7 @@ func (wer *Worker) Execute() {
 
 	wer.updateSpeeds(speedsCtx)
 	defer func() {
-		speedsCancelFunc()
+		speedsCancelFunc() // 结束速度统计
 		cache.Free()
 	}()
 
