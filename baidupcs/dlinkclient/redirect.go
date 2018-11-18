@@ -38,7 +38,7 @@ func (dc *DlinkClient) linkRedirect(op, link string) (nlink string, dlinkError p
 		return "", redirectRes.DlinkErrInfo
 	}
 
-	dlinkError = handleJSONParse(op, resp.Body, &redirectRes)
+	dlinkError = pcserror.HandleJSONParse(op, resp.Body, &redirectRes)
 	if dlinkError != nil {
 		return
 	}

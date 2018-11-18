@@ -82,6 +82,8 @@ const (
 	// OperationRecycleClear 清空回收站
 	OperationRecycleClear = "清空回收站"
 
+	// OperationGetRapidUploadInfo 获取文件秒传信息
+	OperationGetRapidUploadInfo = "获取文件秒传信息"
 	// OperationFixMD5 修复文件md5
 	OperationFixMD5 = "修复文件md5"
 	// OperrationMatchPathByShellPattern 通配符匹配文件路径
@@ -91,6 +93,8 @@ const (
 	PCSBaiduCom = "pcs.baidu.com"
 	// PanBaiduCom 网盘首页api地址
 	PanBaiduCom = "pan.baidu.com"
+	// YunBaiduCom 网盘首页api地址2
+	YunBaiduCom = "yun.baidu.com"
 	// PanAppID 百度网盘appid
 	PanAppID = "250528"
 	// NetdiskUA 网盘客户端ua
@@ -303,7 +307,7 @@ func (pcs *BaiduPCS) UK() (uk int64, pcsError pcserror.Error) {
 		PanErrorInfo: errInfo,
 	}
 
-	pcsError = handleJSONParse(OperationGetUK, dataReadCloser, &jsonData)
+	pcsError = pcserror.HandleJSONParse(OperationGetUK, dataReadCloser, &jsonData)
 	if pcsError != nil {
 		return
 	}

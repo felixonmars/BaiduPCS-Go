@@ -1,6 +1,7 @@
 package uploader
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -28,13 +29,18 @@ type (
 		readerAt  io.ReaderAt
 		mu        sync.Mutex
 	}
+
+	bufioFileBlock struct {
+		*fileBlock
+		bufio *bufio.Reader
+	}
 )
 
 // SplitBlock 文件分块
 func SplitBlock(fileSize, blockSize int64) (blockList []*BlockState) {
 	blocksNum := int(fileSize / blockSize)
 	if fileSize%blockSize != 0 {
-		blocksNum += 1
+		blocksNum++
 	}
 
 	blockList = make([]*BlockState, 0, blocksNum)
@@ -72,6 +78,22 @@ func NewSplitUnit(readerAt io.ReaderAt, readRange ReadRange) SplitUnit {
 		readerAt:  readerAt,
 		readRange: readRange,
 	}
+}
+
+// NewBufioSplitUnit io.ReaderAt实现SplitUnit接口
+func NewBufioSplitUnit(readerAt io.ReaderAt, readRange ReadRange) SplitUnit {
+	su := &fileBlock{
+		readerAt:  readerAt,
+		readRange: readRange,
+	}
+	return &bufioFileBlock{
+		fileBlock: su,
+		bufio:     bufio.NewReaderSize(su, BufioReadSize),
+	}
+}
+
+func (bfb *bufioFileBlock) Read(b []byte) (n int, err error) {
+	return bfb.bufio.Read(b)
 }
 
 func (fb *fileBlock) Read(b []byte) (n int, err error) {

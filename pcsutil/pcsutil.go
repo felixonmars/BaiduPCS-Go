@@ -36,7 +36,7 @@ func TrimPathPrefix(path, prefixPath string) string {
 // ContainsString 检测字符串是否在字符串数组里
 func ContainsString(ss []string, s string) bool {
 	for k := range ss {
-		if strings.Compare(ss[k], s) == 0 {
+		if ss[k] == s {
 			return true
 		}
 	}

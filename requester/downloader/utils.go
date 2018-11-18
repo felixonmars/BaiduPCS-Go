@@ -7,7 +7,14 @@ import (
 	"mime"
 	"net/url"
 	"path"
+	"regexp"
+	"strconv"
 	"time"
+)
+
+var (
+	// ContentRangeRE Content-Range 正则
+	ContentRangeRE = regexp.MustCompile(`^.*? \d*?-\d*?/(\d*?)$`)
 )
 
 // RandomNumber 生成指定区间随机数
@@ -50,6 +57,20 @@ func GetFileName(uri string, client *requester.HTTPClient) (filename string, err
 	}
 
 	return
+}
+
+// ParseContentRange 解析Content-Range
+func ParseContentRange(contentRange string) (contentLength int64) {
+	raw := ContentRangeRE.FindStringSubmatch(contentRange)
+	if len(raw) < 2 {
+		return -1
+	}
+
+	c, err := strconv.ParseInt(raw[1], 10, 64)
+	if err != nil {
+		return -1
+	}
+	return c
 }
 
 func fixCacheSize(size *int) {

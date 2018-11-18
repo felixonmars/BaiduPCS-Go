@@ -2,11 +2,9 @@ package baidupcs
 
 import (
 	"errors"
-	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/json-iterator/go"
-	"io"
 	"path"
 	"strconv"
 	"strings"
@@ -113,29 +111,4 @@ func (cjl *CpMvJSONList) AllRelatedDir() (dirs []string) {
 		}
 	}
 	return
-}
-
-func handleJSONParse(op string, data io.Reader, info interface{}) (pcsError pcserror.Error) {
-	var (
-		d       = jsoniter.NewDecoder(data)
-		err     = d.Decode(info)
-		errInfo = info.(pcserror.Error)
-	)
-
-	if errInfo == nil {
-		errInfo = pcserror.NewPCSErrorInfo(op)
-	}
-
-	if err != nil {
-		errInfo.SetJSONError(err)
-		return errInfo
-	}
-
-	// 设置出错类型为远程错误
-	if errInfo.GetRemoteErrCode() != 0 {
-		errInfo.SetRemoteError()
-		return errInfo
-	}
-
-	return nil
 }

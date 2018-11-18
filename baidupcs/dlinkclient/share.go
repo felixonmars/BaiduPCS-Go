@@ -37,13 +37,13 @@ type (
 )
 
 // ShareReg reg
-func (dc *DlinkClient) ShareReg(shareURL, passwd string) (short string, dlinkError pcserror.Error) {
+func (dc *DlinkClient) ShareReg(shareLink, pwd string) (short string, dlinkError pcserror.Error) {
 	dc.lazyInit()
 
 	var (
 		u = dc.genShareURL("reg", map[string]string{
-			"share_url": shareURL,
-			"passwd":    passwd,
+			"share_link": shareLink,
+			"pwd":        pwd,
 		})
 		regStat = RegStat{
 			DlinkErrInfo: pcserror.NewDlinkErrInfo(OperationReg),
@@ -59,7 +59,7 @@ func (dc *DlinkClient) ShareReg(shareURL, passwd string) (short string, dlinkErr
 		return "", regStat.DlinkErrInfo
 	}
 
-	dlinkError = handleJSONParse(OperationReg, resp.Body, &regStat)
+	dlinkError = pcserror.HandleJSONParse(OperationReg, resp.Body, &regStat)
 	if dlinkError != nil {
 		return
 	}
@@ -90,7 +90,7 @@ func (dc *DlinkClient) ShareList(short, dir string, page int) (fds []*FileDirect
 		return nil, fdList.DlinkErrInfo
 	}
 
-	dlinkError = handleJSONParse(OperationList, resp.Body, &fdList)
+	dlinkError = pcserror.HandleJSONParse(OperationList, resp.Body, &fdList)
 	if dlinkError != nil {
 		return
 	}

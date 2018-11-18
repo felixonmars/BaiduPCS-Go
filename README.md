@@ -450,9 +450,6 @@ BaiduPCS-Go ru -length=<文件的大小> -md5=<文件的md5值> -slicemd5=<文�
 ```
 # 如果秒传成功, 则保存到网盘路径 /test
 BaiduPCS-Go rapidupload -length=56276137 -md5=fbe082d80e90f90f0fb1f94adbbcfa7f -slicemd5=38c6a75b0ec4499271d4ea38a667ab61 -crc32=314332359 /test
-
-# 精简一下, 如果秒传成功, 则保存到网盘路径 /test
-BaiduPCS-Go rapidupload -length=56276137 -md5=fbe082d80e90f90f0fb1f94adbbcfa7f /test
 ```
 
 

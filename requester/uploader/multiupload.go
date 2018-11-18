@@ -6,6 +6,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
+	"sync"
 	"time"
 )
 
@@ -37,6 +38,7 @@ type (
 		executed                bool
 		finished                chan struct{}
 		canceled                chan struct{}
+		closeCanceledOnce       sync.Once
 		updateInstanceStateChan chan struct{}
 	}
 )

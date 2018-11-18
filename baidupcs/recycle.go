@@ -57,7 +57,7 @@ func (pcs *BaiduPCS) RecycleList(page int) (fdl RecycleFDInfoList, panError pcse
 		PanErrorInfo: errInfo,
 	}
 
-	panError = handleJSONParse(OperationRecycleList, dataReadCloser, &jsonData)
+	panError = pcserror.HandleJSONParse(OperationRecycleList, dataReadCloser, &jsonData)
 	if panError != nil {
 		return
 	}
@@ -79,7 +79,7 @@ func (pcs *BaiduPCS) RecycleRestore(fidList ...int64) (sussFsIDList []*FsIDJSON,
 		PCSErrInfo: errInfo,
 	}
 
-	pcsError = handleJSONParse(OperationRecycleRestore, dataReadCloser, &jsonData)
+	pcsError = pcserror.HandleJSONParse(OperationRecycleRestore, dataReadCloser, &jsonData)
 	return jsonData.Extra.List, pcsError
 }
 
@@ -110,6 +110,6 @@ func (pcs *BaiduPCS) RecycleClear() (sussNum int, pcsError pcserror.Error) {
 		PCSErrInfo: errInfo,
 	}
 
-	pcsError = handleJSONParse(OperationRecycleClear, dataReadCloser, &jsonData)
+	pcsError = pcserror.HandleJSONParse(OperationRecycleClear, dataReadCloser, &jsonData)
 	return jsonData.Extra.SussNum, pcsError
 }

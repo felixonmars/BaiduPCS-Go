@@ -1163,13 +1163,12 @@ func main() {
 			Category: "百度网盘",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
-				if c.NArg() <= 1 {
+				if c.NArg() < 2 {
 					cli.ShowCommandHelp(c, c.Command.Name)
 					return nil
 				}
 
 				subArgs := c.Args()
-
 				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1], &pcscommand.UploadOptions{
 					Parallel:       c.Int("p"),
 					MaxRetry:       c.Int("retry"),
@@ -1245,14 +1244,11 @@ func main() {
 
 	1. 如果秒传成功, 则保存到网盘路径 /test
 	BaiduPCS-Go rapidupload -length=56276137 -md5=fbe082d80e90f90f0fb1f94adbbcfa7f -slicemd5=38c6a75b0ec4499271d4ea38a667ab61 -crc32=314332359 /test
-
-	2. 精简一下, 如果秒传成功, 则保存到网盘路径 /test
-	BaiduPCS-Go rapidupload -length=56276137 -md5=fbe082d80e90f90f0fb1f94adbbcfa7f /test
 `,
 			Category: "百度网盘",
 			Before:   reloadFn,
 			Action: func(c *cli.Context) error {
-				if c.NArg() <= 0 || !c.IsSet("md5") || !c.IsSet("length") {
+				if c.NArg() <= 0 || !c.IsSet("md5") || !c.IsSet("length") || !c.IsSet("slicemd5") {
 					cli.ShowCommandHelp(c, c.Command.Name)
 					return nil
 				}
@@ -1267,7 +1263,7 @@ func main() {
 				},
 				cli.StringFlag{
 					Name:  "slicemd5",
-					Usage: "文件前 256KB 切片的 md5 值 (可选)",
+					Usage: "文件前 256KB 切片的 md5 值",
 				},
 				cli.StringFlag{
 					Name:  "crc32",
@@ -1387,8 +1383,7 @@ func main() {
 						[]string{"md5", strMd5},
 						[]string{"前256KB切片的md5", strSliceMd5},
 						[]string{"crc32", strCrc32},
-						[]string{"秒传命令 (完整)", app.Name + " rapidupload -length=" + strLength + " -md5=" + strMd5 + " -slicemd5=" + strSliceMd5 + " -crc32=" + strCrc32 + " " + fileName},
-						[]string{"秒传命令 (精简)", app.Name + " ru -length=" + strLength + " -md5=" + strMd5 + " " + fileName},
+						[]string{"秒传命令", app.Name + " rapidupload -length=" + strLength + " -md5=" + strMd5 + " -slicemd5=" + strSliceMd5 + " -crc32=" + strCrc32 + " " + fileName},
 					})
 					tb.Render()
 					fmt.Printf("\n")
@@ -1488,13 +1483,31 @@ func main() {
 					pcspaths = []string{"."}
 				}
 
-				pcscommand.RunExport(pcspaths, c.String("root"))
+				pcscommand.RunExport(pcspaths, &pcscommand.ExportOptions{
+					RootPath:  c.String("root"),
+					SavePath:  c.String("out"),
+					MaxRerty:  c.Int("retry"),
+					Recursive: c.Bool("r"),
+				})
 				return nil
 			},
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "root",
 					Usage: "设置要导出文件或目录的根路径, 可以是相对路径",
+				},
+				cli.StringFlag{
+					Name:  "out",
+					Usage: "导出文件信息的保存路径",
+				},
+				cli.IntFlag{
+					Name:  "retry",
+					Usage: "导出失败的重试次数",
+					Value: 3,
+				},
+				cli.BoolFlag{
+					Name:  "r",
+					Usage: "递归导出",
 				},
 			},
 		},
@@ -1780,6 +1793,9 @@ func main() {
 						if c.IsSet("proxy") {
 							pcsconfig.Config.SetProxy(c.String("proxy"))
 						}
+						if c.IsSet("local_addrs") {
+							pcsconfig.Config.SetLocalAddrs(c.String("local_addrs"))
+						}
 
 						err := pcsconfig.Config.Save()
 						if err != nil {
@@ -1828,6 +1844,10 @@ func main() {
 						cli.StringFlag{
 							Name:  "proxy",
 							Usage: "设置代理, 支持 http/socks5 代理",
+						},
+						cli.StringFlag{
+							Name:  "local_addrs",
+							Usage: "设置本地网卡地址, 多个地址用逗号隔开",
 						},
 					},
 				},

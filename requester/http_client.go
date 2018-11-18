@@ -24,6 +24,7 @@ func NewHTTPClient() *HTTPClient {
 		},
 		UserAgent: UserAgent,
 	}
+	h.Client.Jar, _ = cookiejar.New(nil)
 	return h
 }
 
@@ -47,9 +48,6 @@ func (h *HTTPClient) lazyInit() {
 		}
 		h.Client.Transport = h.transport
 	}
-	if h.Client.Jar == nil {
-		h.Client.Jar, _ = cookiejar.New(nil)
-	}
 }
 
 // SetUserAgent 设置 UserAgent 浏览器标识
@@ -71,11 +69,6 @@ func (h *HTTPClient) SetProxy(proxyAddr string) {
 
 // SetCookiejar 设置 cookie
 func (h *HTTPClient) SetCookiejar(jar http.CookieJar) {
-	if jar == nil {
-		h.ResetCookiejar()
-		return
-	}
-
 	h.Client.Jar = jar
 }
 

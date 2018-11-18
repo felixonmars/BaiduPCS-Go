@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+const (
+	// BufioReadSize bufio 缓冲区大小, 用于上传时读取文件
+	BufioReadSize = 64 * 1024 // 64KB
+)
+
 type (
 	//CheckFunc 上传完成的检测函数
 	CheckFunc func(resp *http.Response, uploadErr error)

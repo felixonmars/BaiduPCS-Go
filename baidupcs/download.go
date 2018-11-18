@@ -1,9 +1,15 @@
 package baidupcs
 
 import (
+	"errors"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"net/http"
 	"net/url"
+)
+
+var (
+	// ErrLocateDownloadURLNotFound 未找到下载链接
+	ErrLocateDownloadURLNotFound = errors.New("locatedownload url not found")
 )
 
 type (
@@ -71,6 +77,20 @@ func (ui *URLInfo) SingleURL(https bool) *url.URL {
 	return u
 }
 
+// LastURL 返回最后一条下载链接
+func (ui *URLInfo) LastURL(https bool) *url.URL {
+	if len(ui.URLs) < 1 {
+		return nil
+	}
+
+	u, err := url.Parse(ui.URLs[len(ui.URLs)-1].URL)
+	if err != nil {
+		return nil
+	}
+	u.Scheme = GetHTTPScheme(https)
+	return u
+}
+
 // DownloadFile 下载单个文件
 func (pcs *BaiduPCS) DownloadFile(path string, downloadFunc DownloadFunc) (err error) {
 	pcs.lazyInit()
@@ -108,7 +128,7 @@ func (pcs *BaiduPCS) LocateDownloadWithUserAgent(pcspath, ua string) (info *URLI
 		PCSErrInfo: errInfo,
 	}
 
-	pcsError = handleJSONParse(OperationLocateDownload, dataReadCloser, &jsonData)
+	pcsError = pcserror.HandleJSONParse(OperationLocateDownload, dataReadCloser, &jsonData)
 	if pcsError != nil {
 		return
 	}
@@ -134,7 +154,7 @@ func (pcs *BaiduPCS) LocatePanAPIDownload(fidList ...int64) (dlinkInfoList APIDo
 	jsonData := panAPIDownloadJSON{
 		PanErrorInfo: pcserror.NewPanErrorInfo(OperationLocatePanAPIDownload),
 	}
-	pcsError = handleJSONParse(OperationLocatePanAPIDownload, dataReadCloser, &jsonData)
+	pcsError = pcserror.HandleJSONParse(OperationLocatePanAPIDownload, dataReadCloser, &jsonData)
 	if pcsError != nil {
 		if pcsError.GetErrType() == pcserror.ErrTypeRemoteError {
 			switch pcsError.GetRemoteErrCode() {

@@ -11,7 +11,7 @@ import (
 
 // Isdir 检查路径在网盘中是否为目录
 func (pcs *BaiduPCS) Isdir(pcspath string) (isdir bool, pcsError pcserror.Error) {
-	if path.Clean(pcspath) == "/" {
+	if path.Clean(pcspath) == PathSeparator {
 		return true, nil
 	}
 
@@ -70,12 +70,4 @@ func GetHTTPScheme(https bool) (scheme string) {
 		return "https"
 	}
 	return "http"
-}
-
-// FixSliceMD5 修复slicemd5为合法的md5
-func FixSliceMD5(slicemd5 string) string {
-	if len(slicemd5) != 32 {
-		return DefaultSliceMD5
-	}
-	return slicemd5
 }

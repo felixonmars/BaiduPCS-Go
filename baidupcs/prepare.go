@@ -25,9 +25,8 @@ func handleRespClose(resp *http.Response) error {
 func handleRespStatusError(opreation string, resp *http.Response) pcserror.Error {
 	errInfo := pcserror.NewPCSErrorInfo(opreation)
 	// http 响应错误处理
-	switch resp.StatusCode {
-	case 413: // Request Entity Too Large
-		// 上传的文件太大了
+	switch resp.StatusCode / 100 {
+	case 4, 5:
 		resp.Body.Close()
 		errInfo.SetNetError(fmt.Errorf("http 响应错误, %s", resp.Status))
 		return errInfo
@@ -106,7 +105,7 @@ func (pcs *BaiduPCS) PrepareFilesDirectoriesList(path string, options *OrderOpti
 		options = DefaultOrderOptions
 	}
 	if path == "" {
-		path = "/"
+		path = PathSeparator
 	}
 
 	pcsURL := pcs.generatePCSURL("file", "list", map[string]string{
@@ -278,7 +277,7 @@ func (pcs *BaiduPCS) prepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 
 	})
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationRapidUpload, pcsURL)
 
-	resp, err := pcs.client.Req("POST", pcsURL.String(), nil, nil)
+	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, nil)
 	if err != nil {
 		handleRespClose(resp)
 		return nil, &pcserror.PCSErrInfo{
@@ -440,11 +439,6 @@ func (pcs *BaiduPCS) PrepareUploadTmpFile(uploadFunc UploadFunc) (dataReadCloser
 // PrepareUploadCreateSuperFile 分片上传—合并分片文件, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(targetPath string, blockList ...string) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
 	pcs.lazyInit()
-	pcsError = pcs.checkIsdir(OperationUploadCreateSuperFile, targetPath)
-	if pcsError != nil {
-		return nil, pcsError
-	}
-
 	bl := BlockListJSON{
 		BlockList: blockList,
 	}
@@ -456,7 +450,7 @@ func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(targetPath string, blockList .
 
 	pcsURL := pcs.generatePCSURL("file", "createsuperfile", map[string]string{
 		"path":  targetPath,
-		"ondup": "overwrite",
+		"ondup": "newcopy",
 	})
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationUploadCreateSuperFile, pcsURL)
 

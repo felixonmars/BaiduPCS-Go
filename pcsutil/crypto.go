@@ -157,7 +157,7 @@ func DecryptFile(method string, key []byte, filePath string, isGzip bool) (decry
 		os.Remove(filePath)
 	}
 
-	if strings.Compare(filePath, decryptedFilePath) != 0 {
+	if filePath != decryptedFilePath {
 		os.Rename(decryptedTmpFilePath, decryptedFilePath)
 	} else {
 		decryptedFilePath = decryptedTmpFilePath

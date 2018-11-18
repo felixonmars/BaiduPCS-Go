@@ -4,10 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/baidupcs/dlinkclient"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"os"
 	"path"
 	"strconv"
@@ -70,11 +68,12 @@ func RunShareList(page int) {
 			continue
 		}
 
-		tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(record.ShareID, 10), record.Shortlink, record.Passwd, strings.TrimSuffix(record.TypicalPath[:strings.LastIndex(record.TypicalPath, "/")+1], "/"), record.TypicalPath})
+		tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(record.ShareID, 10), record.Shortlink, record.Passwd, path.Clean(path.Dir(record.TypicalPath)), record.TypicalPath})
 	}
 	tb.Render()
 }
 
+// getShareDLink pcspath 为文件的路径, 不是目录
 func getShareDLink(pcspath string) (dlink string, err error) {
 	var (
 		pcs = GetBaiduPCS()
@@ -96,22 +95,36 @@ func getShareDLink(pcspath string) (dlink string, err error) {
 				continue
 			}
 
-			rootSharePath := path.Dir(record.TypicalPath)
+			if record.TypicalPath == baidupcs.PathSeparator { //TypicalPath为根目录
+				continue
+			}
+
+			rootSharePath, _ := path.Split(record.TypicalPath)
 			if rootSharePath == "" { // 分享状态异常
 				continue
 			}
 
+			// 粗略搜索
 			if len(record.FsIds) == 1 {
-				if strings.HasPrefix(pcspath, record.TypicalPath) {
-					dlink, err = getLink(record.Shortlink, record.Passwd, pcsutil.TrimPathPrefix(pcspath, rootSharePath))
-					return
+				switch record.TypicalCategory {
+				case -1: // 文件夹
+					if strings.HasPrefix(pcspath, record.TypicalPath+baidupcs.PathSeparator) {
+						dlink, err = getLink(record.Shortlink, record.Passwd, pcspath, true)
+						return
+					}
+				default: // 文件
+					if pcspath == record.TypicalPath {
+						dlink, err = getLink(record.Shortlink, record.Passwd, pcspath, false)
+						return
+					}
 				}
+
 				continue
 			}
 
 			// 尝试获取
 			if strings.HasPrefix(pcspath, rootSharePath) {
-				dlink, err = getLink(record.Shortlink, record.Passwd, pcsutil.TrimPathPrefix(pcspath, rootSharePath))
+				dlink, err = getLink(record.Shortlink, record.Passwd, pcspath, false)
 				if err != nil {
 					continue
 				}
@@ -126,26 +139,33 @@ func getShareDLink(pcspath string) (dlink string, err error) {
 	return "", ErrShareInfoNotFound
 }
 
-func getLink(shareLink, passwd, filePath string) (dlink string, err error) {
-	dc := dlinkclient.NewDlinkClient()
-	dc.SetClient(pcsconfig.Config.HTTPClient())
+func getLink(shareLink, passwd, filePath string, skipRoot bool) (dlink string, err error) {
+	dc := pcsconfig.Config.DlinkClient()
 	short, err := dc.CacheShareReg(shareLink, passwd)
 	if err != nil {
 		return
 	}
 
-	for page := 1; ; page++ {
-		list, err := dc.CacheShareList(short, path.Dir(filePath), page)
+	var dir string
+	if skipRoot {
+		dir = path.Dir(filePath)
+	} else {
+		rfl, err := dc.CacheShareList(short, baidupcs.PathSeparator, 1)
 		if err != nil {
 			return "", err
 		}
-		if len(list) == 0 {
-			break
-		}
 
-		for _, f := range list {
-			if strings.Compare(f.Filename, path.Base(filePath)) == 0 {
-				dlink, err = dc.CacheLinkRedirect(f.Link)
+		for _, rf := range rfl {
+			if rf.Isdir == 1 {
+				if strings.HasPrefix(filePath, rf.Path+baidupcs.PathSeparator) {
+					dir = path.Dir(filePath)
+					break
+				}
+				continue
+			}
+
+			if rf.Path == filePath {
+				dlink, err = dc.LinkRedirect(rf.Link)
 				if err != nil {
 					return "", ErrDlinkNotFound
 				}
@@ -154,5 +174,32 @@ func getLink(shareLink, passwd, filePath string) (dlink string, err error) {
 		}
 	}
 
-	return
+	if dir == "" {
+		return "", ErrDlinkNotFound
+	}
+
+	for page := 1; ; page++ {
+		list, err := dc.CacheShareList(short, dir, page)
+		if err != nil {
+			return "", err
+		}
+		if len(list) == 0 {
+			break
+		}
+
+		for _, f := range list {
+			if f.Path == filePath {
+				dlink, err = dc.CacheLinkRedirect(f.Link)
+				if err != nil {
+					return "", ErrDlinkNotFound
+				}
+				return dlink, err
+			}
+		}
+		if len(list) < 100 {
+			break
+		}
+	}
+
+	return "", ErrDlinkNotFound
 }

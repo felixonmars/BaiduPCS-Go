@@ -20,11 +20,12 @@ type (
 
 	// ShareRecordInfo 分享信息
 	ShareRecordInfo struct {
-		ShareID     int64    `json:"shareId"`
-		FsIds       []string `json:"fsIds"`
-		Passwd      string   `json:"passwd"`
-		Shortlink   string   `json:"shortlink"`
-		TypicalPath string   `json:"typicalPath"`
+		ShareID         int64    `json:"shareId"`
+		FsIds           []string `json:"fsIds"`
+		Passwd          string   `json:"passwd"`
+		Shortlink       string   `json:"shortlink"`
+		TypicalCategory int      `json:"typicalCategory"`
+		TypicalPath     string   `json:"typicalPath"`
 	}
 
 	sharePSetJSON struct {
@@ -88,7 +89,7 @@ func (pcs *BaiduPCS) ShareSet(paths []string, option *ShareOption) (s *Shared, p
 		PanErrorInfo: errInfo,
 	}
 
-	pcsError = handleJSONParse(OperationShareSet, dataReadCloser, &jsonData)
+	pcsError = pcserror.HandleJSONParse(OperationShareSet, dataReadCloser, &jsonData)
 	if pcsError != nil {
 		return
 	}
@@ -130,7 +131,7 @@ func (pcs *BaiduPCS) ShareList(page int) (records ShareRecordInfoList, pcsError 
 		PanErrorInfo: errInfo,
 	}
 
-	pcsError = handleJSONParse(OperationShareList, dataReadCloser, &jsonData)
+	pcsError = pcserror.HandleJSONParse(OperationShareList, dataReadCloser, &jsonData)
 	if pcsError != nil {
 		return
 	}

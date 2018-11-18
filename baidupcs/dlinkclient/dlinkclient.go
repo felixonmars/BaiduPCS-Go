@@ -40,7 +40,7 @@ func (dc *DlinkClient) genShareURL(method string, param map[string]string) *url.
 	dlinkURL := url.URL{
 		Scheme: "https",
 		Host:   DlinkHost,
-		Path:   "/api/v1/pan/share/" + method,
+		Path:   "/api/v1.1/pan/share/" + method,
 	}
 
 	if param != nil {

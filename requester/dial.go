@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	mathrand "math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -12,11 +13,7 @@ import (
 )
 
 var (
-	dialer = &net.Dialer{
-		Timeout:   30 * time.Second,
-		KeepAlive: 30 * time.Second,
-		DualStack: true,
-	}
+	localTCPAddrList = []*net.TCPAddr{}
 
 	// ProxyAddr 代理地址
 	ProxyAddr string
@@ -25,6 +22,22 @@ var (
 	ErrProxyAddrEmpty = errors.New("proxy addr is empty")
 )
 
+// SetLocalTCPAddrList 设置网卡地址
+func SetLocalTCPAddrList(ips ...string) {
+	list := make([]*net.TCPAddr, 0, len(ips))
+	for k := range ips {
+		p := net.ParseIP(ips[k])
+		if p == nil {
+			continue
+		}
+
+		list = append(list, &net.TCPAddr{
+			IP: p,
+		})
+	}
+	localTCPAddrList = list
+}
+
 func proxyFunc(req *http.Request) (*url.URL, error) {
 	u, err := checkProxyAddr(ProxyAddr)
 	if err != nil {
@@ -32,6 +45,23 @@ func proxyFunc(req *http.Request) (*url.URL, error) {
 	}
 
 	return u, err
+}
+
+func getLocalTCPAddr() *net.TCPAddr {
+	if len(localTCPAddrList) == 0 {
+		return nil
+	}
+	i := mathrand.Intn(len(localTCPAddrList))
+	return localTCPAddrList[i]
+}
+
+func getDialer() *net.Dialer {
+	return &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+		LocalAddr: getLocalTCPAddr(),
+		DualStack: true,
+	}
 }
 
 func checkProxyAddr(proxyAddr string) (u *url.URL, err error) {
@@ -100,7 +130,7 @@ func dialContext(ctx context.Context, network, address string) (conn net.Conn, e
 
 		// 检测缓存
 		if ta != nil {
-			return net.DialTCP(network, nil, ta)
+			return net.DialTCP(network, getLocalTCPAddr(), ta)
 		}
 
 		// Resolve TCP address
@@ -112,11 +142,11 @@ func dialContext(ctx context.Context, network, address string) (conn net.Conn, e
 
 		// 加入缓存
 		TCPAddrCache.Set(address, ta)
-		return net.DialTCP(network, nil, ta)
+		return net.DialTCP(network, getLocalTCPAddr(), ta)
 	}
 
 	// 非 tcp 请求
-	conn, err = dialer.DialContext(ctx, network, address)
+	conn, err = getDialer().DialContext(ctx, network, address)
 	return
 }
 

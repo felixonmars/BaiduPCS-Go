@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/baidupcs/dlinkclient"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions/pcsdownload"
@@ -234,7 +233,7 @@ func checkFileValid(filePath string, fileInfo *baidupcs.FileDirectory) error {
 	f.Md5Sum()
 	md5Str := hex.EncodeToString(f.MD5)
 
-	if strings.Compare(md5Str, fileInfo.MD5) != 0 {
+	if md5Str != fileInfo.MD5 { // md5不一致
 		// 检测是否为违规文件
 		if pcsdownload.IsSkipMd5Checksum(f.Length, md5Str) {
 			return ErrDownloadFileBanned
@@ -355,7 +354,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 			switch {
 			case err == ErrDownloadNotSupportChecksum:
 				fallthrough
-			case strings.Compare(errManifest, StrDownloadFailed) == 0 && strings.Contains(err.Error(), StrDownloadInitError):
+			case errManifest == StrDownloadFailed && strings.Contains(err.Error(), StrDownloadInitError):
 				fmt.Fprintf(options.Out, "[%d] %s, %s\n", task.ID, errManifest, err)
 				return
 			}
@@ -715,7 +714,7 @@ func getLocatePanLink(pcs *baidupcs.BaiduPCS, fsID int64) (dlink string, err err
 		return "", ErrDlinkNotFound
 	}
 
-	dc := dlinkclient.NewDlinkClient()
+	dc := pcsconfig.Config.DlinkClient()
 	c := pcsconfig.Config.HTTPClient()
 	c.SetResponseHeaderTimeout(30 * time.Second)
 	dc.SetClient(c)

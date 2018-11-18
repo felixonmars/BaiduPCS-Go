@@ -94,7 +94,9 @@ func (muer *MultiUploader) upload() (uperr error) {
 			if terr != nil {
 				if me, ok := terr.(*MultiError); ok {
 					if me.Terminated { // 终止
-						close(muer.canceled)
+						muer.closeCanceledOnce.Do(func() { // 只关闭一次
+							close(muer.canceled)
+						})
 						uperr = me.Err
 						return
 					}

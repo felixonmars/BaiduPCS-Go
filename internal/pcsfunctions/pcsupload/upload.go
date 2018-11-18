@@ -56,7 +56,7 @@ func (pu *PCSUpload) TmpFile(ctx context.Context, partseq int, partOffset int64,
 			if resp != nil {
 				// 不可恢复的错误
 				switch resp.StatusCode {
-				case 413:
+				case 400, 401, 403, 413:
 					respErr = &uploader.MultiError{
 						Terminated: true,
 					}

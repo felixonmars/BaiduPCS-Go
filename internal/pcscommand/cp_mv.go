@@ -104,7 +104,7 @@ func runCpMvOp(op string, paths ...string) {
 	for k := range froms {
 		cj.List[k] = &baidupcs.CpMvJSON{
 			From: froms[k],
-			To:   path.Clean(to + "/" + path.Base(froms[k])),
+			To:   path.Clean(to + baidupcs.PathSeparator + path.Base(froms[k])),
 		}
 	}
 

@@ -18,13 +18,14 @@ type (
 func (pcs *BaiduPCS) updateFilesDirectoriesCache(dirs []string) {
 	cache := pcs.cacheMap.LazyInitCachePoolOp(OperationFilesDirectoriesList)
 	for _, v := range dirs {
-		filesDirectoriesListValidateItf, ok := cache.Load(v + "_" + DefaultOrderOptionsStr)
+		filesDirectoriesListValidateItf, ok := cache.Load(v + "_" + defaultOrderOptionsStr)
 		if ok {
 			filesDirectoriesListValidateItf.(*filesDirectoriesListValidate).SetExpires(false)
 		}
 	}
 }
 
+// CacheFilesDirectoriesList 缓存获取
 func (pcs *BaiduPCS) CacheFilesDirectoriesList(path string, options *OrderOptions) (data FileDirectoryList, pcsError pcserror.Error) {
 	var (
 		cache                               = pcs.cacheMap.LazyInitCachePoolOp(OperationFilesDirectoriesList)

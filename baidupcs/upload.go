@@ -15,22 +15,33 @@ const (
 	MinUploadBlockSize = 4 * converter.MB
 	// RecommendUploadBlockSize 推荐的上传的文件分片大小
 	RecommendUploadBlockSize = 1 * converter.GB
-	// DefaultSliceMD5 默认的长度为32的slicemd5
-	DefaultSliceMD5 = "ec87a838931d4d5d2e94a04644788a55"
+	// SliceMD5Size 计算 slice-md5 所需的长度
+	SliceMD5Size = 256 * converter.KB
+	// EmptyContentMD5 空串的md5
+	EmptyContentMD5 = "d41d8cd98f00b204e9800998ecf8427e"
 )
 
 var (
-	// ErrMD5NotFound 未找到md5
-	ErrMD5NotFound = errors.New("unknown response data, md5 not found")
-	// ErrSavePathFound 未找到保存路径
-	ErrSavePathFound = errors.New("unknown response data, file saved path not found")
-	// ErrSeqNotMatch 服务器返回的上传队列不匹配
-	ErrSeqNotMatch = errors.New("服务器返回的上传队列不匹配")
+	// ErrUploadMD5NotFound 未找到md5
+	ErrUploadMD5NotFound = errors.New("unknown response data, md5 not found")
+	// ErrUploadSavePathFound 未找到保存路径
+	ErrUploadSavePathFound = errors.New("unknown response data, file saved path not found")
+	// ErrUploadSeqNotMatch 服务器返回的上传队列不匹配
+	ErrUploadSeqNotMatch = errors.New("服务器返回的上传队列不匹配")
 )
 
 type (
 	// UploadFunc 上传文件处理函数
 	UploadFunc func(uploadURL string, jar http.CookieJar) (resp *http.Response, err error)
+
+	// RapidUploadInfo 文件秒传信息
+	RapidUploadInfo struct {
+		Filename      string
+		ContentLength int64
+		ContentMD5    string
+		SliceMD5      string
+		ContentCrc32  string
+	}
 
 	uploadJSON struct {
 		*PathJSON
@@ -119,14 +130,14 @@ func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (pcsError 
 		PCSErrInfo: pcserror.NewPCSErrorInfo(OperationUpload),
 	}
 
-	pcsError = handleJSONParse(OperationUpload, dataReadCloser, &jsonData)
+	pcsError = pcserror.HandleJSONParse(OperationUpload, dataReadCloser, &jsonData)
 	if pcsError != nil {
 		return
 	}
 
 	if jsonData.Path == "" {
 		jsonData.PCSErrInfo.ErrType = pcserror.ErrTypeInternalError
-		jsonData.PCSErrInfo.Err = ErrSavePathFound
+		jsonData.PCSErrInfo.Err = ErrUploadSavePathFound
 		return jsonData.PCSErrInfo
 	}
 
@@ -149,7 +160,7 @@ func (pcs *BaiduPCS) UploadTmpFile(uploadFunc UploadFunc) (md5 string, pcsError 
 		PCSErrInfo: pcserror.NewPCSErrorInfo(OperationUploadTmpFile),
 	}
 
-	pcsError = handleJSONParse(OperationUploadTmpFile, dataReadCloser, &jsonData)
+	pcsError = pcserror.HandleJSONParse(OperationUploadTmpFile, dataReadCloser, &jsonData)
 	if pcsError != nil {
 		return
 	}
@@ -157,7 +168,7 @@ func (pcs *BaiduPCS) UploadTmpFile(uploadFunc UploadFunc) (md5 string, pcsError 
 	// 未找到md5
 	if jsonData.MD5 == "" {
 		jsonData.PCSErrInfo.ErrType = pcserror.ErrTypeInternalError
-		jsonData.PCSErrInfo.Err = ErrMD5NotFound
+		jsonData.PCSErrInfo.Err = ErrUploadMD5NotFound
 		return "", jsonData.PCSErrInfo
 	}
 
@@ -198,7 +209,7 @@ func (pcs *BaiduPCS) UploadPrecreate(targetPath, contentMD5, sliceMD5, crc32 str
 		PanErrorInfo: errInfo,
 	}
 
-	pcsError = handleJSONParse(OperationUploadPrecreate, dataReadCloser, &jsonData)
+	pcsError = pcserror.HandleJSONParse(OperationUploadPrecreate, dataReadCloser, &jsonData)
 	if pcsError != nil {
 		return
 	}
@@ -208,7 +219,7 @@ func (pcs *BaiduPCS) UploadPrecreate(targetPath, contentMD5, sliceMD5, crc32 str
 		seqLen := len(jsonData.BlockList)
 		if seqLen != len(bolckList) {
 			errInfo.ErrType = pcserror.ErrTypeRemoteError
-			errInfo.Err = ErrSeqNotMatch
+			errInfo.Err = ErrUploadSeqNotMatch
 			return nil, errInfo
 		}
 
@@ -247,7 +258,7 @@ func (pcs *BaiduPCS) UploadSuperfile2(uploadid, targetPath string, partseq int, 
 		PCSErrInfo: pcserror.NewPCSErrorInfo(OperationUploadSuperfile2),
 	}
 
-	pcsError = handleJSONParse(OperationUploadSuperfile2, dataReadCloser, &jsonData)
+	pcsError = pcserror.HandleJSONParse(OperationUploadSuperfile2, dataReadCloser, &jsonData)
 	if pcsError != nil {
 		return
 	}

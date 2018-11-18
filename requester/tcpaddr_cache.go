@@ -67,7 +67,16 @@ func (tac *tcpAddrCache) GC() {
 	go func() {
 		for {
 			time.Sleep(tac.lifeTime) // 这样可以动态修改 lifetime
-			tac.DelAll()
+			tac.ta.Range(func(address, v interface{}) bool {
+				item := v.(*tcpAddrItem)
+				select {
+				case <-item.expire: // 如果超时再删去缓存项，避免在接近lifeTime前添加的缓存项被删除
+					tac.ta.Delete(address)
+					return true
+				default:
+					return true
+				}
+			})
 		}
 	}()
 }
@@ -79,15 +88,9 @@ func (tac *tcpAddrCache) Del(address string) {
 
 // DelAll 清空缓存
 func (tac *tcpAddrCache) DelAll() {
-	tac.ta.Range(func(address, v interface{}) bool {
-		item := v.(*tcpAddrItem)
-		select {
-		case <-item.expire: // 如果超时再删去缓存项，避免在接近lifeTime前添加的缓存项被删除
-			tac.ta.Delete(address)
-			return true
-		default:
-			return true
-		}
+	tac.ta.Range(func(address, _ interface{}) bool {
+		tac.ta.Delete(address)
+		return true
 	})
 }
 

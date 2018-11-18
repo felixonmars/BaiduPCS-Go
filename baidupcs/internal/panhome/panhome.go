@@ -16,7 +16,7 @@ var (
 		Scheme: "https",
 		Host:   "pan.baidu.com",
 	}
-	AndroidUserAgent = "Mozilla/5.0 (Linux; Android 7.0; HUAWEI NXT-AL10 Build/HUAWEINXT-AL10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.137 Mobile Safari/537.36"
+	AndroidUserAgent = "Android"
 )
 
 type (

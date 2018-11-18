@@ -26,7 +26,7 @@ type (
 		ModTime  int64  `json:"modtime"`  // 修改日期
 	}
 
-	// LocalFileInfo LocalFile
+	// LocalFile LocalFile
 	LocalFile struct {
 		LocalFileMeta
 

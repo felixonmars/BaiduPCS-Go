@@ -63,10 +63,6 @@ func RunRapidUpload(targetPath, contentMD5, sliceMD5, crc32 string, length int64
 		fmt.Printf("警告: %s, 获取网盘路径 %s 错误, %s\n", baidupcs.OperationRapidUpload, targetPath, err)
 	}
 
-	if sliceMD5 == "" {
-		sliceMD5 = baidupcs.FixSliceMD5(sliceMD5)
-	}
-
 	err = GetBaiduPCS().RapidUpload(targetPath, contentMD5, sliceMD5, crc32, length)
 	if err != nil {
 		fmt.Printf("%s失败, 消息: %s\n", baidupcs.OperationRapidUpload, err)
@@ -165,7 +161,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 						MaxRetry: opt.MaxRetry,
 					},
 					uploadInfo: checksum.NewLocalFileInfo(walkedFiles[k3], int(requiredSliceSize)),
-					savePath:   path.Clean(savePath + "/" + subSavePath),
+					savePath:   path.Clean(savePath + baidupcs.PathSeparator + subSavePath),
 				})
 
 				fmt.Printf("[%d] 加入上传队列: %s\n", lastID, walkedFiles[k3])
@@ -296,7 +292,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 				// 检测缓存, 通过文件的md5值判断本地文件和网盘文件是否一样
 				if fdl != nil {
 					for _, fd := range fdl {
-						if strings.Compare(fd.Filename, panFile) == 0 {
+						if fd.Filename == panFile {
 							decodedMD5, _ := hex.DecodeString(fd.MD5)
 							if bytes.Compare(decodedMD5, task.uploadInfo.MD5) == 0 {
 								fmt.Printf("[%d] 目标文件, %s, 已存在, 跳过...\n", task.ID, task.savePath)

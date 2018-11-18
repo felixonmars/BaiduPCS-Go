@@ -132,7 +132,7 @@ func (pcs *BaiduPCS) CloudDlAddTask(sourceURL, savePath string) (taskID int64, p
 		PCSErrInfo: errInfo,
 	}
 
-	pcsError = handleJSONParse(OperationCloudDlAddTask, dataReadCloser, &taskInfo)
+	pcsError = pcserror.HandleJSONParse(OperationCloudDlAddTask, dataReadCloser, &taskInfo)
 	if pcsError != nil {
 		return
 	}
@@ -169,7 +169,7 @@ func (pcs *BaiduPCS) cloudDlQueryTask(op string, taskIDs []int64) (cl CloudDlTas
 		PCSErrInfo: errInfo,
 	}
 
-	pcsError = handleJSONParse(OperationCloudDlQueryTask, dataReadCloser, &taskInfo)
+	pcsError = pcserror.HandleJSONParse(OperationCloudDlQueryTask, dataReadCloser, &taskInfo)
 	if pcsError != nil {
 		return
 	}
@@ -216,7 +216,7 @@ func (pcs *BaiduPCS) CloudDlListTask() (cl CloudDlTaskList, pcsError pcserror.Er
 		PCSErrInfo: errInfo,
 	}
 
-	pcsError = handleJSONParse(OperationCloudDlListTask, dataReadCloser, &taskInfo)
+	pcsError = pcserror.HandleJSONParse(OperationCloudDlListTask, dataReadCloser, &taskInfo)
 	if pcsError != nil {
 		return
 	}
@@ -293,7 +293,7 @@ func (pcs *BaiduPCS) CloudDlClearTask() (total int, pcsError pcserror.Error) {
 		PCSErrInfo: errInfo,
 	}
 
-	pcsError = handleJSONParse(OperationCloudDlClearTask, dataReadCloser, &clearInfo)
+	pcsError = pcserror.HandleJSONParse(OperationCloudDlClearTask, dataReadCloser, &clearInfo)
 	if pcsError != nil {
 		return
 	}

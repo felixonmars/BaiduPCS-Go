@@ -39,7 +39,7 @@ func instanceStateToWorkerList(is *InstanceState, file io.ReaderAt) workerList {
 			workers = append(workers, &worker{
 				id:         blockState.ID,
 				partOffset: blockState.Range.Begin,
-				splitUnit:  NewSplitUnit(file, blockState.Range),
+				splitUnit:  NewBufioSplitUnit(file, blockState.Range),
 				checksum:   blockState.CheckSum,
 			})
 		} else {

@@ -23,7 +23,7 @@ func (pcs *BaiduPCS) QuotaInfo() (quota, used int64, pcsError pcserror.Error) {
 		PCSErrInfo: pcserror.NewPCSErrorInfo(OperationQuotaInfo),
 	}
 
-	pcsError = handleJSONParse(OperationQuotaInfo, dataReadCloser, quotaInfo)
+	pcsError = pcserror.HandleJSONParse(OperationQuotaInfo, dataReadCloser, quotaInfo)
 	if pcsError != nil {
 		return
 	}

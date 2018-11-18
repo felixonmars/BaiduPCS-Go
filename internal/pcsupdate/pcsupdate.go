@@ -8,6 +8,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/checkaccess"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
@@ -33,7 +34,7 @@ type info struct {
 
 // CheckUpdate 检测更新
 func CheckUpdate(version string, yes bool) {
-	if !checkWritable() {
+	if !checkaccess.AccessRDWR(pcsutil.ExecutablePath()) {
 		fmt.Printf("程序目录不可写, 无法更新.\n")
 		return
 	}
@@ -57,7 +58,7 @@ func CheckUpdate(version string, yes bool) {
 	}
 
 	// 没有更新, 或忽略 Beta 版本, 和版本前缀不符的
-	if strings.Contains(releaseInfo.TagName, "Beta") || !strings.HasPrefix(releaseInfo.TagName, "v") || strings.Compare(version, releaseInfo.TagName) != -1 {
+	if strings.Contains(releaseInfo.TagName, "Beta") || !strings.HasPrefix(releaseInfo.TagName, "v") || version >= releaseInfo.TagName {
 		fmt.Printf("未检测到更新!\n")
 		return
 	}

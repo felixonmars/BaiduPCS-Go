@@ -19,7 +19,7 @@ func RunCloudDlAddTask(sourceURLs []string, savePath string) {
 
 	var taskid int64
 	for k := range sourceURLs {
-		taskid, err = pcs.CloudDlAddTask(sourceURLs[k], savePath+"/")
+		taskid, err = pcs.CloudDlAddTask(sourceURLs[k], savePath+baidupcs.PathSeparator)
 		if err != nil {
 			fmt.Printf("[%d] %s, 地址: %s\n", k+1, err, sourceURLs[k])
 			continue
