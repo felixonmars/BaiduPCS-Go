@@ -39,7 +39,11 @@ func (task *etask) handleExportTaskError(l *list.List, failedList *list.List) {
 	// 不重试
 	switch task.err.GetError() {
 	case baidupcs.ErrGetRapidUploadInfoMD5NotFound, baidupcs.ErrGetRapidUploadInfoCrc32NotFound:
-		fmt.Printf("[%d] 导出失败, 可能是服务器未刷新文件的md5, 请过一段时间再试一试\n", task.ID)
+		fmt.Printf("[%d] - [%s] 导出失败, 可能是服务器未刷新文件的md5, 请过一段时间再试一试\n", task.ID, task.path)
+		failedList.PushBack(task)
+		return
+	case baidupcs.ErrFileTooLarge:
+		fmt.Printf("[%d] - [%s] 导出失败, 文件大于20GB, 无法导出\n", task.ID, task.path)
 		failedList.PushBack(task)
 		return
 	}
@@ -47,11 +51,11 @@ func (task *etask) handleExportTaskError(l *list.List, failedList *list.List) {
 	// 未达到失败重试最大次数, 将任务推送到队列末尾
 	if task.retry < task.MaxRetry {
 		task.retry++
-		fmt.Printf("[%d] 导出错误, %s, 重试 %d/%d\n", task.ID, task.err, task.retry, task.MaxRetry)
+		fmt.Printf("[%d] - [%s] 导出错误, %s, 重试 %d/%d\n", task.ID, task.path, task.err, task.retry, task.MaxRetry)
 		l.PushBack(task)
 		time.Sleep(3 * time.Duration(task.retry) * time.Second)
 	} else {
-		fmt.Printf("[%d] 导出错误, %s\n", task.ID, task.err)
+		fmt.Printf("[%d] - [%s] 导出错误, %s\n", task.ID, task.path, task.err)
 		failedList.PushBack(task)
 	}
 }
@@ -159,7 +163,7 @@ func RunExport(pcspaths []string, opt *ExportOptions) {
 					fmt.Printf("写入文件失败: %s\n", writeErr)
 					return // 直接返回
 				}
-				fmt.Printf("[%d] 导出成功: %s\n", task.ID, task.path)
+				fmt.Printf("[%d] - [%s] 导出成功\n", task.ID, task.path)
 				continue
 			}
 
@@ -180,7 +184,7 @@ func RunExport(pcspaths []string, opt *ExportOptions) {
 			continue
 		}
 
-		rinfo, pcsError := pcs.GetRapidUploadInfoByFileInfo(task.fd)
+		rinfo, pcsError := pcs.ExportByFileInfo(task.fd)
 		if pcsError != nil {
 			task.err = pcsError
 			task.handleExportTaskError(l, failedList)
@@ -193,7 +197,7 @@ func RunExport(pcspaths []string, opt *ExportOptions) {
 			return // 直接返回
 		}
 
-		fmt.Printf("[%d] 导出成功: %s\n", task.ID, task.path)
+		fmt.Printf("[%d] - [%s] 导出成功\n", task.ID, task.path)
 	}
 
 	if failedList.Len() > 0 {

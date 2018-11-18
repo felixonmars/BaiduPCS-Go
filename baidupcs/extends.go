@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/escaper"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"io"
@@ -39,6 +40,8 @@ var (
 	ErrGetRapidUploadInfoMD5NotEqual      = errors.New("Content-MD5 不匹配")
 	ErrGetRapidUploadInfoCrc32NotEqual    = errors.New("x-bs-meta-crc32 不匹配")
 	ErrGetRapidUploadInfoSliceMD5NotEqual = errors.New("slice-md5 不匹配")
+
+	ErrFileTooLarge = errors.New("文件大于20GB, 无法秒传")
 )
 
 func (pcs *BaiduPCS) getLocateDownloadLink(pcspath string) (link string, pcsError pcserror.Error) {
@@ -56,6 +59,18 @@ func (pcs *BaiduPCS) getLocateDownloadLink(pcspath string) (link string, pcsErro
 		}
 	}
 	return u.String(), nil
+}
+
+// ExportByFileInfo 通过文件信息对象, 导出文件信息
+func (pcs *BaiduPCS) ExportByFileInfo(finfo *FileDirectory) (rinfo *RapidUploadInfo, pcsError pcserror.Error) {
+	errInfo := pcserror.NewPCSErrorInfo(OperationExportFileInfo)
+	errInfo.ErrType = pcserror.ErrTypeOthers
+	if finfo.Size > 20*converter.GB {
+		errInfo.Err = ErrFileTooLarge
+		return nil, errInfo
+	}
+
+	return pcs.GetRapidUploadInfoByFileInfo(finfo)
 }
 
 // GetRapidUploadInfoByFileInfo 通过文件信息对象, 获取秒传信息
@@ -234,6 +249,11 @@ func (pcs *BaiduPCS) FixMD5ByFileInfo(finfo *FileDirectory) (pcsError pcserror.E
 	errInfo.ErrType = pcserror.ErrTypeOthers
 	if finfo == nil {
 		errInfo.Err = ErrFixMD5FileInfoNil
+		return errInfo
+	}
+
+	if finfo.Size > 20*converter.GB { // 文件大于20GB
+		errInfo.Err = ErrFileTooLarge
 		return errInfo
 	}
 

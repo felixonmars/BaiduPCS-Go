@@ -82,6 +82,8 @@ const (
 	// OperationRecycleClear 清空回收站
 	OperationRecycleClear = "清空回收站"
 
+	// OperationExportFileInfo 导出文件信息
+	OperationExportFileInfo = "导出文件信息"
 	// OperationGetRapidUploadInfo 获取文件秒传信息
 	OperationGetRapidUploadInfo = "获取文件秒传信息"
 	// OperationFixMD5 修复文件md5
