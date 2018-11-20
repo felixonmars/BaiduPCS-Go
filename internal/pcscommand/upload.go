@@ -243,7 +243,6 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 			}
 			defer task.uploadInfo.Close() // 关闭文件
 
-			// 步骤控制
 			var (
 				panDir, panFile = path.Split(task.savePath)
 			)
@@ -261,7 +260,13 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 				goto stepControl
 			}
 
-		stepControl:
+			if task.uploadInfo.Length > baidupcs.MaxRapidUploadSize {
+				fmt.Printf("[%d] 文件超过20GB, 无法使用秒传功能, 跳过秒传...\n", task.ID)
+				task.step = StepUploadUpload
+				goto stepControl
+			}
+
+		stepControl: // 步骤控制
 			switch task.step {
 			case StepUploadRapidUpload:
 				goto stepUploadRapidUpload
@@ -309,7 +314,6 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 				// do nothing
 			}
 
-			// 经过测试, 秒传文件并非需要前256kb切片的md5值, 只需格式符合即可
 			task.uploadInfo.SliceMD5Sum()
 
 			// 经测试, 文件的 crc32 值并非秒传文件所必需
@@ -389,11 +393,21 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 				muer.OnError(func(err error) {
 					close(exitChan)
 					pcsError, ok := err.(pcserror.Error)
-					if ok {
-						handleTaskErr(task, "上传文件失败", pcsError)
+					if !ok {
+						fmt.Printf("[%d] 上传文件错误: %s\n", task.ID, err)
 						return
 					}
-					fmt.Printf("[%d] 上传文件错误: %s\n", task.ID, err)
+
+					switch pcsError.GetRemoteErrCode() {
+					case 31363: // block miss in superfile2, 上传状态过期
+						uploadDatabase.Delete(&task.uploadInfo.LocalFileMeta)
+						uploadDatabase.Save()
+						fmt.Printf("[%d] 上传文件错误: 上传状态过期, 请重新上传\n", task.ID)
+						return
+					}
+
+					handleTaskErr(task, "上传文件失败", pcsError)
+					return
 				})
 				muer.Execute()
 			}

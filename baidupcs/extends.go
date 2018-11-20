@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
-	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/escaper"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"io"
@@ -65,7 +64,7 @@ func (pcs *BaiduPCS) getLocateDownloadLink(pcspath string) (link string, pcsErro
 func (pcs *BaiduPCS) ExportByFileInfo(finfo *FileDirectory) (rinfo *RapidUploadInfo, pcsError pcserror.Error) {
 	errInfo := pcserror.NewPCSErrorInfo(OperationExportFileInfo)
 	errInfo.ErrType = pcserror.ErrTypeOthers
-	if finfo.Size > 20*converter.GB {
+	if finfo.Size > MaxRapidUploadSize {
 		errInfo.Err = ErrFileTooLarge
 		return nil, errInfo
 	}
@@ -252,7 +251,7 @@ func (pcs *BaiduPCS) FixMD5ByFileInfo(finfo *FileDirectory) (pcsError pcserror.E
 		return errInfo
 	}
 
-	if finfo.Size > 20*converter.GB { // 文件大于20GB
+	if finfo.Size > MaxRapidUploadSize { // 文件大于20GB
 		errInfo.Err = ErrFileTooLarge
 		return errInfo
 	}
