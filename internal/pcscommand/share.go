@@ -95,6 +95,10 @@ func getShareDLink(pcspath string) (dlink string, err error) {
 				continue
 			}
 
+			if record.Status != 0 { // 分享状态异常
+				continue
+			}
+
 			if record.TypicalPath == baidupcs.PathSeparator { //TypicalPath为根目录
 				continue
 			}

@@ -17,7 +17,10 @@ func (ph *PanHome) CacheSignature() (sign SignRes, err error) {
 	if ph.signExpires == nil || ph.signExpires.IsExpires() {
 		ph.signExpires = expires.NewExpires(1 * time.Hour) // 一小时有效期
 		ph.signRes, err = ph.Signature()
-		return ph.signRes, err
+		if err != nil { // 空指针与空接口不等价
+			return nil, err
+		}
+		return ph.signRes, nil
 	}
 
 	return ph.signRes, nil

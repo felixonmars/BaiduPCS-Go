@@ -105,10 +105,6 @@ func (der *Downloader) Execute() error {
 		return errors.New(resp.Status)
 	}
 
-	if resp.ContentLength == 0 {
-		return errors.New("Content-Length is zero")
-	}
-
 	acceptRanges := resp.Header.Get("Accept-Ranges")
 	if resp.ContentLength < 0 {
 		acceptRanges = ""
@@ -249,8 +245,11 @@ func (der *Downloader) Execute() error {
 		worker.SetCacheSize(der.config.cacheSize)
 		worker.SetWriteMutex(writeMu)
 		worker.SetReferer(loadBalancer.Referer)
-		if i == 0 {
-			worker.firstResp = resp // 使用第一个连接
+
+		// 使用第一个连接
+		// 断点续传时不使用
+		if i == 0 && instanceInfo == nil {
+			worker.firstResp = resp
 		}
 
 		// 分配线程

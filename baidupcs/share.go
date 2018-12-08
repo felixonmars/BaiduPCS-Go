@@ -24,7 +24,8 @@ type (
 		FsIds           []string `json:"fsIds"`
 		Passwd          string   `json:"passwd"`
 		Shortlink       string   `json:"shortlink"`
-		TypicalCategory int      `json:"typicalCategory"`
+		Status          int      `json:"status"`          // 状态
+		TypicalCategory int      `json:"typicalCategory"` // 文件类型
 		TypicalPath     string   `json:"typicalPath"`
 	}
 

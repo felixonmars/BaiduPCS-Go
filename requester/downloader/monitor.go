@@ -122,7 +122,7 @@ func (mt *Monitor) GetAvaliableWorker() *Worker {
 	return nil
 }
 
-//GetAllWorkersRange 获取所以worker的范围
+//GetAllWorkersRange 获取所有worker的范围
 func (mt *Monitor) GetAllWorkersRange() (ranges []*Range) {
 	ranges = make([]*Range, 0, len(mt.workers))
 	for _, worker := range mt.workers {
