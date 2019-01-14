@@ -2,12 +2,13 @@
 package pcsinit
 
 import (
+	"fmt"
 	"github.com/urfave/cli"
 	_ "unsafe" // for go:linkname
 )
 
+//go:linkname helpCommand github.com/iikira/BaiduPCS-Go/vendor/github.com/urfave/cli.helpCommand
 var (
-	//go:linkname helpCommand github.com/iikira/BaiduPCS-Go/vendor/github.com/urfave/cli.helpCommand
 	helpCommand cli.Command
 )
 
@@ -76,4 +77,17 @@ OPTIONS:
 `
 
 	helpCommand.Aliases = append(helpCommand.Aliases, []string{"?", "？"}...)
+	helpCommand.Action = func(c *cli.Context) error {
+		args := c.Args()
+		if args.Present() {
+			err := cli.ShowCommandHelp(c, args.First())
+			if err != nil {
+				fmt.Printf("%s\n", err)
+			}
+			return nil
+		}
+
+		cli.ShowAppHelp(c)
+		return nil
+	}
 }
