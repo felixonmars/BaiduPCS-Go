@@ -547,7 +547,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 			// 检验文件有效性
 			if !cfg.IsTest && !options.NoCheck {
 				if task.downloadInfo.Size >= 128*converter.MB {
-					fmt.Fprintf(options.Out, "[%d] 开始检验文件有效性, 稍后...\n", task.ID)
+					fmt.Fprintf(options.Out, "[%d] 开始检验文件有效性, 请稍候...\n", task.ID)
 				}
 				err = checkFileValid(task.savePath, task.downloadInfo)
 				if err != nil {
