@@ -8,7 +8,6 @@ import (
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	_ "github.com/iikira/BaiduPCS-Go/internal/pcsinit"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsupdate"
-	"github.com/iikira/BaiduPCS-Go/internal/pcsweb"
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
 	"github.com/iikira/BaiduPCS-Go/pcsliner/args"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
@@ -317,24 +316,6 @@ func main() {
 	}
 
 	app.Commands = []cli.Command{
-		{
-			Name:     "web",
-			Usage:    "启用 web 客户端 (测试中)",
-			Category: "其他",
-			Before:   reloadFn,
-			Action: func(c *cli.Context) error {
-				fmt.Printf("web 客户端功能为实验性功能, 测试中, 打开 http://localhost:%d 查看效果\n", c.Uint("port"))
-				fmt.Println(pcsweb.StartServer(c.Uint("port")))
-				return nil
-			},
-			Flags: []cli.Flag{
-				cli.UintFlag{
-					Name:  "port",
-					Usage: "自定义端口",
-					Value: 8080,
-				},
-			},
-		},
 		{
 			Name:     "run",
 			Usage:    "执行系统命令",
