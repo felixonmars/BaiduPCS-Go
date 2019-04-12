@@ -159,6 +159,8 @@ func (pcs *BaiduPCS) LocatePanAPIDownload(fidList ...int64) (dlinkInfoList APIDo
 		if pcsError.GetErrType() == pcserror.ErrTypeRemoteError {
 			switch pcsError.GetRemoteErrCode() {
 			case 112: // 页面已过期
+				fallthrough
+			case 113: // 签名错误
 				pcs.ph.SetSignExpires() // 重置
 			}
 		}
