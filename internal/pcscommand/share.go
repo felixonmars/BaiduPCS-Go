@@ -62,7 +62,7 @@ func RunShareList(page int) {
 	}
 
 	tb := pcstable.NewTable(os.Stdout)
-	tb.SetHeader([]string{"#", "ShareID", "分享链接", "提取密码", "根目录", "路径"})
+	tb.SetHeader([]string{"#", "ShareID", "分享链接", "提取密码", "特征目录", "特征路径"})
 	for k, record := range records {
 		if record == nil {
 			continue

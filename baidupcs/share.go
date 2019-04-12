@@ -20,13 +20,13 @@ type (
 
 	// ShareRecordInfo 分享信息
 	ShareRecordInfo struct {
-		ShareID         int64    `json:"shareId"`
-		FsIds           []string `json:"fsIds"`
-		Passwd          string   `json:"passwd"`
-		Shortlink       string   `json:"shortlink"`
-		Status          int      `json:"status"`          // 状态
-		TypicalCategory int      `json:"typicalCategory"` // 文件类型
-		TypicalPath     string   `json:"typicalPath"`
+		ShareID         int64   `json:"shareId"`
+		FsIds           []int64 `json:"fsIds"`
+		Passwd          string  `json:"passwd"`
+		Shortlink       string  `json:"shortlink"`
+		Status          int     `json:"status"`          // 状态
+		TypicalCategory int     `json:"typicalCategory"` // 文件类型
+		TypicalPath     string  `json:"typicalPath"`
 	}
 
 	sharePSetJSON struct {
