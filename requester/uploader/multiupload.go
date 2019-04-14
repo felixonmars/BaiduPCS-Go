@@ -162,7 +162,7 @@ func (muer *MultiUploader) OnCancel(onCancelEvent requester.Event) {
 	muer.onCancelEvent = onCancelEvent
 }
 
-//OnCancel 设置取消上传事件
+//OnError 设置上传发生错误事件
 func (muer *MultiUploader) OnError(onErrorEvent requester.EventOnError) {
 	muer.onErrorEvent = onErrorEvent
 }

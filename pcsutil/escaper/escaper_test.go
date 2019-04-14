@@ -7,5 +7,5 @@ import (
 )
 
 func TestEscape(t *testing.T) {
-	fmt.Println(escaper.Escape(`asdfasdfasd[]a[\[][sdf\[d]`, []rune{'['}))
+	fmt.Println(escaper.Escape(`asdf'asdfasd[]a[\[][sdf\[d]`, []rune{'[', '\''}))
 }

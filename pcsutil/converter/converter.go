@@ -3,8 +3,10 @@ package converter
 
 import (
 	"fmt"
+	"github.com/mattn/go-runewidth"
 	"reflect"
 	"strconv"
+	"strings"
 	"unicode"
 	"unsafe"
 )
@@ -128,16 +130,21 @@ func MustInt64(s string) (i int64) {
 
 // ShortDisplay 缩略显示字符串s, 显示长度为num, 缩略的内容用"..."填充
 func ShortDisplay(s string, num int) string {
-	rs := []rune(s)
-	for k := 0; k < len(rs); k++ {
-		if unicode.Is(unicode.C, rs[k]) { // 去除无效字符
-			rs = append(rs[:k], rs[k+1:]...)
-			k--
+	var (
+		sb = strings.Builder{}
+		n  int
+	)
+	for _, v := range s {
+		if unicode.Is(unicode.C, v) { // 去除无效字符
 			continue
 		}
-		if k >= num {
-			return string(rs[:k]) + "..."
+		n += runewidth.RuneWidth(v)
+		if n > num {
+			sb.WriteString("...")
+			break
 		}
+		sb.WriteRune(v)
 	}
-	return string(rs)
+
+	return sb.String()
 }

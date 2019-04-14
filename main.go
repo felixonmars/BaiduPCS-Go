@@ -33,6 +33,11 @@ import (
 	"unicode"
 )
 
+const (
+	// NameShortDisplayNum 文件名缩略显示长度
+	NameShortDisplayNum = 16
+)
+
 var (
 	// Version 版本号
 	Version = "v3.5.6-devel"
@@ -185,9 +190,16 @@ func main() {
 			}
 
 			var (
-				activeUser = pcsconfig.Config.ActiveUser()
-				pcs        = pcsconfig.Config.ActiveUserBaiduPCS()
-				runeFunc   = unicode.IsSpace
+				activeUser  = pcsconfig.Config.ActiveUser()
+				pcs         = pcsconfig.Config.ActiveUserBaiduPCS()
+				runeFunc    = unicode.IsSpace
+				pcsRuneFunc = func(r rune) bool {
+					switch r {
+					case '\'', '"':
+						return true
+					}
+					return unicode.IsSpace(r)
+				}
 				targetPath string
 			)
 
@@ -241,18 +253,18 @@ func main() {
 				if !closed {
 					if !strings.HasPrefix(file.Path, path.Clean(path.Join(targetDir, path.Base(targetPath)))) {
 						if path.Base(targetDir) == path.Base(targetPath) {
-							appendLine = strings.Join(append(lineArgs[:numArgs-1], escaper.EscapeByRuneFunc(path.Join(targetPath, file.Filename), runeFunc)), " ")
+							appendLine = strings.Join(append(lineArgs[:numArgs-1], escaper.EscapeByRuneFunc(path.Join(targetPath, file.Filename), pcsRuneFunc)), " ")
 							goto handle
 						}
 						// fmt.Println(file.Path, targetDir, targetPath)
 						continue
 					}
 					// fmt.Println(path.Clean(path.Join(path.Dir(targetPath), file.Filename)), targetPath, file.Filename)
-					appendLine = strings.Join(append(lineArgs[:numArgs-1], escaper.EscapeByRuneFunc(path.Clean(path.Join(path.Dir(targetPath), file.Filename)), runeFunc)), " ")
+					appendLine = strings.Join(append(lineArgs[:numArgs-1], escaper.EscapeByRuneFunc(path.Clean(path.Join(path.Dir(targetPath), file.Filename)), pcsRuneFunc)), " ")
 					goto handle
 				}
 				// 没有的情况
-				appendLine = strings.Join(append(lineArgs, escaper.EscapeByRuneFunc(file.Filename, runeFunc)), " ")
+				appendLine = strings.Join(append(lineArgs, escaper.EscapeByRuneFunc(file.Filename, pcsRuneFunc)), " ")
 				goto handle
 
 			handle:
@@ -280,7 +292,7 @@ func main() {
 			if activeUser.Name != "" {
 				// 格式: BaiduPCS-Go:<工作目录> <百度ID>$
 				// 工作目录太长时, 会自动缩略
-				prompt = app.Name + ":" + converter.ShortDisplay(path.Base(activeUser.Workdir), 16) + " " + activeUser.Name + "$ "
+				prompt = app.Name + ":" + converter.ShortDisplay(path.Base(activeUser.Workdir), NameShortDisplayNum) + " " + activeUser.Name + "$ "
 			} else {
 				// BaiduPCS-Go >
 				prompt = app.Name + " > "
