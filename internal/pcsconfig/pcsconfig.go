@@ -5,6 +5,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/dlinkclient"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/jsonhelper"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/json-iterator/go"
@@ -202,8 +203,7 @@ func (c *PCSConfig) loadConfigFromFile() (err error) {
 		return err
 	}
 
-	d := jsoniter.NewDecoder(c.configFile)
-	err = d.Decode((*pcsConfigJSONExport)(unsafe.Pointer(c)))
+	err = jsonhelper.UnmarshalData(c.configFile, (*pcsConfigJSONExport)(unsafe.Pointer(c)))
 	if err != nil {
 		return ErrConfigContentsParseError
 	}

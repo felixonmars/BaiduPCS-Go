@@ -1895,7 +1895,7 @@ func main() {
 					Name:  "getip",
 					Usage: "获取IP地址",
 					Action: func(c *cli.Context) error {
-						fmt.Printf("内部IP地址: \n")
+						fmt.Printf("内网IP地址: \n")
 						for _, address := range pcsutil.ListAddresses() {
 							fmt.Printf("%s\n", address)
 						}
@@ -1903,11 +1903,11 @@ func main() {
 
 						ipAddr, err := getip.IPInfoByClient(pcsconfig.Config.HTTPClient())
 						if err != nil {
-							fmt.Printf("获取外部IP错误: %s\n", err)
+							fmt.Printf("获取公网IP错误: %s\n", err)
 							return nil
 						}
 
-						fmt.Printf("外部IP地址: %s\n", ipAddr)
+						fmt.Printf("公网IP地址: %s\n", ipAddr)
 						return nil
 					},
 				},

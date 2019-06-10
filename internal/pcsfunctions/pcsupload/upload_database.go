@@ -4,8 +4,8 @@ import (
 	"errors"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/checksum"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/jsonhelper"
 	"github.com/iikira/BaiduPCS-Go/requester/uploader"
-	"github.com/json-iterator/go"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,8 +48,7 @@ func NewUploadingDatabase() (ud *UploadingDatabase, err error) {
 		return ud, nil
 	}
 
-	d := jsoniter.NewDecoder(file)
-	err = d.Decode(ud)
+	err = jsonhelper.UnmarshalData(file, ud)
 	if err != nil {
 		return nil, err
 	}
@@ -63,12 +62,12 @@ func (ud *UploadingDatabase) Save() error {
 		return errors.New("dataFile is nil")
 	}
 
+	ud.Timestamp = time.Now().Unix()
+
 	var (
 		builder = &strings.Builder{}
-		e       = jsoniter.NewEncoder(builder)
+		err     = jsonhelper.MarshalData(builder, ud)
 	)
-	ud.Timestamp = time.Now().Unix()
-	err := e.Encode(ud)
 	if err != nil {
 		panic(err)
 	}

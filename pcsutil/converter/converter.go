@@ -68,6 +68,11 @@ func ToBytes(str string) []byte {
 	}))
 }
 
+// ToBytesUnsafe unsafe 转换, 请确保转换后的 []byte 不涉及 cap() 操作, 将 string 转换为 []byte
+func ToBytesUnsafe(str string) []byte {
+	return *(*[]byte)(unsafe.Pointer(&str))
+}
+
 // IntToBool int 类型转换为 bool
 func IntToBool(i int) bool {
 	return i != 0

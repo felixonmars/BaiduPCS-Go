@@ -2,7 +2,7 @@
 package pcserror
 
 import (
-	"github.com/json-iterator/go"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/jsonhelper"
 	"io"
 )
 
@@ -67,8 +67,7 @@ func DecodePanJSONError(opreation string, data io.Reader) Error {
 // HandleJSONParse 处理解析json
 func HandleJSONParse(op string, data io.Reader, info interface{}) (pcsError Error) {
 	var (
-		d       = jsoniter.NewDecoder(data)
-		err     = d.Decode(info)
+		err     = jsonhelper.UnmarshalData(data, info)
 		errInfo = info.(Error)
 	)
 

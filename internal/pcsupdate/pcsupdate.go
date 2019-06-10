@@ -10,9 +10,9 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/checkaccess"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/jsonhelper"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
-	"github.com/json-iterator/go"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -50,8 +50,7 @@ func CheckUpdate(version string, yes bool) {
 	}
 
 	releaseInfo := ReleaseInfo{}
-	d := jsoniter.NewDecoder(resp.Body)
-	err = d.Decode(&releaseInfo)
+	err = jsonhelper.UnmarshalData(resp.Body, &releaseInfo)
 	if err != nil {
 		fmt.Printf("json数据解析失败: %s\n", err)
 		return

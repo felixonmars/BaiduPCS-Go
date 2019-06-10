@@ -15,16 +15,20 @@ import (
 var (
 	// ContentRangeRE Content-Range 正则
 	ContentRangeRE = regexp.MustCompile(`^.*? \d*?-\d*?/(\d*?)$`)
+
+	// ranSource 随机数种子
+	ranSource = mathrand.NewSource(time.Now().UnixNano())
+
+	// ran 一个随机数实例
+	ran = mathrand.New(ranSource)
 )
 
 // RandomNumber 生成指定区间随机数
 func RandomNumber(min, max int) int {
-	s := mathrand.NewSource(time.Now().UnixNano())
-	r := mathrand.New(s)
 	if min > max {
 		min, max = max, min
 	}
-	return r.Intn(max-min) + min
+	return ran.Intn(max-min) + min
 }
 
 // GetFileName 获取文件名
