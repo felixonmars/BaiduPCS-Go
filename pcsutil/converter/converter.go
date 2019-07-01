@@ -12,6 +12,9 @@ import (
 )
 
 const (
+	// InvalidChars 文件名中的非法字符
+	InvalidChars = `\/:*?"<>|`
+
 	// B byte
 	B = (int64)(1 << (10 * iota))
 	// KB kilobyte
@@ -152,4 +155,19 @@ func ShortDisplay(s string, num int) string {
 	}
 
 	return sb.String()
+}
+
+// TrimPathInvalidChars 清除文件名中的非法字符
+func TrimPathInvalidChars(fpath string) string {
+	buf := make([]byte, 0, len(fpath))
+
+	for _, c := range ToBytesUnsafe(fpath) {
+		if strings.ContainsRune(InvalidChars, rune(c)) {
+			continue
+		}
+
+		buf = append(buf, c)
+	}
+
+	return ToString(buf)
 }

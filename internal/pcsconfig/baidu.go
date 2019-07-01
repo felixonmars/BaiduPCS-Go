@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/baidu-tools/tieba"
 	"github.com/olekukonko/tablewriter"
 	"path"
@@ -53,7 +54,7 @@ func (baidu *Baidu) GetSavePath(path string) string {
 	dirStr := fmt.Sprintf("%s/%d_%s%s/.",
 		Config.saveDir,
 		baidu.UID,
-		baidu.Name,
+		converter.TrimPathInvalidChars(baidu.Name),
 		path,
 	)
 

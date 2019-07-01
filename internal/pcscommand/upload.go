@@ -319,11 +319,24 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 			// 经测试, 文件的 crc32 值并非秒传文件所必需
 			// task.uploadInfo.Crc32Sum()
 
-			err = pcs.RapidUpload(task.savePath, hex.EncodeToString(task.uploadInfo.MD5), hex.EncodeToString(task.uploadInfo.SliceMD5), fmt.Sprint(task.uploadInfo.CRC32), task.uploadInfo.Length)
-			if err == nil {
-				fmt.Printf("[%d] 秒传成功, 保存到网盘路径: %s\n\n", task.ID, task.savePath)
-				totalSize += task.uploadInfo.Length
-				return
+			{
+				pcsError := pcs.RapidUpload(task.savePath, hex.EncodeToString(task.uploadInfo.MD5), hex.EncodeToString(task.uploadInfo.SliceMD5), fmt.Sprint(task.uploadInfo.CRC32), task.uploadInfo.Length)
+				if pcsError == nil {
+					fmt.Printf("[%d] 秒传成功, 保存到网盘路径: %s\n\n", task.ID, task.savePath)
+					totalSize += task.uploadInfo.Length
+					return
+				}
+
+				// 判断配额是否已满
+				switch pcsError.GetErrType() {
+				// 远程服务器错误
+				case pcserror.ErrTypeRemoteError:
+					switch pcsError.GetRemoteErrCode() {
+					case 31112: //exceed quota
+						fmt.Printf("[%d] 秒传失败, 超出配额, 网盘容量已满\n\n", task.ID)
+						return
+					}
+				}
 			}
 
 			fmt.Printf("[%d] 秒传失败, 开始上传文件...\n\n", task.ID)
