@@ -12,9 +12,6 @@ import (
 )
 
 const (
-	// InvalidChars 文件名中的非法字符
-	InvalidChars = `\/:*?"<>|`
-
 	// B byte
 	B = (int64)(1 << (10 * iota))
 	// KB kilobyte
@@ -27,6 +24,11 @@ const (
 	TB
 	// PB petabyte
 	PB
+)
+
+const (
+	// InvalidChars 文件名中的非法字符
+	InvalidChars = `\/:*?"<>|`
 )
 
 // ConvertFileSize 文件大小格式化输出
