@@ -23,6 +23,7 @@ func Parse(line string) (lineArgs []string) {
 		rl        = []rune(line + " ")
 		buf       = strings.Builder{}
 		quoteChar rune
+		nextChar  rune
 		escaped   bool
 		in        bool
 	)
@@ -31,7 +32,7 @@ func Parse(line string) (lineArgs []string) {
 		isSpace bool
 	)
 
-	for _, r := range rl {
+	for k, r := range rl {
 		isSpace = unicode.IsSpace(r)
 		if !isSpace && !in {
 			in = true
@@ -42,8 +43,15 @@ func Parse(line string) (lineArgs []string) {
 			escaped = false
 			//pass
 		case r == CharEscape: // 转义模式
-			escaped = true
-			continue
+			if k+1+1 < len(rl) { // 不是最后一个字符, 多+1是因为最后一个空格
+				nextChar = rl[k+1]
+				// 仅支持转义这些字符, 否则原样输出反斜杠
+				if unicode.IsSpace(nextChar) || IsQuote(nextChar) || nextChar == CharEscape {
+					escaped = true
+					continue
+				}
+			}
+			// pass
 		case IsQuote(r):
 			if quoteChar == 0 { //未引
 				quoteChar = r

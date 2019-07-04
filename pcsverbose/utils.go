@@ -13,6 +13,14 @@ func PrintReader(r io.Reader) {
 	fmt.Printf("%s\n", b)
 }
 
+// PrintArgs 输出字符串数组
+func PrintArgs(w io.Writer, args ...string) {
+	for k, arg := range args {
+		io.WriteString(w, fmt.Sprintf("args[%d] = `%s`, ", k, arg))
+	}
+	w.Write([]byte{'\n'})
+}
+
 func TimePrefix() string {
 	return "[" + pcstime.BeijingTimeOption("Refer") + "]"
 }
