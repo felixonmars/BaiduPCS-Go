@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/checksum"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/jsonhelper"
 	"github.com/iikira/BaiduPCS-Go/requester/uploader"
 	"os"
@@ -78,7 +79,7 @@ func (ud *UploadingDatabase) Save() error {
 	}
 
 	str := builder.String()
-	_, err = ud.dataFile.WriteAt(*(*[]byte)(unsafe.Pointer(&str)), 0)
+	_, err = ud.dataFile.WriteAt(converter.ToBytes(str), 0)
 	if err != nil {
 		return err
 	}
