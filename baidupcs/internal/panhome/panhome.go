@@ -16,6 +16,7 @@ var (
 		Scheme: "https",
 		Host:   "pan.baidu.com",
 	}
+	// AndroidUserAgent Android User-Agent
 	AndroidUserAgent = "Android"
 )
 

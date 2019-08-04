@@ -6,6 +6,7 @@ import (
 )
 
 type (
+	// SignRes 签名结果
 	SignRes interface {
 		Sign() string
 		Timestamp() string

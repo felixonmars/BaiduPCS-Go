@@ -7,9 +7,11 @@ import (
 	_ "unsafe" // for go:linkname
 )
 
-//go:linkname helpCommand github.com/iikira/BaiduPCS-Go/vendor/github.com/urfave/cli.helpCommand
+//go:linkname helpCommand1 github.com/iikira/BaiduPCS-Go/vendor/github.com/urfave/cli.helpCommand
+//go:linkname helpCommand2 github.com/urfave/cli.helpCommand
 var (
-	helpCommand cli.Command
+	helpCommand1 cli.Command
+	helpCommand2 cli.Command
 )
 
 func init() {
@@ -76,8 +78,8 @@ OPTIONS:
 	{{end}}{{end}}
 `
 
-	helpCommand.Aliases = append(helpCommand.Aliases, []string{"?", "？"}...)
-	helpCommand.Action = func(c *cli.Context) error {
+	helpCommand1.Aliases = append(helpCommand1.Aliases, []string{"?", "？"}...)
+	helpCommand1.Action = func(c *cli.Context) error {
 		args := c.Args()
 		if args.Present() {
 			err := cli.ShowCommandHelp(c, args.First())
@@ -90,4 +92,7 @@ OPTIONS:
 		cli.ShowAppHelp(c)
 		return nil
 	}
+
+	helpCommand2.Aliases = helpCommand1.Aliases
+	helpCommand2.Action = helpCommand1.Action
 }
