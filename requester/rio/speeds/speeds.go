@@ -25,9 +25,7 @@ type Speeds struct {
 // Init 初始化
 func (sps *Speeds) Init() {
 	sps.once.Do(func() {
-		if sps.nowTime.Unix() == 0 {
-			sps.nowTime = time.Now()
-		}
+		sps.nowTime = time.Now()
 		sps.inited = true
 	})
 }

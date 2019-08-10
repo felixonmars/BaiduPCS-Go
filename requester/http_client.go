@@ -57,13 +57,13 @@ func (h *HTTPClient) SetUserAgent(ua string) {
 
 // SetProxy 设置代理
 func (h *HTTPClient) SetProxy(proxyAddr string) {
+	h.lazyInit()
 	u, err := checkProxyAddr(proxyAddr)
 	if err != nil {
 		h.transport.Proxy = http.ProxyFromEnvironment
 		return
 	}
 
-	h.lazyInit()
 	h.transport.Proxy = http.ProxyURL(u)
 }
 

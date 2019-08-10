@@ -212,9 +212,9 @@ func (c *PCSConfig) loadConfigFromFile() (err error) {
 
 func (c *PCSConfig) initDefaultConfig() {
 	c.appID = 266719
-	c.cacheSize = 30000
-	c.maxParallel = 100
-	c.maxUploadParallel = 10
+	c.cacheSize = 65536
+	c.maxParallel = 128
+	c.maxUploadParallel = 8
 	c.maxDownloadLoad = 1
 	c.userAgent = "netdisk;8.3.1;android-android"
 
