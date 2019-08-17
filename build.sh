@@ -38,7 +38,7 @@ ArmBuild() {
     $go build -ldflags "-X main.Version=$version -s -w -linkmode=external -extldflags=-pie" -o "$output/$1/$name"
     if [ $2 = "darwin" ] && [ $3 = "arm" -o $3 = "arm64" ];then
         # cp Info.plist "$output/$1"
-        ldid -S "$output/$1/$name"
+        jtool --sign --inplace --ent entitlements.xml "$output/$1/$name"
     fi
 
     RicePack $1 $name
@@ -61,6 +61,7 @@ Pack() {
 
 # rice 打包静态资源
 RicePack() {
+    return # 已取消web功能
     rice -i github.com/iikira/BaiduPCS-Go/internal/pcsweb append --exec "$output/$1/$2"
 }
 
