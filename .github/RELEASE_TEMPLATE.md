@@ -1,14 +1,15 @@
 # 更新日志: 
 
-1. 修复登录成功后, 无法正常使用的问题 ([#399](https://github.com/iikira/BaiduPCS-Go/issues/399));
-2. 修复文件夹下载无法调整重试次数;
-3. 使用 export 导出, 会输出导出错误的文件或目录了;
-4. 更换失效的默认app_id, 对于不是全新安装此程序的用户, 仍然需要手动更改默认的app_id, ([#387](https://github.com/iikira/BaiduPCS-Go/issues/387))
-
-```
-BaiduPCS-Go config set -appid 266719
-```
-
+1. 更换软件更新源为github release, 原来的软件更新功能已无法使用, 请手动更新
+2. 新增修复文件md5功能 (fixmd5), 并取消上传完成后修复md5的功能
+3. 新增测试通配符功能 (match)
+4. 新增设置上传最大并发量
+5. 新增设置多个网卡, 以提高网路传输性能
+6. 新增设置代理
+7. meta 命令可以获取多个文件/目录的元信息了
+8. 下载功能调整
+9. 取消web端
+10. 多处bug修复
 
 个人项目bug在所难免! 欢迎提 issue 和 pull request!!.
 

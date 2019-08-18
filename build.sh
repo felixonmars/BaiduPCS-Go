@@ -3,11 +3,11 @@
 name="BaiduPCS-Go"
 version=$1
 
-GOROOT=/usr/local/go1.10.4
+GOROOT=/usr/local/go1.10.8
 go=$GOROOT/bin/go
 
 if [ "$1" = "" ];then
-    version=v3.5.6
+    version=v3.6
 fi
 
 output="out/"
@@ -38,7 +38,9 @@ ArmBuild() {
     $go build -ldflags "-X main.Version=$version -s -w -linkmode=external -extldflags=-pie" -o "$output/$1/$name"
     if [ $2 = "darwin" ] && [ $3 = "arm" -o $3 = "arm64" ];then
         # cp Info.plist "$output/$1"
-        jtool --sign --inplace --ent entitlements.xml "$output/$1/$name"
+        cd "$output/$1"
+        jtool --sign --inplace --ent ../../entitlements.xml "$name"
+        cd ../..
     fi
 
     RicePack $1 $name

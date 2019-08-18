@@ -78,7 +78,7 @@ OPTIONS:
 	{{end}}{{end}}
 `
 
-	helpCommand1.Aliases = append(helpCommand1.Aliases, []string{"?", "？"}...)
+	helpCommand1.Aliases = append(helpCommand1.Aliases, "?", "？")
 	helpCommand1.Action = func(c *cli.Context) error {
 		args := c.Args()
 		if args.Present() {

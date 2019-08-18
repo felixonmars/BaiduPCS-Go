@@ -36,11 +36,25 @@ import (
 const (
 	// NameShortDisplayNum 文件名缩略显示长度
 	NameShortDisplayNum = 16
+
+	cryptoDescription = `
+	可用的方法 <method>:
+		aes-128-ctr, aes-192-ctr, aes-256-ctr,
+		aes-128-cfb, aes-192-cfb, aes-256-cfb,
+		aes-128-ofb, aes-192-ofb, aes-256-ofb.
+
+	密钥 <key>:
+		aes-128 对应key长度为16, aes-192 对应key长度为24, aes-256 对应key长度为32,
+		如果key长度不符合, 则自动修剪key, 舍弃超出长度的部分, 长度不足的部分用'\0'填充.
+
+	GZIP <disable-gzip>:
+		在文件加密之前, 启用GZIP压缩文件; 文件解密之后启用GZIP解压缩文件, 默认启用,
+		如果不启用, 则无法检测文件是否解密成功, 解密文件时会保留源文件, 避免解密失败造成文件数据丢失.`
 )
 
 var (
 	// Version 版本号
-	Version = "v3.5.6-devel"
+	Version = "v3.6-devel"
 
 	historyFilePath = filepath.Join(pcsconfig.GetConfigDir(), "pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
@@ -57,20 +71,6 @@ var (
 		}
 		return nil
 	}
-
-	cryptoDescription = `
-	可用的方法 <method>:
-		aes-128-ctr, aes-192-ctr, aes-256-ctr,
-		aes-128-cfb, aes-192-cfb, aes-256-cfb,
-		aes-128-ofb, aes-192-ofb, aes-256-ofb.
-
-	密钥 <key>:
-		aes-128 对应key长度为16, aes-192 对应key长度为24, aes-256 对应key长度为32,
-		如果key长度不符合, 则自动修剪key, 舍弃超出长度的部分, 长度不足的部分用'\0'填充.
-
-	GZIP <disable-gzip>:
-		在文件加密之前, 启用GZIP压缩文件; 文件解密之后启用GZIP解压缩文件, 默认启用,
-		如果不启用, 则无法检测文件是否解密成功, 解密文件时会保留源文件, 避免解密失败造成文件数据丢失.`
 
 	isCli bool
 )
@@ -99,7 +99,7 @@ func main() {
 	app.Name = "BaiduPCS-Go"
 	app.Version = Version
 	app.Author = "iikira/BaiduPCS-Go: https://github.com/iikira/BaiduPCS-Go"
-	app.Copyright = "(c) 2016-2018 iikira."
+	app.Copyright = "(c) 2016-2019 iikira."
 	app.Usage = "百度网盘客户端 for " + runtime.GOOS + "/" + runtime.GOARCH
 	app.Description = `BaiduPCS-Go 使用Go语言编写的百度网盘命令行客户端, 为操作百度网盘, 提供实用功能.
 	具体功能, 参见 COMMANDS 列表
