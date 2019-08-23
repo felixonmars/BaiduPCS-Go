@@ -29,8 +29,11 @@
 * PC/电脑: 
     请选择对应的系统 (windows, linux, darwin(苹果系统), freebsd), 对应的CPU架构 (一般情况下是 amd), 对应的CPU或操作系统位数 (详见上表), 下载.
 
-* 移动设备: 
-    请选择对应的系统(android, darwin(ios系统)), 对应的CPU架构 (一般情况下是 arm, 除了少数手机的CPU架构要选 amd, 例如联想K800, 联想K900等), 对应的CPU或操作系统位数  (详见上表), 下载.
+* Android: 
+    选择对应的CPU架构 (一般情况下是 arm, 除了少数手机的CPU架构要选 amd, 例如联想K800, 联想K900等), 对应的CPU或操作系统位数  (详见上表), 下载.
+
+* iOS:
+    无需选择CPU架构，选择 darwin-ios 下载解压后即可使用. 注意: armv7s架构的设备 (iPhone 5, iPhone 5c, iPad 4) 或 iOS 系统版本低于5.0, 可能无法正常运行.
 
 ## 注意
 

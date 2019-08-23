@@ -47,6 +47,23 @@ ArmBuild() {
     Pack $1
 }
 
+IOSBuild() {
+    echo "Building $1..."
+    mkdir -p "$output/$1"
+    cd "$output/$1"
+    export CC=/usr/local/go/misc/ios/clangwrap.sh GOOS=darwin GOARCH=arm GOARM=7 CGO_ENABLED=1
+    $go build -ldflags "-X main.Version=$version -s -w" -o "armv7" github.com/iikira/BaiduPCS-Go
+    jtool --sign --inplace --ent ../../entitlements.xml "armv7"
+    export GOARCH=arm64
+    $go build -ldflags "-X main.Version=$version -s -w" -o "arm64" github.com/iikira/BaiduPCS-Go
+    jtool --sign --inplace --ent ../../entitlements.xml "arm64"
+    lipo -create "armv7" "arm64" -output $name # merge
+    rm "armv7" "arm64"
+    cd ../..
+    RicePack $1 $name
+    Pack $1
+}
+
 # zip 打包
 Pack() {
     mkdir "$output/$1/download"
@@ -77,8 +94,9 @@ CC=$NDK_INSTALL/i686-linux-android-4.9/bin/i686-linux-android-gcc ArmBuild $name
 CC=$NDK_INSTALL/x86_64-linux-android-4.9/bin/x86_64-linux-android-gcc ArmBuild $name-$version"-android-21-amd64" android amd64 7
 
 # iOS
-CC=/usr/local/go/misc/ios/clangwrap.sh ArmBuild $name-$version"-darwin-ios-5.0-armv7" darwin arm 7
-CC=/usr/local/go/misc/ios/clangwrap.sh ArmBuild $name-$version"-darwin-ios-5.0-arm64" darwin arm64 7
+# CC=/usr/local/go/misc/ios/clangwrap.sh ArmBuild $name-$version"-darwin-ios-5.0-armv7" darwin arm 7
+# CC=/usr/local/go/misc/ios/clangwrap.sh ArmBuild $name-$version"-darwin-ios-5.0-arm64" darwin arm64 7
+IOSBuild $name-$version"-darwin-ios-arm"
 
 # OS X / macOS
 Build $name-$version"-darwin-osx-amd64" darwin amd64
