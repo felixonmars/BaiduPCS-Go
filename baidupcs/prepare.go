@@ -3,9 +3,11 @@ package baidupcs
 import (
 	"bytes"
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/netdisksign"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
+	"github.com/iikira/baidu-tools/tieba"
 	"github.com/json-iterator/go"
 	"io"
 	"net/http"
@@ -304,6 +306,21 @@ func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 
 // prepareLocateDownload 获取下载链接, 可指定 User-Agent
 func (pcs *BaiduPCS) prepareLocateDownload(pcspath, userAgent string) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
 	pcs.lazyInit()
+	bduss := pcs.GetBDUSS()
+	// 检测uid
+	if pcs.uid == 0 {
+		t, err := tieba.NewUserInfoByBDUSS(bduss)
+		if err != nil {
+			return nil, &pcserror.PCSErrInfo{
+				Operation: OperationLocateDownload,
+				ErrType:   pcserror.ErrTypeNetError,
+				Err:       err,
+			}
+		}
+		pcs.uid = t.Baidu.UID
+	}
+
+	sign := netdisksign.NewLocateDownloadSign(pcs.uid, bduss)
 	pcsURL := &url.URL{
 		Scheme: GetHTTPScheme(pcs.isHTTPS),
 		Host:   PCSBaiduCom,
@@ -313,6 +330,9 @@ func (pcs *BaiduPCS) prepareLocateDownload(pcspath, userAgent string) (dataReadC
 			"method": []string{"locatedownload"},
 			"path":   []string{pcspath},
 			"ver":    []string{"2"},
+			"time":   []string{strconv.FormatInt(sign.Time, 10)},
+			"rand":   []string{sign.Rand},
+			"devuid": []string{sign.DevUID},
 		}).Encode(),
 	}
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationLocateDownload, pcsURL)

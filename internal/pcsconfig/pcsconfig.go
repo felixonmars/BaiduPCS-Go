@@ -216,7 +216,7 @@ func (c *PCSConfig) initDefaultConfig() {
 	c.maxParallel = 128
 	c.maxUploadParallel = 8
 	c.maxDownloadLoad = 1
-	c.userAgent = "netdisk;8.3.1;android-android"
+	c.userAgent = baidupcs.NetdiskUA
 
 	// 设置默认的下载路径
 	switch runtime.GOOS {

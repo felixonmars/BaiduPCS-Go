@@ -45,6 +45,7 @@ func (baidu *Baidu) BaiduPCS() *baidupcs.BaiduPCS {
 	pcs := baidupcs.NewPCS(Config.appID, baidu.BDUSS)
 	pcs.SetHTTPS(Config.enableHTTPS)
 	pcs.SetUserAgent(Config.userAgent)
+	pcs.SetUID(baidu.UID)
 	return pcs
 }
 

@@ -66,7 +66,6 @@ IOSBuild() {
 
 # zip 打包
 Pack() {
-    mkdir "$output/$1/download"
     cp README.md "$output/$1"
 
     cd $output

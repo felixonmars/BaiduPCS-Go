@@ -3,6 +3,7 @@ package baidupcs
 import (
 	"errors"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
+	"strings"
 )
 
 type (
@@ -28,6 +29,9 @@ type (
 		TypicalCategory int     `json:"typicalCategory"` // 文件类型
 		TypicalPath     string  `json:"typicalPath"`
 	}
+
+	// ShareRecordInfoList 分享信息列表
+	ShareRecordInfoList []*ShareRecordInfo
 
 	sharePSetJSON struct {
 		*Shared
@@ -56,9 +60,6 @@ func (sri *ShareRecordInfo) Clean() {
 func (sri *ShareRecordInfo) HasPasswd() bool {
 	return sri.Passwd != "" && sri.Passwd != "0"
 }
-
-// ShareRecordInfoList 分享信息列表
-type ShareRecordInfoList []*ShareRecordInfo
 
 // Clean 清理
 func (sril *ShareRecordInfoList) Clean() {
@@ -134,6 +135,14 @@ func (pcs *BaiduPCS) ShareList(page int) (records ShareRecordInfoList, pcsError 
 
 	pcsError = pcserror.HandleJSONParse(OperationShareList, dataReadCloser, &jsonData)
 	if pcsError != nil {
+		// json解析错误
+		if pcsError.GetErrType() == pcserror.ErrTypeJSONParseError {
+			// 服务器更改, List为空时变成{}, 导致解析错误
+			if strings.Contains(pcsError.GetError().Error(), `"list":{}`) {
+				// 返回空列表
+				return jsonData.List, nil
+			}
+		}
 		return
 	}
 

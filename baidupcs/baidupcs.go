@@ -100,7 +100,9 @@ const (
 	// PanAppID 百度网盘appid
 	PanAppID = "250528"
 	// NetdiskUA 网盘客户端ua
-	NetdiskUA = "netdisk;8.12.9;;android-android;7.0;JSbridge3.0.0"
+	NetdiskUA = "netdisk;2.2.51.6;netdisk;10.0.63;PC;android-android"
+	// DotBaiduCom .baidu.com
+	DotBaiduCom = ".baidu.com"
 	// PathSeparator 路径分隔符
 	PathSeparator = "/"
 )
@@ -128,6 +130,7 @@ type (
 	BaiduPCS struct {
 		appID    int                   // app_id
 		isHTTPS  bool                  // 是否启用https
+		uid      uint64                // 百度uid
 		client   *requester.HTTPClient // http 客户端
 		ph       *panhome.PanHome
 		cacheMap cachemap.CacheMap
@@ -149,7 +152,7 @@ func NewPCS(appID int, bduss string) *BaiduPCS {
 		&http.Cookie{
 			Name:   "BDUSS",
 			Value:  bduss,
-			Domain: ".baidu.com",
+			Domain: DotBaiduCom,
 		},
 	})
 
@@ -177,7 +180,7 @@ func NewPCSWithCookieStr(appID int, cookieStr string) *BaiduPCS {
 
 	cookies := requester.ParseCookieStr(cookieStr)
 	for _, cookie := range cookies {
-		cookie.Domain = ".baidu.com"
+		cookie.Domain = DotBaiduCom
 	}
 
 	jar, _ := cookiejar.New(nil)
@@ -202,9 +205,29 @@ func (pcs *BaiduPCS) GetClient() *requester.HTTPClient {
 	return pcs.client
 }
 
+// GetBDUSS 获取BDUSS
+func (pcs *BaiduPCS) GetBDUSS() (bduss string) {
+	if pcs.client == nil || pcs.client.Jar == nil {
+		return ""
+	}
+	cookies := pcs.client.Jar.Cookies(baiduComURL)
+	for _, cookie := range cookies {
+		if cookie.Name == "BDUSS" {
+			return cookie.Value
+		}
+	}
+	return ""
+}
+
 // SetAPPID 设置app_id
 func (pcs *BaiduPCS) SetAPPID(appID int) {
 	pcs.appID = appID
+}
+
+// SetUID 设置百度UID
+// 只有locatedownload才需要设置此项
+func (pcs *BaiduPCS) SetUID(uid uint64) {
+	pcs.uid = uid
 }
 
 // SetStoken 设置stoken
@@ -218,7 +241,7 @@ func (pcs *BaiduPCS) SetStoken(stoken string) {
 		&http.Cookie{
 			Name:   "STOKEN",
 			Value:  stoken,
-			Domain: ".baidu.com",
+			Domain: DotBaiduCom,
 		},
 	})
 }
