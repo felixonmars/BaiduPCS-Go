@@ -7,13 +7,6 @@
 
 This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/GangZhuo/BaiduPCS)
 
-## 解决错误代码4, No permission to do this operation
-```
-BaiduPCS-Go config set -appid 266719
-```
-
-详见讨论 [#387](https://github.com/iikira/BaiduPCS-Go/issues/387)
-
 ## 注意
 
 此文档只针对于最新的commit, 可能不适用于已发布的最新版本.
@@ -80,6 +73,7 @@ BaiduPCS-Go config set -appid 266719
   * [7. 退出程序](#7-退出程序)
 - [常见问题](#常见问题)
 - [TODO](#todo)
+- [相关文档](#相关文档)
 - [交流反馈](#交流反馈)
 - [捐助](#捐助)
 
@@ -429,9 +423,9 @@ BaiduPCS-Go locate <文件1> <文件2> ...
 
 #### 注意
 
-若该功能无法正常使用, 提示`user is not authorized, hitcode:101`, 尝试更换 User-Agent 为 `netdisk;8.3.1;android-android`:
+若该功能无法正常使用, 提示`user is not authorized, hitcode:xxx`, 尝试更换 User-Agent 为 `netdisk;2.2.51.6;netdisk;10.0.63;PC;android-android`:
 ```
-BaiduPCS-Go config set -user_agent "netdisk;8.3.1;android-android"
+BaiduPCS-Go config set -user_agent "netdisk;2.2.51.6;netdisk;10.0.63;PC;android-android"
 ```
 
 ## 手动秒传文件
@@ -880,8 +874,9 @@ cli交互模式下, 运行命令 `config set -max_parallel 250` 将下载最大�
 
 # TODO
 
-1. 上传大文件;
-2. 回收站操作, 例如查询回收站文件, 还原文件或目录等.
+
+# 相关文档
+详见: https://github.com/iikira/BaiduPCS-Go/tree/master/docs
 
 # 交流反馈
 

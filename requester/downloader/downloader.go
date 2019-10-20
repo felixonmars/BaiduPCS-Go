@@ -155,7 +155,7 @@ func (der *Downloader) Execute() error {
 			}
 
 			if !ServerEqual(resp, subResp) {
-				pcsverbose.Verbosef("DEBUG: loadBalanser not equal to main server: %s\n", subErr)
+				pcsverbose.Verbosef("DEBUG: loadBalanser not equal to main server\n")
 				return
 			}
 
