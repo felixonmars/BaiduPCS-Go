@@ -9,6 +9,8 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil/waitgroup"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/iikira/BaiduPCS-Go/requester/downloader/cachepool"
+	"github.com/iikira/BaiduPCS-Go/requester/downloader/prealloc"
 	"io"
 	"net/http"
 	"sync"
@@ -37,6 +39,10 @@ type (
 		config                  *Config
 		monitor                 *Monitor
 		instanceState           *InstanceState
+	}
+
+	Fder interface {
+		Fd() uintptr
 	}
 )
 
@@ -218,21 +224,26 @@ func (der *Downloader) Execute() error {
 		der.config.cacheSize = int(blockSize)
 	}
 
+	// 调整pool大小
+	cachepool.SetSyncPoolSize(der.config.cacheSize)
+
 	pcsverbose.Verbosef("DEBUG: download task CREATED: parallel: %d, cache size: %d\n", der.config.parallel, der.config.cacheSize)
 
 	der.monitor.InitMonitorCapacity(der.config.parallel)
+
+	// 尝试修剪文件
+	if fder, ok := der.writer.(Fder); ok {
+		err = prealloc.PreAlloc(fder.Fd(), status.totalSize)
+		if err != nil {
+			pcsverbose.Verbosef("DEBUG: truncate file error: %s\n", err)
+		}
+	}
 
 	// 数据平均分配给各个线程
 	var (
 		begin, end int64
 		writeMu    = &sync.Mutex{}
-		writerAt   io.WriterAt
 	)
-	if der.writer == nil {
-		writerAt = nil
-	} else {
-		writerAt = der.writer
-	}
 
 	for i := 0; i < der.config.parallel; i++ {
 		loadBalancer := loadBalancerResponseList.SequentialGet()
@@ -240,7 +251,7 @@ func (der *Downloader) Execute() error {
 			continue
 		}
 
-		worker := NewWorker(i, loadBalancer.URL, writerAt)
+		worker := NewWorker(i, loadBalancer.URL, der.writer)
 		worker.SetClient(der.client)
 		worker.SetCacheSize(der.config.cacheSize)
 		worker.SetWriteMutex(writeMu)

@@ -329,8 +329,7 @@ func (wer *Worker) Execute() {
 	fixCacheSize(&wer.cacheSize)
 	var (
 		speedsCtx, speedsCancelFunc = context.WithCancel(context.Background())
-		cache                       = cachepool.Require(wer.cacheSize)
-		buf                         = cache.Bytes()
+		buf                         = cachepool.SyncPool.Get().([]byte)
 		n, nn                       int
 		n64, nn64                   int64
 	)
@@ -338,7 +337,7 @@ func (wer *Worker) Execute() {
 	wer.updateSpeeds(speedsCtx)
 	defer func() {
 		speedsCancelFunc() // 结束速度统计
-		cache.Free()
+		cachepool.SyncPool.Put(buf)
 	}()
 
 	for {

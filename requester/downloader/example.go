@@ -3,25 +3,28 @@ package downloader
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
-	"io"
+	"github.com/iikira/BaiduPCS-Go/requester/downloader/prealloc"
 	"os"
 )
 
 // DoDownload 执行下载
 func DoDownload(durl string, savePath string, cfg *Config) {
 	var (
-		file io.WriterAt
+		file *os.File
 		err  error
 	)
 
 	if savePath != "" {
-		file, err = os.Create(savePath)
+		warn := prealloc.InitPrivilege()
+		if warn != nil {
+			fmt.Printf("warn: %s\n", warn)
+		}
+
+		file, err = os.OpenFile(savePath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-	} else {
-		file = nil
 	}
 
 	download := NewDownloader(durl, file, cfg)

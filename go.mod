@@ -21,4 +21,5 @@ require (
 	github.com/shiena/ansicolor v0.0.0-20151119151921-a422bbe96644 // indirect
 	github.com/urfave/cli v1.21.1-0.20190817182405-23c83030263f
 	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
+	golang.org/x/sys v0.0.0-20191025090151-53bf42e6b339
 )

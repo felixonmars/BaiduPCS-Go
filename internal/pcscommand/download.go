@@ -14,6 +14,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil/waitgroup"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
+	"github.com/iikira/BaiduPCS-Go/requester/downloader/prealloc"
 	"github.com/oleiade/lane"
 	"io"
 	"net/http"
@@ -91,7 +92,7 @@ func downloadPrintFormat(load int) string {
 func download(id int, downloadURL, savePath string, loadBalansers []string, client *requester.HTTPClient, newCfg downloader.Config, downloadOptions *DownloadOptions) error {
 	var (
 		file     *os.File
-		writerAt io.WriterAt
+		fileItf  io.WriterAt //空接口和空指针不等价
 		err      error
 		exitChan chan struct{}
 	)
@@ -111,6 +112,13 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 			return fmt.Errorf("%s, path %s: not a directory", StrDownloadInitError, dir)
 		}
 
+		// 初始化权限（Windows）
+		warn := prealloc.InitPrivilege()
+		if warn != nil {
+			fmt.Fprintf(downloadOptions.Out, "warn: %s\n", warn)
+		}
+
+		// 打开文件
 		file, err = os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY, 0666)
 		if file != nil {
 			defer file.Close()
@@ -118,14 +126,10 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 		if err != nil {
 			return fmt.Errorf("%s, %s", StrDownloadInitError, err)
 		}
-
-		// 空指针和空接口不等价
-		if file != nil {
-			writerAt = file
-		}
+		fileItf = file
 	}
 
-	download := downloader.NewDownloader(downloadURL, writerAt, &newCfg)
+	download := downloader.NewDownloader(downloadURL, fileItf, &newCfg)
 	download.SetClient(client)
 	download.TryHTTP(!pcsconfig.Config.EnableHTTPS())
 	download.AddLoadBalanceServer(loadBalansers...)
