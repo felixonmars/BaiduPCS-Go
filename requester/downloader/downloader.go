@@ -227,12 +227,16 @@ func (der *Downloader) Execute() error {
 
 	der.monitor.InitMonitorCapacity(der.config.parallel)
 
-	// 尝试修剪文件
-	if fder, ok := der.writer.(Fder); ok {
-		err = prealloc.PreAlloc(fder.Fd(), status.totalSize)
-		if err != nil {
-			pcsverbose.Verbosef("DEBUG: truncate file error: %s\n", err)
+	var writer Writer
+	if !der.config.IsTest {
+		// 尝试修剪文件
+		if fder, ok := der.writer.(Fder); ok {
+			err = prealloc.PreAlloc(fder.Fd(), status.totalSize)
+			if err != nil {
+				pcsverbose.Verbosef("DEBUG: truncate file error: %s\n", err)
+			}
 		}
+		writer = der.writer // 非测试模式, 赋值writer
 	}
 
 	// 数据平均分配给各个线程
@@ -247,7 +251,7 @@ func (der *Downloader) Execute() error {
 			continue
 		}
 
-		worker := NewWorker(i, loadBalancer.URL, der.writer)
+		worker := NewWorker(i, loadBalancer.URL, writer)
 		worker.SetClient(der.client)
 		worker.SetCacheSize(der.config.cacheSize)
 		worker.SetWriteMutex(writeMu)

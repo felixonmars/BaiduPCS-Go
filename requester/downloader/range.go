@@ -48,7 +48,7 @@ func (r *Range) String() string {
 	return fmt.Sprintf("{%d-%d}", r.LoadBegin(), r.LoadEnd())
 }
 
-//Len 获取所有的Range长度
+//Len 获取所有的Range的剩余长度
 func (rl *RangeList) Len() int64 {
 	var l int64
 	for _, wrange := range *rl {

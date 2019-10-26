@@ -12,7 +12,7 @@ var (
 	SyncPool         = sync.Pool{
 		New: func() interface{} {
 			syncPoolFirstNew = true
-			return make([]byte, syncPoolSize)
+			return RawMallocByteSlice(syncPoolSize)
 		},
 	}
 )

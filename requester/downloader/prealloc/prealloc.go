@@ -1,10 +1,10 @@
-//+build !windows
+//+build !windows,!plan9
 
 // Package prealloc 初始化分配文件包
 package prealloc
 
 import (
-	"os"
+	"syscall"
 )
 
 func InitPrivilege() (err error) {
@@ -12,17 +12,11 @@ func InitPrivilege() (err error) {
 }
 
 func PreAlloc(fd uintptr, length int64) error {
-	file := os.NewFile(fd, "truncfile")
-	err := file.Truncate(length)
+	err := syscall.Ftruncate(int(fd), length)
 	if err != nil {
-		perr, ok := err.(*os.PathError)
-		if !ok {
-			return err
-		}
-
 		return &PreAllocError{
-			ProcName: perr.Op,
-			Err:      perr.Err,
+			ProcName: "Ftruncate",
+			Err:      err,
 		}
 	}
 	return nil
