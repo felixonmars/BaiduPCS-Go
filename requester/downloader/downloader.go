@@ -40,10 +40,6 @@ type (
 		monitor                 *Monitor
 		instanceState           *InstanceState
 	}
-
-	Fder interface {
-		Fd() uintptr
-	}
 )
 
 //NewDownloader 初始化Downloader

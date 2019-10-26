@@ -14,7 +14,6 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil/waitgroup"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
-	"github.com/iikira/BaiduPCS-Go/requester/downloader/prealloc"
 	"github.com/oleiade/lane"
 	"io"
 	"net/http"
@@ -91,10 +90,10 @@ func downloadPrintFormat(load int) string {
 
 func download(id int, downloadURL, savePath string, loadBalansers []string, client *requester.HTTPClient, newCfg downloader.Config, downloadOptions *DownloadOptions) error {
 	var (
-		file     *os.File
-		fileItf  io.WriterAt //空接口和空指针不等价
-		err      error
-		exitChan chan struct{}
+		writer    downloader.Writer
+		file      *os.File
+		warn, err error
+		exitChan  chan struct{}
 	)
 
 	if !newCfg.IsTest {
@@ -112,24 +111,18 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 			return fmt.Errorf("%s, path %s: not a directory", StrDownloadInitError, dir)
 		}
 
-		// 初始化权限（Windows）
-		warn := prealloc.InitPrivilege()
+		// 打开文件
+		writer, file, warn, err = downloader.NewDownloaderWriterByFilename(savePath, os.O_CREATE|os.O_WRONLY, 0666)
 		if warn != nil {
 			fmt.Fprintf(downloadOptions.Out, "warn: %s\n", warn)
-		}
-
-		// 打开文件
-		file, err = os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY, 0666)
-		if file != nil {
-			defer file.Close()
 		}
 		if err != nil {
 			return fmt.Errorf("%s, %s", StrDownloadInitError, err)
 		}
-		fileItf = file
+		defer file.Close()
 	}
 
-	download := downloader.NewDownloader(downloadURL, fileItf, &newCfg)
+	download := downloader.NewDownloader(downloadURL, writer, &newCfg)
 	download.SetClient(client)
 	download.TryHTTP(!pcsconfig.Config.EnableHTTPS())
 	download.AddLoadBalanceServer(loadBalansers...)
@@ -194,24 +187,29 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 	close(exitChan)
 	fmt.Fprintf(downloadOptions.Out, "\n")
 	if err != nil {
-		// 下载失败, 删去空文件
-		if info, infoErr := file.Stat(); infoErr == nil {
-			if info.Size() == 0 {
-				pcsCommandVerbose.Infof("[%d] remove empty file: %s\n", id, savePath)
-				os.Remove(savePath)
+		if !newCfg.IsTest {
+			// 下载失败, 删去空文件
+			if info, infoErr := file.Stat(); infoErr == nil {
+				if info.Size() == 0 {
+					pcsCommandVerbose.Infof("[%d] remove empty file: %s\n", id, savePath)
+					removeErr := os.Remove(savePath)
+					if removeErr != nil {
+						pcsCommandVerbose.Infof("[%d] remove file error: %s\n", id, removeErr)
+					}
+				}
 			}
 		}
 		return err
 	}
 
-	if downloadOptions.IsExecutedPermission {
-		err = file.Chmod(0766)
-		if err != nil {
-			fmt.Fprintf(downloadOptions.Out, "[%d] 警告, 加执行权限错误: %s\n", id, err)
-		}
-	}
-
 	if !newCfg.IsTest {
+		if downloadOptions.IsExecutedPermission {
+			err = file.Chmod(0766)
+			if err != nil {
+				fmt.Fprintf(downloadOptions.Out, "[%d] 警告, 加执行权限错误: %s\n", id, err)
+			}
+		}
+
 		fmt.Fprintf(downloadOptions.Out, "[%d] 下载完成, 保存位置: %s\n", id, savePath)
 	} else {
 		fmt.Fprintf(downloadOptions.Out, "[%d] 测试下载结束\n", id)
