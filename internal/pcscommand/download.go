@@ -386,190 +386,193 @@ func RunDownload(paths []string, options *DownloadOptions) {
 			}
 		}
 		startTime = time.Now()
-		wg        = waitgroup.NewWaitGroup(options.Load)
 	)
 
 	for {
-		e := dlist.Shift()
-		if e == nil { // 任务为空
-			if wg.Parallel() == 0 { // 结束
+		// Wait之后不能再add了，重建一个wg
+		wg := waitgroup.NewWaitGroup(options.Load)
+		for {
+			e := dlist.Shift()
+			if e == nil { // 任务为空
 				break
-			} else {
-				time.Sleep(1e9)
-				continue
-			}
-		}
-
-		task := e.(*dtask)
-		wg.AddDelta()
-		go func() {
-			defer wg.Done()
-
-			if task.downloadInfo == nil {
-				task.downloadInfo, err = pcs.FilesDirectoriesMeta(task.path)
-				if err != nil {
-					// 不重试
-					fmt.Printf("[%d] 获取路径信息错误, %s\n", task.ID, err)
-					return
-				}
 			}
 
-			fmt.Fprintf(options.Out, "\n")
-			fmt.Fprintf(options.Out, "[%d] ----\n%s\n", task.ID, task.downloadInfo.String())
+			task := e.(*dtask)
+			wg.AddDelta()
+			go func() {
+				defer wg.Done()
 
-			// 如果是一个目录, 将子文件和子目录加入队列
-			if task.downloadInfo.Isdir {
-				if !options.IsTest { // 测试下载, 不建立空目录
-					os.MkdirAll(task.savePath, 0777) // 首先在本地创建目录, 保证空目录也能被保存
-				}
-
-				fileList, err := pcs.FilesDirectoriesList(task.path, baidupcs.DefaultOrderOptions)
-				if err != nil {
-					// 不重试
-					fmt.Fprintf(options.Out, "[%d] 获取目录信息错误, %s\n", task.ID, err)
-					return
-				}
-
-				for k := range fileList {
-					lastID++
-					subTask := &dtask{
-						ListTask: ListTask{
-							ID:       lastID,
-							MaxRetry: options.MaxRetry,
-						},
-						path:         fileList[k].Path,
-						downloadInfo: fileList[k],
-					}
-
-					if options.SaveTo != "" {
-						subTask.savePath = filepath.Join(task.savePath, fileList[k].Filename)
-					} else {
-						subTask.savePath = GetActiveUser().GetSavePath(subTask.path)
-					}
-
-					dlist.Append(subTask)
-					fmt.Fprintf(options.Out, "[%d] 加入下载队列: %s\n", lastID, fileList[k].Path)
-				}
-				return
-			}
-
-			fmt.Fprintf(options.Out, "[%d] 准备下载: %s\n", task.ID, task.path)
-
-			if !options.IsTest && !options.IsOverwrite && fileExist(task.savePath) {
-				fmt.Fprintf(options.Out, "[%d] 文件已经存在: %s, 跳过...\n", task.ID, task.savePath)
-				return
-			}
-
-			if !options.IsTest {
-				fmt.Fprintf(options.Out, "[%d] 将会下载到路径: %s\n\n", task.ID, task.savePath)
-			}
-
-			// 获取直链, 或者以分享文件的方式获取下载链接来下载
-			var (
-				dlink  string
-				dlinks []string
-			)
-
-			switch {
-			case options.IsLocateDownload:
-				// 获取直链下载
-				var rawDlinks []*url.URL
-				rawDlinks, err = getLocateDownloadLinks(task.path)
-				if err == nil {
-					handleHTTPLinkURL(rawDlinks[0])
-					dlink = rawDlinks[0].String()
-					dlinks = make([]string, 0, len(rawDlinks)-1)
-					for _, rawDlink := range rawDlinks[1:len(rawDlinks)] {
-						handleHTTPLinkURL(rawDlink)
-						dlinks = append(dlinks, rawDlink.String())
-					}
-				}
-			case options.IsShareDownload: // 分享下载
-				dlink, err = getShareDLink(task.path)
-				switch err {
-				case nil, ErrShareInfoNotFound: // 未分享, 采用默认下载方式
-				default:
-					handleTaskErr(task, StrDownloadFailed, err)
-					return
-				}
-			case options.IsLocatePanAPIDownload: // 由第三方服务器处理
-				dlink, err = getLocatePanLink(pcs, task.downloadInfo.FsID)
-				if err != nil {
-					handleTaskErr(task, StrDownloadFailed, err)
-					return
-				}
-			}
-
-			if (options.IsShareDownload || options.IsLocateDownload || options.IsLocatePanAPIDownload) && err == nil {
-				pcsCommandVerbose.Infof("[%d] 获取到下载链接: %s\n", task.ID, dlink)
-				client := pcsconfig.Config.HTTPClient()
-				client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-					// 去掉 Referer
-					if !pcsconfig.Config.EnableHTTPS() {
-						req.Header.Del("Referer")
-					}
-					if len(via) >= 10 {
-						return errors.New("stopped after 10 redirects")
-					}
-					return nil
-				}
-				client.SetTimeout(20 * time.Minute)
-				client.SetKeepAlive(true)
-				err = download(task.ID, dlink, task.savePath, dlinks, client, *cfg, options)
-			} else {
-				if options.IsShareDownload || options.IsLocateDownload || options.IsLocatePanAPIDownload {
-					fmt.Fprintf(options.Out, "[%d] 错误: %s, 将使用默认的下载方式\n", task.ID, err)
-				}
-
-				dfunc := func(downloadURL string, jar http.CookieJar) error {
-					h := pcsconfig.Config.HTTPClient()
-					h.SetCookiejar(jar)
-					h.SetKeepAlive(true)
-					h.SetTimeout(10 * time.Minute)
-
-					err := download(task.ID, downloadURL, task.savePath, dlinks, h, *cfg, options)
+				if task.downloadInfo == nil {
+					task.downloadInfo, err = pcs.FilesDirectoriesMeta(task.path)
 					if err != nil {
-						return err
+						// 不重试
+						fmt.Printf("[%d] 获取路径信息错误, %s\n", task.ID, err)
+						return
+					}
+				}
+
+				fmt.Fprintf(options.Out, "\n")
+				fmt.Fprintf(options.Out, "[%d] ----\n%s\n", task.ID, task.downloadInfo.String())
+
+				// 如果是一个目录, 将子文件和子目录加入队列
+				if task.downloadInfo.Isdir {
+					if !options.IsTest { // 测试下载, 不建立空目录
+						os.MkdirAll(task.savePath, 0777) // 首先在本地创建目录, 保证空目录也能被保存
 					}
 
-					return nil
-				}
-				if options.IsStreaming {
-					err = pcs.DownloadStreamFile(task.path, dfunc)
-				} else {
-					err = pcs.DownloadFile(task.path, dfunc)
-				}
-			}
+					fileList, err := pcs.FilesDirectoriesList(task.path, baidupcs.DefaultOrderOptions)
+					if err != nil {
+						// 不重试
+						fmt.Fprintf(options.Out, "[%d] 获取目录信息错误, %s\n", task.ID, err)
+						return
+					}
 
-			if err != nil {
-				handleTaskErr(task, StrDownloadFailed, err)
-				return
-			}
+					for k := range fileList {
+						lastID++
+						subTask := &dtask{
+							ListTask: ListTask{
+								ID:       lastID,
+								MaxRetry: options.MaxRetry,
+							},
+							path:         fileList[k].Path,
+							downloadInfo: fileList[k],
+						}
 
-			// 检验文件有效性
-			if !cfg.IsTest && !options.NoCheck {
-				if task.downloadInfo.Size >= 128*converter.MB {
-					fmt.Fprintf(options.Out, "[%d] 开始检验文件有效性, 请稍候...\n", task.ID)
+						if options.SaveTo != "" {
+							subTask.savePath = filepath.Join(task.savePath, fileList[k].Filename)
+						} else {
+							subTask.savePath = GetActiveUser().GetSavePath(subTask.path)
+						}
+
+						dlist.Append(subTask)
+						fmt.Fprintf(options.Out, "[%d] 加入下载队列: %s\n", lastID, fileList[k].Path)
+					}
+					return
 				}
-				err = checkFileValid(task.savePath, task.downloadInfo)
-				if err != nil {
+
+				fmt.Fprintf(options.Out, "[%d] 准备下载: %s\n", task.ID, task.path)
+
+				if !options.IsTest && !options.IsOverwrite && fileExist(task.savePath) {
+					fmt.Fprintf(options.Out, "[%d] 文件已经存在: %s, 跳过...\n", task.ID, task.savePath)
+					return
+				}
+
+				if !options.IsTest {
+					fmt.Fprintf(options.Out, "[%d] 将会下载到路径: %s\n\n", task.ID, task.savePath)
+				}
+
+				// 获取直链, 或者以分享文件的方式获取下载链接来下载
+				var (
+					dlink  string
+					dlinks []string
+				)
+
+				switch {
+				case options.IsLocateDownload:
+					// 获取直链下载
+					var rawDlinks []*url.URL
+					rawDlinks, err = getLocateDownloadLinks(task.path)
+					if err == nil {
+						handleHTTPLinkURL(rawDlinks[0])
+						dlink = rawDlinks[0].String()
+						dlinks = make([]string, 0, len(rawDlinks)-1)
+						for _, rawDlink := range rawDlinks[1:len(rawDlinks)] {
+							handleHTTPLinkURL(rawDlink)
+							dlinks = append(dlinks, rawDlink.String())
+						}
+					}
+				case options.IsShareDownload: // 分享下载
+					dlink, err = getShareDLink(task.path)
 					switch err {
-					case ErrDownloadFileBanned:
-						fmt.Fprintf(options.Out, "[%d] 检验文件有效性: %s\n", task.ID, err)
-						return
+					case nil, ErrShareInfoNotFound: // 未分享, 采用默认下载方式
 					default:
-						handleTaskErr(task, "检验文件有效性出错", err)
+						handleTaskErr(task, StrDownloadFailed, err)
+						return
+					}
+				case options.IsLocatePanAPIDownload: // 由第三方服务器处理
+					dlink, err = getLocatePanLink(pcs, task.downloadInfo.FsID)
+					if err != nil {
+						handleTaskErr(task, StrDownloadFailed, err)
 						return
 					}
 				}
 
-				fmt.Fprintf(options.Out, "[%d] 检验文件有效性成功\n", task.ID)
-			}
+				if (options.IsShareDownload || options.IsLocateDownload || options.IsLocatePanAPIDownload) && err == nil {
+					pcsCommandVerbose.Infof("[%d] 获取到下载链接: %s\n", task.ID, dlink)
+					client := pcsconfig.Config.HTTPClient()
+					client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+						// 去掉 Referer
+						if !pcsconfig.Config.EnableHTTPS() {
+							req.Header.Del("Referer")
+						}
+						if len(via) >= 10 {
+							return errors.New("stopped after 10 redirects")
+						}
+						return nil
+					}
+					client.SetTimeout(20 * time.Minute)
+					client.SetKeepAlive(true)
+					err = download(task.ID, dlink, task.savePath, dlinks, client, *cfg, options)
+				} else {
+					if options.IsShareDownload || options.IsLocateDownload || options.IsLocatePanAPIDownload {
+						fmt.Fprintf(options.Out, "[%d] 错误: %s, 将使用默认的下载方式\n", task.ID, err)
+					}
 
-			atomic.AddInt64(&totalSize, task.downloadInfo.Size)
-		}()
+					dfunc := func(downloadURL string, jar http.CookieJar) error {
+						h := pcsconfig.Config.HTTPClient()
+						h.SetCookiejar(jar)
+						h.SetKeepAlive(true)
+						h.SetTimeout(10 * time.Minute)
+
+						err := download(task.ID, downloadURL, task.savePath, dlinks, h, *cfg, options)
+						if err != nil {
+							return err
+						}
+
+						return nil
+					}
+					if options.IsStreaming {
+						err = pcs.DownloadStreamFile(task.path, dfunc)
+					} else {
+						err = pcs.DownloadFile(task.path, dfunc)
+					}
+				}
+
+				if err != nil {
+					handleTaskErr(task, StrDownloadFailed, err)
+					return
+				}
+
+				// 检验文件有效性
+				if !cfg.IsTest && !options.NoCheck {
+					if task.downloadInfo.Size >= 128*converter.MB {
+						fmt.Fprintf(options.Out, "[%d] 开始检验文件有效性, 请稍候...\n", task.ID)
+					}
+					err = checkFileValid(task.savePath, task.downloadInfo)
+					if err != nil {
+						switch err {
+						case ErrDownloadFileBanned:
+							fmt.Fprintf(options.Out, "[%d] 检验文件有效性: %s\n", task.ID, err)
+							return
+						default:
+							handleTaskErr(task, "检验文件有效性出错", err)
+							return
+						}
+					}
+
+					fmt.Fprintf(options.Out, "[%d] 检验文件有效性成功\n", task.ID)
+				}
+
+				atomic.AddInt64(&totalSize, task.downloadInfo.Size)
+			}()
+		}
+		wg.Wait()
+
+		// 没有任务了
+		if dlist.Size() == 0 {
+			break
+		}
 	}
-	wg.Wait()
 
 	fmt.Fprintf(options.Out, "\n任务结束, 时间: %s, 数据总量: %s\n", time.Since(startTime)/1e6*1e6, converter.ConvertFileSize(totalSize))
 	if len(failedList) != 0 {

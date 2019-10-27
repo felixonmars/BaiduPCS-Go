@@ -181,26 +181,24 @@ func (der *Downloader) Execute() error {
 		return err
 	}
 
-	instanceInfo := der.instanceState.Get()
 	var (
-		dlStatus *DownloadStatus
-		ranges   []*Range
+		bii        = der.instanceState.Get()
+		isInstance = bii != nil // 是否存在断点信息
 	)
-	if instanceInfo != nil {
-		dlStatus = instanceInfo.DlStatus
-		ranges = instanceInfo.Ranges
+	if bii == nil {
+		bii = &InstanceInfo{}
 	}
 
-	if dlStatus != nil {
-		status = dlStatus
+	if bii.DlStatus != nil {
+		status = bii.DlStatus
 	}
 
 	// 数据处理
-	isRange := ranges != nil && len(ranges) > 0
+	isRange := bii.Ranges != nil && len(bii.Ranges) > 0
 	if acceptRanges == "" { //不支持多线程
 		der.config.parallel = 1
 	} else if isRange {
-		der.config.parallel = len(ranges)
+		der.config.parallel = len(bii.Ranges)
 	} else {
 		der.config.parallel = der.config.MaxParallel
 		if int64(der.config.parallel) > status.totalSize/int64(MinParallelSize) {
@@ -212,14 +210,18 @@ func (der *Downloader) Execute() error {
 		der.config.parallel = 1
 	}
 
-	der.config.cacheSize = der.config.CacheSize
-	blockSize := status.totalSize / int64(der.config.parallel)
+	// Range 生成器
+	var (
+		rangeGen1            = NewRangeListGen1(status.totalSize, der.config.parallel)
+		blockSize, rangeGenF = rangeGen1.GenFunc()
+	)
 
-	// 如果 cache size 过高, 则调低
-	if int64(der.config.cacheSize) > blockSize {
+	if int64(der.config.CacheSize) > blockSize {
+		// 如果 cache size 过高, 则调低
 		der.config.cacheSize = int(blockSize)
+	} else {
+		der.config.cacheSize = der.config.CacheSize
 	}
-
 	// 调整pool大小
 	cachepool.SetSyncPoolSize(der.config.cacheSize)
 
@@ -241,17 +243,23 @@ func (der *Downloader) Execute() error {
 
 	// 数据平均分配给各个线程
 	var (
-		begin, end int64
-		writeMu    = &sync.Mutex{}
+		writeMu = &sync.Mutex{}
 	)
 
-	for i := 0; i < der.config.parallel; i++ {
+	if !isRange {
+		bii.Ranges = make(RangeList, 0, der.config.parallel)
+		for r := rangeGenF(); r != nil; r = rangeGenF() {
+			bii.Ranges = append(bii.Ranges, r)
+		}
+	}
+
+	for k, r := range bii.Ranges {
 		loadBalancer := loadBalancerResponseList.SequentialGet()
 		if loadBalancer == nil {
 			continue
 		}
 
-		worker := NewWorker(i, loadBalancer.URL, writer)
+		worker := NewWorker(k, loadBalancer.URL, writer)
 		worker.SetClient(der.client)
 		worker.SetCacheSize(der.config.cacheSize)
 		worker.SetWriteMutex(writeMu)
@@ -259,29 +267,18 @@ func (der *Downloader) Execute() error {
 
 		// 使用第一个连接
 		// 断点续传时不使用
-		if i == 0 && instanceInfo == nil {
+		if k == 0 && !isInstance {
 			worker.firstResp = resp
 		}
 
-		// 分配线程
-		if isRange {
-			worker.SetRange(acceptRanges, *ranges[i])
-		} else {
-			end = int64(i+1) * blockSize
-			worker.SetRange(acceptRanges, Range{
-				Begin: begin,
-				End:   end,
-			})
-			begin = end + 1
-			if i == der.config.parallel-1 {
-				worker.wrange.End = status.totalSize - 1
-			}
-		}
+		worker.SetRange(acceptRanges, *r) // 分配Range
 		der.monitor.Append(worker)
 	}
 
 	der.monitor.SetStatus(status)
-	der.monitor.SetReloadWorker(acceptRanges != "")
+
+	// 服务器不支持断点续传, 或者单线程下载, 都不重载worker
+	der.monitor.SetReloadWorker(der.config.parallel > 1)
 
 	moniterCtx, moniterCancelFunc := context.WithCancel(context.Background())
 	der.monitorCancelFunc = moniterCancelFunc

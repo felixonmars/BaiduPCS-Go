@@ -8,41 +8,29 @@ import (
 	"sync"
 )
 
-//InstanceState 状态, 断点续传信息
-type InstanceState struct {
-	saveFile *os.File
-	ii       *instanceInfo
-	mu       sync.Mutex
-}
+type (
+	//InstanceState 状态, 断点续传信息
+	InstanceState struct {
+		saveFile *os.File
+		ii       *instanceInfo
+		mu       sync.Mutex
+	}
 
-type rangeInfo struct {
-	Begin int64 `json:"begin"`
-	End   int64 `json:"end"`
-}
+	//InstanceInfo 状态详细信息, 用于导出状态文件
+	InstanceInfo struct {
+		DlStatus *DownloadStatus
+		Ranges   RangeList
+	}
 
-//InstanceInfo 状态详细信息, 用于导出状态文件
-type InstanceInfo struct {
-	DlStatus *DownloadStatus
-	Ranges   RangeList
-}
-
-type instanceInfo struct {
-	TotalSize int64        `json:"total_size"` // 总大小
-	Ranges    []*rangeInfo `json:"ranges"`
-}
+	instanceInfo struct {
+		TotalSize int64     `json:"total_size"` // 总大小
+		Ranges    RangeList `json:"ranges"`
+	}
+)
 
 func (ii *instanceInfo) Convert() (eii *InstanceInfo) {
-	eii = &InstanceInfo{}
-	eii.Ranges = make([]*Range, 0, len(ii.Ranges))
-	for k := range ii.Ranges {
-		if ii.Ranges[k] == nil {
-			continue
-		}
-
-		eii.Ranges = append(eii.Ranges, &Range{
-			Begin: ii.Ranges[k].Begin,
-			End:   ii.Ranges[k].End,
-		})
+	eii = &InstanceInfo{
+		Ranges: ii.Ranges,
 	}
 
 	downloaded := ii.TotalSize - eii.Ranges.Len()
@@ -62,19 +50,7 @@ func (ii *instanceInfo) Render(eii *InstanceInfo) {
 	if eii.DlStatus != nil {
 		ii.TotalSize = eii.DlStatus.TotalSize()
 	}
-	if eii.Ranges != nil {
-		ii.Ranges = make([]*rangeInfo, 0, len(eii.Ranges))
-		for k := range eii.Ranges {
-			if eii.Ranges[k] == nil {
-				continue
-			}
-
-			ii.Ranges = append(ii.Ranges, &rangeInfo{
-				Begin: eii.Ranges[k].LoadBegin(),
-				End:   eii.Ranges[k].LoadEnd(),
-			})
-		}
-	}
+	ii.Ranges = eii.Ranges
 }
 
 //NewInstanceState 初始化InstanceState

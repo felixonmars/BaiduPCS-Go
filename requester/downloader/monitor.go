@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -25,7 +24,6 @@ type Monitor struct {
 	instanceState   *InstanceState
 	completed       <-chan struct{}
 	err             error
-	dymanicMu       sync.Mutex
 	resetController *ResetController
 	isReloadWorker  bool //是否重载worker, 单线程模式不重载
 }
@@ -111,10 +109,6 @@ func (mt *Monitor) GetSpeedsPerSecondFunc() func() int64 {
 //GetAvaliableWorker 获取空闲的worker
 func (mt *Monitor) GetAvaliableWorker() *Worker {
 	for _, worker := range mt.workers {
-		if worker == nil {
-			continue
-		}
-
 		if worker.Completed() {
 			return worker
 		}
@@ -126,10 +120,6 @@ func (mt *Monitor) GetAvaliableWorker() *Worker {
 func (mt *Monitor) GetAllWorkersRange() (ranges []*Range) {
 	ranges = make([]*Range, 0, len(mt.workers))
 	for _, worker := range mt.workers {
-		if worker == nil {
-			continue
-		}
-
 		ranges = append(ranges, worker.GetRange())
 	}
 	return
@@ -138,10 +128,6 @@ func (mt *Monitor) GetAllWorkersRange() (ranges []*Range) {
 //NumLeftWorkers 剩余的worker数量
 func (mt *Monitor) NumLeftWorkers() (num int) {
 	for _, worker := range mt.workers {
-		if worker == nil {
-			continue
-		}
-
 		if !worker.Completed() {
 			num++
 		}
@@ -158,9 +144,6 @@ func (mt *Monitor) SetReloadWorker(b bool) {
 func (mt *Monitor) IsLeftWorkersAllFailed() bool {
 	failedNum := 0
 	for _, worker := range mt.workers {
-		if worker == nil {
-			continue
-		}
 		if worker.Completed() {
 			continue
 		}
@@ -185,10 +168,6 @@ func (mt *Monitor) AllCompleted() <-chan struct{} {
 		for {
 			completeNum = 0
 			for _, worker := range mt.workers {
-				if worker == nil {
-					continue
-				}
-
 				switch worker.GetStatus().StatusCode() {
 				case StatusCodeInternalError:
 					mt.err = fmt.Errorf("ERROR: fatal internal error: %s", worker.Err())
@@ -211,7 +190,7 @@ func (mt *Monitor) AllCompleted() <-chan struct{} {
 //ResetFailedAndNetErrorWorkers 重设部分网络错误的worker
 func (mt *Monitor) ResetFailedAndNetErrorWorkers() {
 	for k := range mt.workers {
-		if !mt.resetController.CanReset() || mt.workers[k] == nil {
+		if !mt.resetController.CanReset() {
 			continue
 		}
 
@@ -235,9 +214,6 @@ func (mt *Monitor) ResetFailedAndNetErrorWorkers() {
 //RangeWorker 遍历worker
 func (mt *Monitor) RangeWorker(f func(key int, worker *Worker) bool) {
 	for k := range mt.workers {
-		if mt.workers[k] == nil {
-			continue
-		}
 		if !f(k, mt.workers[k]) {
 			break
 		}
@@ -247,10 +223,6 @@ func (mt *Monitor) RangeWorker(f func(key int, worker *Worker) bool) {
 //Pause 暂停所有的下载
 func (mt *Monitor) Pause() {
 	for k := range mt.workers {
-		if mt.workers[k] == nil {
-			continue
-		}
-
 		mt.workers[k].Pause()
 	}
 }
@@ -258,10 +230,6 @@ func (mt *Monitor) Pause() {
 //Resume 恢复所有的下载
 func (mt *Monitor) Resume() {
 	for k := range mt.workers {
-		if mt.workers[k] == nil {
-			continue
-		}
-
 		mt.workers[k].Resume()
 	}
 }
@@ -275,9 +243,6 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 
 	mt.lazyInit()
 	for _, worker := range mt.workers {
-		if worker == nil {
-			continue
-		}
 		worker.SetDownloadStatus(mt.status)
 		go worker.Execute()
 	}
@@ -289,10 +254,6 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 		select {
 		case <-cancelCtx.Done():
 			for _, worker := range mt.workers {
-				if worker == nil {
-					continue
-				}
-
 				err := worker.Cancel()
 				if err != nil {
 					pcsverbose.Verbosef("DEBUG: cancel failed, worker id: %d, err: %s\n", worker.ID(), err)
@@ -305,11 +266,11 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 			time.Sleep(1 * time.Second)
 
 			// 初始化监控工作
-			pcsverbose.Verbosef("DEBUG: monitor: ResetFailedAndNetErrorWorkers start\n")
 			mt.ResetFailedAndNetErrorWorkers()
 
 			mt.status.updateSpeeds()
 
+			// 保存断点信息到文件
 			if mt.instanceState != nil {
 				mt.instanceState.Put(&InstanceInfo{
 					DlStatus: mt.status,
@@ -325,7 +286,7 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 			// 速度减慢或者全部失败, 开始监控
 			// 只有一个worker时不重设连接
 			isLeftWorkersAllFailed := mt.IsLeftWorkersAllFailed()
-			if (len(mt.workers) > 1 && mt.status.SpeedsPerSecond() < mt.status.MaxSpeeds()/5) || isLeftWorkersAllFailed {
+			if (mt.status.SpeedsPerSecond() < mt.status.MaxSpeeds()/5) || isLeftWorkersAllFailed {
 				if isLeftWorkersAllFailed {
 					pcsverbose.Verbosef("DEBUG: monitor: All workers failed\n")
 				}
@@ -336,9 +297,6 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 
 				sort.Sort(ByLeftDesc{mt.workers})
 				for k := range mt.workers {
-					if mt.workers[k] == nil {
-						continue
-					}
 					//动态分配线程
 
 					func(worker *Worker) {

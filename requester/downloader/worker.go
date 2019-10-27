@@ -71,9 +71,6 @@ func (wer *Worker) lazyInit() {
 	if wer.client == nil {
 		wer.client = requester.NewHTTPClient()
 	}
-	if wer.writeMu == nil {
-		wer.writeMu = &sync.Mutex{}
-	}
 	if wer.pauseChan == nil {
 		wer.pauseChan = make(chan struct{})
 	}
@@ -399,15 +396,21 @@ func (wer *Worker) Execute() {
 			// 写入数据
 			if wer.writerAt != nil {
 				wer.status.statusCode = StatusCodeWaitToWrite
-				wer.writeMu.Lock()                                           // 加锁, 减轻硬盘的压力
+				if wer.writeMu != nil {
+					wer.writeMu.Lock() // 加锁, 减轻硬盘的压力
+				}
 				_, wer.err = wer.writerAt.WriteAt(buf[:n], wer.wrange.Begin) // 写入数据
 				if wer.err != nil {
-					wer.writeMu.Unlock()
+					if wer.writeMu != nil {
+						wer.writeMu.Unlock() //解锁
+					}
 					wer.status.statusCode = StatusCodeInternalError
 					return
 				}
 
-				wer.writeMu.Unlock() //解锁
+				if wer.writeMu != nil {
+					wer.writeMu.Unlock() //解锁
+				}
 				wer.status.statusCode = StatusCodeDownloading
 			}
 

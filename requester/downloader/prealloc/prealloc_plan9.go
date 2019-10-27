@@ -2,10 +2,6 @@
 
 package prealloc
 
-import (
-	"syscall"
-)
-
 func InitPrivilege() (err error) {
 	return nil
 }
