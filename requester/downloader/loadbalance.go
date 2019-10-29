@@ -55,10 +55,6 @@ func ServerEqual(resp, subResp *http.Response) bool {
 		return false
 	}
 
-	if resp.ContentLength != subResp.ContentLength {
-		return false
-	}
-
 	header, subHeader := resp.Header, subResp.Header
 	if header.Get("Content-MD5") != subHeader.Get("Content-MD5") {
 		return false

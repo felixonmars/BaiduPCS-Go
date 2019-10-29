@@ -26,6 +26,9 @@ type Monitor struct {
 	err             error
 	resetController *ResetController
 	isReloadWorker  bool //是否重载worker, 单线程模式不重载
+
+	// 临时变量
+	lastAvaliableIndex int
 }
 
 //NewMonitor 初始化Monitor
@@ -108,8 +111,12 @@ func (mt *Monitor) GetSpeedsPerSecondFunc() func() int64 {
 
 //GetAvaliableWorker 获取空闲的worker
 func (mt *Monitor) GetAvaliableWorker() *Worker {
-	for _, worker := range mt.workers {
+	workerCount := len(mt.workers)
+	for i := mt.lastAvaliableIndex; i < mt.lastAvaliableIndex+workerCount; i++ {
+		index := i % workerCount
+		worker := mt.workers[index]
 		if worker.Completed() {
+			mt.lastAvaliableIndex = index
 			return worker
 		}
 	}
@@ -166,6 +173,12 @@ func (mt *Monitor) AllCompleted() <-chan struct{} {
 
 	go func() {
 		for {
+			time.Sleep(1 * time.Second)
+
+			if mt.status != nil && mt.status.gen != nil && !mt.status.gen.IsDone() {
+				continue
+			}
+
 			completeNum = 0
 			for _, worker := range mt.workers {
 				switch worker.GetStatus().StatusCode() {
@@ -181,7 +194,6 @@ func (mt *Monitor) AllCompleted() <-chan struct{} {
 				close(c)
 				return
 			}
-			time.Sleep(1 * time.Second)
 		}
 	}()
 	return c
@@ -234,6 +246,113 @@ func (mt *Monitor) Resume() {
 	}
 }
 
+// TryAddNewWork 尝试加入新range
+func (mt *Monitor) TryAddNewWork() {
+	if mt.status == nil || mt.status.gen == nil || mt.status.gen.IsDone() {
+		return
+	}
+
+	if !mt.resetController.CanReset() { //能否建立新连接
+		return
+	}
+
+	avaliableWorker := mt.GetAvaliableWorker()
+	if avaliableWorker == nil {
+		return
+	}
+
+	// 有空闲的range, 执行
+	_, r := mt.status.gen.GenRange()
+	if r == nil {
+		// 没有range了
+		return
+	}
+
+	avaliableWorker.SetRange(r)
+	avaliableWorker.CleanStatus()
+
+	mt.resetController.AddResetNum()
+	pcsverbose.Verbosef("MONITER: worker[%d] add new range: %s\n", avaliableWorker.ID(), r)
+	go avaliableWorker.Execute()
+}
+
+// DymanicSplitWorker 动态分配线程
+func (mt *Monitor) DymanicSplitWorker(worker *Worker) {
+	if !mt.resetController.CanReset() {
+		return
+	}
+
+	switch worker.status.statusCode {
+	case StatusCodeDownloading, StatusCodeFailed, StatusCodeNetError:
+	//pass
+	default:
+		return
+	}
+
+	// 筛选空闲的Worker
+	avaliableWorker := mt.GetAvaliableWorker()
+	if avaliableWorker == nil || worker == avaliableWorker { // 没有空的
+		return
+	}
+
+	workerRange := worker.GetRange()
+
+	end := workerRange.LoadEnd()
+	middle := (workerRange.LoadBegin() + end) / 2
+
+	if end-middle < MinParallelSize/5 { // 如果线程剩余的下载量太少, 不分配空闲线程
+		return
+	}
+
+	// 折半
+	avaliableWorker.SetRange(&Range{
+		Begin: middle + 1,
+		End:   end,
+	})
+	avaliableWorker.CleanStatus()
+
+	workerRange.StoreEnd(middle)
+
+	mt.resetController.AddResetNum()
+	pcsverbose.Verbosef("MONITER: worker duplicated: %d <- %d\n", avaliableWorker.ID(), worker.ID())
+	go avaliableWorker.Execute()
+}
+
+// ResetWorker 重设长时间无响应, 和下载速度为 0 的 Worker
+func (mt *Monitor) ResetWorker(worker *Worker) {
+	if !mt.resetController.CanReset() { //达到最大重载次数
+		return
+	}
+
+	if worker.Completed() {
+		return
+	}
+
+	// 忽略正在写入数据到硬盘的
+	// 过滤速度有变化的线程
+	status := worker.GetStatus()
+	speeds := worker.GetSpeedsPerSecond()
+	if speeds != 0 {
+		return
+	}
+
+	switch status.StatusCode() {
+	case StatusCodePending, StatusCodeReseted:
+		fallthrough
+	case StatusCodeWaitToWrite: // 正在写入数据
+		fallthrough
+	case StatusCodePaused: // 已暂停
+		// 忽略, 返回
+		return
+	}
+
+	mt.resetController.AddResetNum()
+
+	// 重设连接
+	pcsverbose.Verbosef("MONITER: worker[%d] reload\n", worker.ID())
+	worker.Reset()
+}
+
 //Execute 执行任务
 func (mt *Monitor) Execute(cancelCtx context.Context) {
 	if len(mt.workers) == 0 {
@@ -278,6 +397,9 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 				})
 			}
 
+			// 加入新range
+			mt.TryAddNewWork()
+
 			// 不重载worker
 			if !mt.isReloadWorker {
 				continue
@@ -286,7 +408,7 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 			// 速度减慢或者全部失败, 开始监控
 			// 只有一个worker时不重设连接
 			isLeftWorkersAllFailed := mt.IsLeftWorkersAllFailed()
-			if (mt.status.SpeedsPerSecond() < mt.status.MaxSpeeds()/5) || isLeftWorkersAllFailed {
+			if mt.status.SpeedsPerSecond() < mt.status.MaxSpeeds()/5 || isLeftWorkersAllFailed {
 				if isLeftWorkersAllFailed {
 					pcsverbose.Verbosef("DEBUG: monitor: All workers failed\n")
 				}
@@ -294,92 +416,17 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 
 				// 先进行动态分配线程
 				pcsverbose.Verbosef("DEBUG: monitor: start duplicate.\n")
-
 				sort.Sort(ByLeftDesc{mt.workers})
-				for k := range mt.workers {
+				for _, worker := range mt.workers {
 					//动态分配线程
-
-					func(worker *Worker) {
-						if !mt.resetController.CanReset() {
-							return
-						}
-
-						switch worker.status.statusCode {
-						case StatusCodeDownloading, StatusCodeFailed, StatusCodeNetError:
-						//pass
-						default:
-							return
-						}
-
-						// 筛选空闲的Worker
-						avaliableWorker := mt.GetAvaliableWorker()
-						if avaliableWorker == nil || worker == avaliableWorker { // 没有空的
-							return
-						}
-
-						workerRange := worker.GetRange()
-
-						end := workerRange.LoadEnd()
-						middle := (workerRange.LoadBegin() + end) / 2
-
-						if end-middle < MinParallelSize/5 { // 如果线程剩余的下载量太少, 不分配空闲线程
-							return
-						}
-
-						mt.resetController.AddResetNum()
-
-						// 折半
-
-						avaliableWorkerRange := avaliableWorker.GetRange()
-						avaliableWorkerRange.StoreBegin(middle + 1)
-						avaliableWorkerRange.StoreEnd(end)
-
-						avaliableWorker.CleanStatus()
-
-						workerRange.StoreEnd(middle)
-
-						pcsverbose.Verbosef("MONITER: worker duplicated: %d <- %d\n", avaliableWorker.ID(), worker.ID())
-						go avaliableWorker.Execute()
-					}(mt.workers[k])
-				} //end for
+					mt.DymanicSplitWorker(worker)
+				}
 
 				// 重设长时间无响应, 和下载速度为 0 的线程
 				pcsverbose.Verbosef("DEBUG: monitor: start reload.\n")
 				for _, worker := range mt.workers {
-					func(worker *Worker) {
-						if !mt.resetController.CanReset() { //达到最大重载次数
-							return
-						}
-
-						if worker.Completed() {
-							return
-						}
-
-						// 忽略正在写入数据到硬盘的
-						// 过滤速度有变化的线程
-						status := worker.GetStatus()
-						speeds := worker.GetSpeedsPerSecond()
-						if speeds != 0 {
-							return
-						}
-
-						switch status.StatusCode() {
-						case StatusCodePending, StatusCodeReseted:
-							fallthrough
-						case StatusCodeWaitToWrite: // 正在写入数据
-							fallthrough
-						case StatusCodePaused: // 已暂停
-							// 忽略, 返回
-							return
-						}
-
-						mt.resetController.AddResetNum()
-
-						// 重设连接
-						pcsverbose.Verbosef("MONITER: worker reload, worker id: %d\n", worker.ID())
-						worker.Reset()
-					}(worker)
-				} // end for
+					mt.ResetWorker(worker)
+				}
 			} // end if 2
 		} //end select
 	} //end for

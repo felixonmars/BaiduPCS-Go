@@ -217,6 +217,7 @@ func (c *PCSConfig) initDefaultConfig() {
 	c.maxUploadParallel = 8
 	c.maxDownloadLoad = 1
 	c.userAgent = baidupcs.NetdiskUA
+	c.enableHTTPS = true
 
 	// 设置默认的下载路径
 	switch runtime.GOOS {

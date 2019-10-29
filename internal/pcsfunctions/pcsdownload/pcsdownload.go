@@ -1,5 +1,12 @@
 package pcsdownload
 
+import (
+	"github.com/iikira/BaiduPCS-Go/baidupcs"
+	"github.com/iikira/BaiduPCS-Go/requester"
+	"net/http"
+	"strconv"
+)
+
 // IsSkipMd5Checksum 是否忽略某些校验
 func IsSkipMd5Checksum(size int64, md5Str string) bool {
 	switch {
@@ -9,4 +16,25 @@ func IsSkipMd5Checksum(size int64, md5Str string) bool {
 		return true
 	}
 	return false
+}
+
+func BaiduPCSURLCheckFunc(client *requester.HTTPClient, durl string) (contentLength int64, resp *http.Response, err error) {
+	resp, err = client.Req("GET", durl, nil, map[string]string{
+		"Range": "bytes=0-" + strconv.FormatInt(baidupcs.MaxDownloadRangeSize, 10),
+	})
+	if err != nil {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return 0, nil, err
+	}
+
+	contentLengthStr := resp.Header.Get("x-bs-file-size")
+	contentLength, err = strconv.ParseInt(contentLengthStr, 10, 64)
+	if err != nil {
+		resp.Body.Close()
+		return 0, nil, err
+	}
+
+	return contentLength, resp, nil
 }

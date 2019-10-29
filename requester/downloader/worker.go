@@ -92,10 +92,14 @@ func (wer *Worker) SetCacheSize(size int) {
 	fixCacheSize(&wer.cacheSize)
 }
 
-//SetRange 设置请求范围
-func (wer *Worker) SetRange(acceptRanges string, r Range) {
+//SetAcceptRange 设置AcceptRange
+func (wer *Worker) SetAcceptRange(acceptRanges string) {
 	wer.acceptRanges = acceptRanges
-	wer.wrange = r
+}
+
+//SetRange 设置请求范围
+func (wer *Worker) SetRange(r *Range) {
+	wer.wrange = *r
 }
 
 //SetReferer 设置来源

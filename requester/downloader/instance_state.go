@@ -6,13 +6,14 @@ import (
 	"github.com/json-iterator/go"
 	"os"
 	"sync"
+	"time"
 )
 
 type (
 	//InstanceState 状态, 断点续传信息
 	InstanceState struct {
 		saveFile *os.File
-		ii       *instanceInfo
+		ii       InstanceInfoExporter
 		mu       sync.Mutex
 	}
 
@@ -22,42 +23,96 @@ type (
 		Ranges   RangeList
 	}
 
-	instanceInfo struct {
+	// InstanceInfoExporter 断点续传类型接口
+	InstanceInfoExporter interface {
+		Convert() *InstanceInfo
+		Render(*InstanceInfo)
+	}
+
+	// instanceInfoExport 断点续传
+	instanceInfoExport struct {
+		RangeGenMode RangeGenMode `json:"mode"`
+	}
+
+	// instanceInfoExportDefault 断点续传用到的struct 1
+	instanceInfoExportDefault struct {
+		instanceInfoExport
 		TotalSize int64     `json:"total_size"` // 总大小
+		Ranges    RangeList `json:"ranges"`
+	}
+
+	// instanceInfoExportBlockSize 断点续传用到的struct 2
+	instanceInfoExportBlockSize struct {
+		instanceInfoExport
+		TotalSize int64     `json:"total_size"` // 总大小
+		GenBegin  int64     `json:"gen_begin"`
+		BlockSize int64     `json:"block_size"`
 		Ranges    RangeList `json:"ranges"`
 	}
 )
 
-func (ii *instanceInfo) Convert() (eii *InstanceInfo) {
+func (ii1 *instanceInfoExportDefault) Convert() (eii *InstanceInfo) {
 	eii = &InstanceInfo{
-		Ranges: ii.Ranges,
+		Ranges: ii1.Ranges,
 	}
 
-	downloaded := ii.TotalSize - eii.Ranges.Len()
+	downloaded := ii1.TotalSize - eii.Ranges.Len()
 	eii.DlStatus = &DownloadStatus{
-		totalSize:        ii.TotalSize,
+		nowTime:          time.Now(),
+		totalSize:        ii1.TotalSize,
 		downloaded:       downloaded,
 		speedsDownloaded: downloaded,
 		oldDownloaded:    downloaded,
+		gen:              NewRangeListGenDefault(ii1.TotalSize, ii1.TotalSize, len(ii1.Ranges), len(ii1.Ranges)), // 无效gen
 	}
 	return eii
 }
 
-func (ii *instanceInfo) Render(eii *InstanceInfo) {
+func (ii1 *instanceInfoExportDefault) Render(eii *InstanceInfo) {
+	ii1.RangeGenMode = RangeGenModeDefault
 	if eii == nil {
 		return
 	}
 	if eii.DlStatus != nil {
-		ii.TotalSize = eii.DlStatus.TotalSize()
+		ii1.TotalSize = eii.DlStatus.TotalSize()
 	}
-	ii.Ranges = eii.Ranges
+	ii1.Ranges = eii.Ranges
+}
+
+func (ii2 *instanceInfoExportBlockSize) Convert() (eii *InstanceInfo) {
+	eii = &InstanceInfo{
+		Ranges: ii2.Ranges,
+	}
+
+	downloaded := ii2.GenBegin - eii.Ranges.Len()
+	eii.DlStatus = &DownloadStatus{
+		nowTime:          time.Now(),
+		totalSize:        ii2.TotalSize,
+		downloaded:       downloaded,
+		speedsDownloaded: downloaded,
+		oldDownloaded:    downloaded,
+		gen:              NewRangeListGenBlockSize(ii2.TotalSize, ii2.GenBegin, ii2.BlockSize),
+	}
+	return eii
+}
+
+func (ii2 *instanceInfoExportBlockSize) Render(eii *InstanceInfo) {
+	ii2.RangeGenMode = RangeGenModeBlockSize
+	if eii == nil {
+		return
+	}
+	if eii.DlStatus != nil {
+		ii2.TotalSize = eii.DlStatus.TotalSize()
+	}
+	ii2.GenBegin = eii.DlStatus.gen.LoadBegin()
+	ii2.BlockSize = eii.DlStatus.gen.LoadBlockSize()
+	ii2.Ranges = eii.Ranges
 }
 
 //NewInstanceState 初始化InstanceState
 func NewInstanceState(saveFile *os.File) *InstanceState {
 	return &InstanceState{
 		saveFile: saveFile,
-		ii:       &instanceInfo{},
 	}
 }
 
@@ -96,18 +151,28 @@ func (is *InstanceState) Get() (eii *InstanceInfo) {
 	is.mu.Lock()
 	defer is.mu.Unlock()
 
-	if is.ii == nil {
-		is.ii = &instanceInfo{}
-	}
-
 	contents := is.getSaveFileContents()
 	if len(contents) <= 0 {
 		return
 	}
 
-	err := jsoniter.Unmarshal(contents, is.ii)
+	iiBase := instanceInfoExport{}
+	err := jsoniter.Unmarshal(contents, &iiBase)
 	if err != nil {
-		pcsverbose.Verbosef("DEBUG: unmarshal json error: %s\n", err)
+		pcsverbose.Verbosef("DEBUG: [base] InstanceInfo unmarshal json error: %s\n", err)
+		return
+	}
+
+	switch iiBase.RangeGenMode {
+	case RangeGenModeBlockSize:
+		is.ii = &instanceInfoExportBlockSize{}
+	default:
+		is.ii = &instanceInfoExportDefault{}
+	}
+
+	err = jsoniter.Unmarshal(contents, is.ii)
+	if err != nil {
+		pcsverbose.Verbosef("DEBUG: [%d] InstanceInfo unmarshal json error: %s\n", iiBase.RangeGenMode, err)
 		return
 	}
 
@@ -121,8 +186,15 @@ func (is *InstanceState) Put(eii *InstanceInfo) {
 		return
 	}
 
-	if is.ii == nil { // 忽略
-		return
+	if eii.DlStatus.gen == nil {
+		is.ii = &instanceInfoExportDefault{}
+	} else {
+		switch eii.DlStatus.gen.Mode() {
+		case RangeGenModeBlockSize:
+			is.ii = &instanceInfoExportBlockSize{}
+		default:
+			is.ii = &instanceInfoExportDefault{}
+		}
 	}
 
 	is.mu.Lock()

@@ -6,13 +6,15 @@ import (
 	"testing"
 )
 
-func TestRangeListGen1(t *testing.T) {
-	gen := downloader.NewRangeListGen1(1024, 10)
-	_, genF := gen.GenFunc()
+func TestRangeListGen(t *testing.T) {
+	gen1 := downloader.NewRangeListGenDefault(1024, 0, 0, 10)
+	gen2 := downloader.NewRangeListGenBlockSize(1024, 0, 53)
 
-	i := 0
-	for r := genF(); r != nil; r = genF() {
-		fmt.Printf("%d: %s\n", i, r)
-		i++
+	for mode, gen := range []*downloader.RangeListGen{gen1, gen2} {
+		fmt.Printf("[%d] ----\n", mode+1)
+		for i, r := gen.GenRange(); r != nil; i, r = gen.GenRange() {
+			fmt.Printf("%d: %s\n", i, r)
+		}
+		fmt.Println()
 	}
 }

@@ -124,7 +124,7 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 
 	download := downloader.NewDownloader(downloadURL, writer, &newCfg)
 	download.SetClient(client)
-	download.TryHTTP(!pcsconfig.Config.EnableHTTPS())
+	download.SetDURLCheckFunc(pcsdownload.BaiduPCSURLCheckFunc)
 	download.AddLoadBalanceServer(loadBalansers...)
 	download.SetStatusCodeBodyCheckFunc(func(respBody io.Reader) error {
 		return pcserror.DecodePCSJSONError(baidupcs.OperationDownloadFile, respBody)
@@ -265,8 +265,11 @@ func RunDownload(paths []string, options *DownloadOptions) {
 
 	// 设置下载配置
 	cfg := &downloader.Config{
+		Mode:      downloader.RangeGenModeBlockSize,
 		IsTest:    options.IsTest,
 		CacheSize: pcsconfig.Config.CacheSize(),
+		BlockSize: baidupcs.MaxDownloadRangeSize,
+		TryHTTP:   !pcsconfig.Config.EnableHTTPS(),
 	}
 
 	// 设置下载最大并发量

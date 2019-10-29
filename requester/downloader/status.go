@@ -38,9 +38,11 @@ type DownloadStatus struct {
 	speedsDownloaded int64 // 用于统计数据的downloaded
 	oldDownloaded    int64
 	timeElapsed      time.Duration // 下载的时间
-	nowTime          time.Time
+	nowTime          time.Time     // 时间, 用于计算速度
 	sinceNowTime     time.Duration
-	mu               sync.Mutex
+
+	gen *RangeListGen // Range生成状态
+	mu  sync.Mutex
 }
 
 const (
@@ -215,4 +217,9 @@ func (ds *DownloadStatus) MaxSpeeds() int64 {
 //TimeElapsed 返回花费的时间
 func (ds *DownloadStatus) TimeElapsed() time.Duration {
 	return ds.timeElapsed
+}
+
+// RangeListGen 返回RangeListGen
+func (ds *DownloadStatus) RangeListGen() *RangeListGen {
+	return ds.gen
 }

@@ -12,12 +12,13 @@ var (
 
 //Config 下载配置
 type Config struct {
-	MaxParallel       int    // 最大下载并发量
-	CacheSize         int    // 下载缓冲
-	InstanceStatePath string // 断点续传信息路径
-	IsTest            bool   // 是否测试下载
-	cacheSize         int    // 实际下载缓存
-	parallel          int    // 实际的下载并行量
+	Mode              RangeGenMode // 下载Range分配模式
+	MaxParallel       int          // 最大下载并发量
+	CacheSize         int          // 下载缓冲
+	BlockSize         int64        // 每个Range区块的大小, RangeGenMode 为 RangeGenMode2 时才有效
+	InstanceStatePath string       // 断点续传信息路径
+	IsTest            bool         // 是否测试下载
+	TryHTTP           bool         // 是否尝试使用 http 连接
 }
 
 //NewConfig 返回默认配置
