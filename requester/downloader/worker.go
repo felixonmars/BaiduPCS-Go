@@ -19,8 +19,8 @@ type (
 	//Worker 工作单元
 	Worker struct {
 		speedsPerSecond int64 //速度
-		wrange          Range
-		speedsStat      speeds.Speeds
+		wrange          *Range
+		speedsStat      *speeds.Speeds
 		id              int    //id
 		cacheSize       int    //下载缓存
 		url             string //下载地址
@@ -74,10 +74,16 @@ func (wer *Worker) lazyInit() {
 	if wer.pauseChan == nil {
 		wer.pauseChan = make(chan struct{})
 	}
+	if wer.wrange == nil {
+		wer.wrange = &Range{}
+	}
 	if wer.wrange.LoadBegin() == 0 && wer.wrange.LoadEnd() == 0 {
 		// 取消多线程下载
 		wer.acceptRanges = ""
 		wer.wrange.StoreEnd(-2)
+	}
+	if wer.speedsStat == nil {
+		wer.speedsStat = &speeds.Speeds{}
 	}
 }
 
@@ -99,7 +105,12 @@ func (wer *Worker) SetAcceptRange(acceptRanges string) {
 
 //SetRange 设置请求范围
 func (wer *Worker) SetRange(r *Range) {
-	wer.wrange = *r
+	if wer.wrange == nil {
+		wer.wrange = r
+		return
+	}
+	wer.wrange.StoreBegin(r.LoadBegin())
+	wer.wrange.StoreEnd(r.LoadEnd())
 }
 
 //SetReferer 设置来源
@@ -125,7 +136,7 @@ func (wer *Worker) GetStatus() Status {
 
 //GetRange 返回worker范围
 func (wer *Worker) GetRange() *Range {
-	return &wer.wrange
+	return wer.wrange
 }
 
 //GetSpeedsPerSecond 获取每秒的速度

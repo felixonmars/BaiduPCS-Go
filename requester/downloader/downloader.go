@@ -114,10 +114,10 @@ func (der *Downloader) SelectBlockSizeAndInitRangeGen(status *DownloadStatus, pa
 	// Range 生成器
 	if status.gen == nil {
 		switch der.config.Mode {
-		case RangeGenModeDefault:
+		case RangeGenMode_Default:
 			status.gen = NewRangeListGenDefault(status.totalSize, 0, 0, parallel)
 			blockSize = status.gen.LoadBlockSize()
-		case RangeGenModeBlockSize:
+		case RangeGenMode_BlockSize:
 			b2 := status.totalSize / int64(parallel)
 			if b2 > der.config.BlockSize { // 选小的BlockSize, 以更高并发
 				blockSize = der.config.BlockSize
@@ -258,7 +258,7 @@ func (der *Downloader) Execute() error {
 	loadBalancerResponseList := NewLoadBalancerResponseList(loadBalancerResponses)
 
 	//load breakpoint
-	err = der.initInstanceState()
+	err = der.initInstanceState(der.config.InstanceStateStorageFormat)
 	if err != nil {
 		return err
 	}

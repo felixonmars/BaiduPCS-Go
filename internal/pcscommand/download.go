@@ -265,11 +265,12 @@ func RunDownload(paths []string, options *DownloadOptions) {
 
 	// 设置下载配置
 	cfg := &downloader.Config{
-		Mode:      downloader.RangeGenModeBlockSize,
-		IsTest:    options.IsTest,
-		CacheSize: pcsconfig.Config.CacheSize(),
-		BlockSize: baidupcs.MaxDownloadRangeSize,
-		TryHTTP:   !pcsconfig.Config.EnableHTTPS(),
+		Mode:                       downloader.RangeGenMode_BlockSize,
+		CacheSize:                  pcsconfig.Config.CacheSize(),
+		BlockSize:                  baidupcs.MaxDownloadRangeSize,
+		InstanceStateStorageFormat: downloader.InstanceStateStorageFormatProto3,
+		IsTest:                     options.IsTest,
+		TryHTTP:                    !pcsconfig.Config.EnableHTTPS(),
 	}
 
 	// 设置下载最大并发量

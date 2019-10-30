@@ -9,35 +9,19 @@ import (
 )
 
 type (
-	//Range 请求范围
-	Range struct {
-		Begin int64 `json:"begin"`
-		End   int64 `json:"end"`
-	}
-
 	//RangeList 请求范围列表
 	RangeList []*Range
 
 	//RangeListGen Range 生成器
 	RangeListGen struct {
-		total     int64
-		begin     int64
-		blockSize int64
-		parallel  int
-		count     int // 已生成次数
-		mode      RangeGenMode
-		mu        sync.Mutex
+		total        int64
+		begin        int64
+		blockSize    int64
+		parallel     int
+		count        int // 已生成次数
+		rangeGenMode RangeGenMode
+		mu           sync.Mutex
 	}
-
-	// RangeGenMode 线程分配方式
-	RangeGenMode int
-)
-
-const (
-	// RangeGenModeDefault 根据parallel平均生成
-	RangeGenModeDefault RangeGenMode = iota
-	// RangeGenModeBlockSize 根据blockSize生成
-	RangeGenModeBlockSize
 )
 
 const (
@@ -80,7 +64,8 @@ func (r *Range) StoreEnd(end int64) {
 	atomic.StoreInt64(&r.End, end)
 }
 
-func (r *Range) String() string {
+// ShowDetails 显示Range细节
+func (r *Range) ShowDetails() string {
 	return fmt.Sprintf("{%d-%d}", r.LoadBegin(), r.LoadEnd())
 }
 
@@ -99,27 +84,27 @@ func (rl *RangeList) Len() int64 {
 // NewRangeListGenDefault 初始化默认Range生成器, 根据parallel平均生成
 func NewRangeListGenDefault(totalSize, begin int64, count, parallel int) *RangeListGen {
 	return &RangeListGen{
-		total:    totalSize,
-		begin:    begin,
-		parallel: parallel,
-		count:    count,
-		mode:     RangeGenModeDefault,
+		total:        totalSize,
+		begin:        begin,
+		parallel:     parallel,
+		count:        count,
+		rangeGenMode: RangeGenMode_Default,
 	}
 }
 
 // NewRangeListGenBlockSize 初始化Range生成器, 根据blockSize生成
 func NewRangeListGenBlockSize(totalSize, begin, blockSize int64) *RangeListGen {
 	return &RangeListGen{
-		total:     totalSize,
-		begin:     begin,
-		blockSize: blockSize,
-		mode:      RangeGenModeBlockSize,
+		total:        totalSize,
+		begin:        begin,
+		blockSize:    blockSize,
+		rangeGenMode: RangeGenMode_BlockSize,
 	}
 }
 
-// Mode 返回Range生成方式
-func (gen *RangeListGen) Mode() RangeGenMode {
-	return gen.mode
+// RangeGenMode 返回Range生成方式
+func (gen *RangeListGen) RangeGenMode() RangeGenMode {
+	return gen.rangeGenMode
 }
 
 // LoadBegin 返回begin
@@ -132,13 +117,13 @@ func (gen *RangeListGen) LoadBegin() (begin int64) {
 
 // LoadBlockSize 返回blockSize
 func (gen *RangeListGen) LoadBlockSize() (blockSize int64) {
-	switch gen.mode {
-	case RangeGenModeDefault:
+	switch gen.rangeGenMode {
+	case RangeGenMode_Default:
 		if gen.blockSize <= 0 {
 			gen.blockSize = gen.total / int64(gen.parallel)
 		}
 		blockSize = gen.blockSize
-	case RangeGenModeBlockSize:
+	case RangeGenMode_BlockSize:
 		blockSize = gen.blockSize
 	}
 	return
@@ -157,8 +142,8 @@ func (gen *RangeListGen) GenRange() (index int, r *Range) {
 	if gen.parallel < 1 {
 		gen.parallel = 1
 	}
-	switch gen.mode {
-	case RangeGenModeDefault:
+	switch gen.rangeGenMode {
+	case RangeGenMode_Default:
 		if gen.blockSize <= 0 {
 			gen.blockSize = gen.total / int64(gen.parallel)
 		}
@@ -183,7 +168,7 @@ func (gen *RangeListGen) GenRange() (index int, r *Range) {
 		gen.begin = end + 1
 		index = gen.count - 1
 		return
-	case RangeGenModeBlockSize:
+	case RangeGenMode_BlockSize:
 		if gen.blockSize <= 0 {
 			gen.blockSize = DefaultBlockSize
 		}

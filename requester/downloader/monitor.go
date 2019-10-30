@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -29,6 +30,8 @@ type Monitor struct {
 
 	// 临时变量
 	lastAvaliableIndex int
+	allWorkerRanges    RangeList // worker 的 Range 内存地址, 必须不变
+	allWorkerRangesMu  sync.Mutex
 }
 
 //NewMonitor 初始化Monitor
@@ -124,12 +127,18 @@ func (mt *Monitor) GetAvaliableWorker() *Worker {
 }
 
 //GetAllWorkersRange 获取所有worker的范围
-func (mt *Monitor) GetAllWorkersRange() (ranges []*Range) {
-	ranges = make([]*Range, 0, len(mt.workers))
-	for _, worker := range mt.workers {
-		ranges = append(ranges, worker.GetRange())
+func (mt *Monitor) GetAllWorkersRange() RangeList {
+	mt.allWorkerRangesMu.Lock()
+	defer mt.allWorkerRangesMu.Unlock()
+
+	if mt.allWorkerRanges != nil && len(mt.allWorkerRanges) == len(mt.workers) {
+		return mt.allWorkerRanges
 	}
-	return
+	mt.allWorkerRanges = make(RangeList, 0, len(mt.workers))
+	for _, worker := range mt.workers {
+		mt.allWorkerRanges = append(mt.allWorkerRanges, worker.GetRange())
+	}
+	return mt.allWorkerRanges
 }
 
 //NumLeftWorkers 剩余的worker数量
@@ -272,7 +281,7 @@ func (mt *Monitor) TryAddNewWork() {
 	avaliableWorker.CleanStatus()
 
 	mt.resetController.AddResetNum()
-	pcsverbose.Verbosef("MONITER: worker[%d] add new range: %s\n", avaliableWorker.ID(), r)
+	pcsverbose.Verbosef("MONITER: worker[%d] add new range: %s\n", avaliableWorker.ID(), r.ShowDetails())
 	go avaliableWorker.Execute()
 }
 
@@ -305,10 +314,9 @@ func (mt *Monitor) DymanicSplitWorker(worker *Worker) {
 	}
 
 	// 折半
-	avaliableWorker.SetRange(&Range{
-		Begin: middle + 1,
-		End:   end,
-	})
+	avaliableWorkerRange := avaliableWorker.GetRange()
+	avaliableWorkerRange.StoreBegin(middle + 1)
+	avaliableWorkerRange.StoreEnd(end)
 	avaliableWorker.CleanStatus()
 
 	workerRange.StoreEnd(middle)
@@ -441,7 +449,7 @@ func (mt *Monitor) ShowWorkers() string {
 	tb.SetHeader([]string{"#", "status", "range", "left", "speeds", "error"})
 	mt.RangeWorker(func(key int, worker *Worker) bool {
 		wrange := worker.GetRange()
-		tb.Append([]string{fmt.Sprint(worker.ID()), worker.GetStatus().StatusText(), wrange.String(), strconv.FormatInt(wrange.Len(), 10), strconv.FormatInt(worker.GetSpeedsPerSecond(), 10), fmt.Sprint(worker.Err())})
+		tb.Append([]string{fmt.Sprint(worker.ID()), worker.GetStatus().StatusText(), wrange.ShowDetails(), strconv.FormatInt(wrange.Len(), 10), strconv.FormatInt(worker.GetSpeedsPerSecond(), 10), fmt.Sprint(worker.Err())})
 		return true
 	})
 	tb.Render()

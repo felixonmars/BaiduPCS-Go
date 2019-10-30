@@ -21,6 +21,8 @@ github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumC
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/fatih/color v0.0.0-20150510220652-1b35f289c47d h1:wMOLsfJ92CRGk3+GtVk+aaUme+jWTH21jH3cVL1jzmI=
 github.com/fatih/color v0.0.0-20150510220652-1b35f289c47d/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
+github.com/golang/protobuf v1.3.2 h1:6nsPYzhq5kReh6QImI3k5qWzO4PEbvbIW2cwSfR/6xs=
+github.com/golang/protobuf v1.3.2/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/google/gofuzz v1.0.0/go.mod h1:dBl0BpW6vV/+mYPU4Po3pmUjxk6FQPldtuIdl/M65Eg=
 github.com/iikira/Baidu-Login v0.0.0-20180427090606-ecf146973528 h1:WaZCDfR+C0z17lO7syZFXpJ7d8YUxv5iG1/PeYzjKiM=
 github.com/iikira/Baidu-Login v0.0.0-20180427090606-ecf146973528/go.mod h1:oMWxZOoEMgQG+0rq8xhEIdxvXwkyG4aN3sZoOQ59R4Q=
