@@ -45,3 +45,7 @@ func (s *LocateDownloadSign) Sign(uid uint64, bduss string) {
 	hex.Encode(sha1ResHex, randSha1.Sum(nil))
 	s.Rand = converter.ToString(sha1ResHex)
 }
+
+func (s *LocateDownloadSign) URLParam() string {
+	return "time=" + strconv.FormatInt(s.Time, 10) + "&rand=" + s.Rand + "&devuid=" + s.DevUID
+}

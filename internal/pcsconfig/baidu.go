@@ -42,23 +42,18 @@ type Baidu struct {
 
 // BaiduPCS 初始化*baidupcs.BaiduPCS
 func (baidu *Baidu) BaiduPCS() *baidupcs.BaiduPCS {
-	pcs := baidupcs.NewPCS(Config.appID, baidu.BDUSS)
-	pcs.SetHTTPS(Config.enableHTTPS)
-	pcs.SetUserAgent(Config.userAgent)
+	pcs := baidupcs.NewPCS(Config.AppID, baidu.BDUSS)
+	pcs.SetHTTPS(Config.EnableHTTPS)
+	pcs.SetPCSUserAgent(Config.PCSUA)
+	pcs.SetPanUserAgent(Config.PanUA)
 	pcs.SetUID(baidu.UID)
 	return pcs
 }
 
-// GetSavePath 根据提供的网盘文件路径 path, 返回本地储存路径,
+// GetSavePath 根据提供的网盘文件路径 pcspath, 返回本地储存路径,
 // 返回绝对路径, 获取绝对路径出错时才返回相对路径...
-func (baidu *Baidu) GetSavePath(path string) string {
-	dirStr := fmt.Sprintf("%s/%d_%s%s/.",
-		Config.saveDir,
-		baidu.UID,
-		converter.TrimPathInvalidChars(baidu.Name),
-		path,
-	)
-
+func (baidu *Baidu) GetSavePath(pcspath string) string {
+	dirStr := filepath.Join(Config.SaveDir, fmt.Sprintf("%d_%s", baidu.UID, converter.TrimPathInvalidChars(baidu.Name)), pcspath)
 	dir, err := filepath.Abs(dirStr)
 	if err != nil {
 		dir = filepath.Clean(dirStr)

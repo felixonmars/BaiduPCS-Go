@@ -514,7 +514,7 @@ func main() {
 					}
 
 					if n, err := strconv.Atoi(index); err == nil && n >= 0 && n < numLogins {
-						uid = pcsconfig.Config.BaiduUserList()[n].UID
+						uid = pcsconfig.Config.BaiduUserList[n].UID
 					} else {
 						fmt.Printf("切换用户失败, 请检查 # 值是否正确\n")
 						return nil
@@ -595,8 +595,7 @@ func main() {
 			Category:    "百度帐号",
 			Before:      reloadFn,
 			Action: func(c *cli.Context) error {
-				list := pcsconfig.Config.BaiduUserList()
-				fmt.Println(list.String())
+				fmt.Println(pcsconfig.Config.BaiduUserList.String())
 				return nil
 			},
 		},
@@ -1773,20 +1772,26 @@ func main() {
 						if c.IsSet("user_agent") {
 							pcsconfig.Config.SetUserAgent(c.String("user_agent"))
 						}
+						if c.IsSet("pcs_ua") {
+							pcsconfig.Config.SetUserAgent(c.String("pcs_ua"))
+						}
+						if c.IsSet("pan_ua") {
+							pcsconfig.Config.SetUserAgent(c.String("pan_ua"))
+						}
 						if c.IsSet("cache_size") {
-							pcsconfig.Config.SetCacheSize(c.Int("cache_size"))
+							pcsconfig.Config.CacheSize = c.Int("cache_size")
 						}
 						if c.IsSet("max_parallel") {
-							pcsconfig.Config.SetMaxParallel(c.Int("max_parallel"))
+							pcsconfig.Config.MaxParallel = c.Int("max_parallel")
 						}
 						if c.IsSet("max_upload_parallel") {
-							pcsconfig.Config.SetMaxUploadParallel(c.Int("max_upload_parallel"))
+							pcsconfig.Config.MaxUploadParallel = c.Int("max_upload_parallel")
 						}
 						if c.IsSet("max_download_load") {
-							pcsconfig.Config.SetMaxDownloadLoad(c.Int("max_download_load"))
+							pcsconfig.Config.MaxDownloadLoad = c.Int("max_download_load")
 						}
 						if c.IsSet("savedir") {
-							pcsconfig.Config.SetSaveDir(c.String("savedir"))
+							pcsconfig.Config.SaveDir = c.String("savedir")
 						}
 						if c.IsSet("proxy") {
 							pcsconfig.Config.SetProxy(c.String("proxy"))
@@ -1838,6 +1843,14 @@ func main() {
 						cli.StringFlag{
 							Name:  "user_agent",
 							Usage: "浏览器标识",
+						},
+						cli.StringFlag{
+							Name:  "pcs_ua",
+							Usage: "PCS 浏览器标识",
+						},
+						cli.StringFlag{
+							Name:  "pan_ua",
+							Usage: "Pan 浏览器标识",
 						},
 						cli.StringFlag{
 							Name:  "proxy",
@@ -1901,7 +1914,7 @@ func main() {
 						}
 						fmt.Printf("\n")
 
-						ipAddr, err := getip.IPInfoByClient(pcsconfig.Config.HTTPClient())
+						ipAddr, err := getip.IPInfoFromTechainBaiduByClient(pcsconfig.Config.HTTPClient())
 						if err != nil {
 							fmt.Printf("获取公网IP错误: %s\n", err)
 							return nil

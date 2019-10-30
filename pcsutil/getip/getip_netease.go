@@ -15,9 +15,7 @@ type (
 	}
 )
 
-// IPInfoFromNetease 从网易服务器获取ip
-func IPInfoFromNetease() (ipAddr string, err error) {
-	c := requester.NewHTTPClient()
+func IPInfoFromNeteaseByClient(c *requester.HTTPClient) (ipAddr string, err error) {
 	resp, err := c.Req("GET", "http://mam.netease.com/api/config/getClientIp", nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
@@ -40,4 +38,10 @@ func IPInfoFromNetease() (ipAddr string, err error) {
 
 	ipAddr = res.Result
 	return
+}
+
+// IPInfoFromNetease 从网易服务器获取ip
+func IPInfoFromNetease() (ipAddr string, err error) {
+	c := requester.NewHTTPClient()
+	return IPInfoFromNeteaseByClient(c)
 }

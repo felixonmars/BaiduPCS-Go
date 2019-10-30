@@ -256,7 +256,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 	}
 
 	if options.Load <= 0 {
-		options.Load = pcsconfig.Config.MaxDownloadLoad()
+		options.Load = pcsconfig.Config.MaxDownloadLoad
 	}
 
 	if options.MaxRetry < 0 {
@@ -266,16 +266,16 @@ func RunDownload(paths []string, options *DownloadOptions) {
 	// 设置下载配置
 	cfg := &downloader.Config{
 		Mode:                       downloader.RangeGenMode_BlockSize,
-		CacheSize:                  pcsconfig.Config.CacheSize(),
+		CacheSize:                  pcsconfig.Config.CacheSize,
 		BlockSize:                  baidupcs.MaxDownloadRangeSize,
 		InstanceStateStorageFormat: downloader.InstanceStateStorageFormatProto3,
 		IsTest:                     options.IsTest,
-		TryHTTP:                    !pcsconfig.Config.EnableHTTPS(),
+		TryHTTP:                    !pcsconfig.Config.EnableHTTPS,
 	}
 
 	// 设置下载最大并发量
 	if options.Parallel < 1 {
-		options.Parallel = pcsconfig.Config.MaxParallel()
+		options.Parallel = pcsconfig.Config.MaxParallel
 	}
 
 	paths, err := matchPathByShellPattern(paths...)
@@ -503,10 +503,10 @@ func RunDownload(paths []string, options *DownloadOptions) {
 
 				if (options.IsShareDownload || options.IsLocateDownload || options.IsLocatePanAPIDownload) && err == nil {
 					pcsCommandVerbose.Infof("[%d] 获取到下载链接: %s\n", task.ID, dlink)
-					client := pcsconfig.Config.HTTPClient()
+					client := pcsconfig.Config.PanHTTPClient()
 					client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 						// 去掉 Referer
-						if !pcsconfig.Config.EnableHTTPS() {
+						if !pcsconfig.Config.EnableHTTPS {
 							req.Header.Del("Referer")
 						}
 						if len(via) >= 10 {
@@ -523,7 +523,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 					}
 
 					dfunc := func(downloadURL string, jar http.CookieJar) error {
-						h := pcsconfig.Config.HTTPClient()
+						h := pcsconfig.Config.PCSHTTPClient()
 						h.SetCookiejar(jar)
 						h.SetKeepAlive(true)
 						h.SetTimeout(10 * time.Minute)
@@ -652,13 +652,13 @@ func RunLocateDownload(pcspaths []string, opt *LocateDownloadOption) {
 		fmt.Printf("[%d] %s: \n", i, pcspath)
 		tb := pcstable.NewTable(os.Stdout)
 		tb.SetHeader([]string{"#", "链接"})
-		for k, u := range info.URLStrings(pcsconfig.Config.EnableHTTPS()) {
+		for k, u := range info.URLStrings(pcsconfig.Config.EnableHTTPS) {
 			tb.Append([]string{strconv.Itoa(k), u.String()})
 		}
 		tb.Render()
 		fmt.Println()
 	}
-	fmt.Printf("提示: 访问下载链接, 需将下载器的 User-Agent 设置为: %s\n", pcsconfig.Config.UserAgent())
+	fmt.Printf("提示: 访问下载链接, 需将下载器的 User-Agent 设置为: %s\n", pcsconfig.Config.PanUA)
 }
 
 // RunFixMD5 执行修复md5
@@ -698,7 +698,7 @@ func getLocateDownloadLinks(pcspath string) (dlinks []*url.URL, err error) {
 		return nil, pcsError
 	}
 
-	us := dInfo.URLStrings(pcsconfig.Config.EnableHTTPS())
+	us := dInfo.URLStrings(pcsconfig.Config.EnableHTTPS)
 	if len(us) == 0 {
 		return nil, ErrDlinkNotFound
 	}
@@ -724,15 +724,12 @@ func getLocatePanLink(pcs *baidupcs.BaiduPCS, fsID int64) (dlink string, err err
 	}
 
 	dc := pcsconfig.Config.DlinkClient()
-	c := pcsconfig.Config.HTTPClient()
-	c.SetResponseHeaderTimeout(30 * time.Second)
-	dc.SetClient(c)
 	dlink, err = dc.CacheLinkRedirectPr(link)
 	return
 }
 
 func handleHTTPLinkURL(linkURL *url.URL) {
-	if pcsconfig.Config.EnableHTTPS() {
+	if pcsconfig.Config.EnableHTTPS {
 		if linkURL.Scheme == "http" {
 			linkURL.Scheme = "https"
 		}

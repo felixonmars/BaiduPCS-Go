@@ -119,21 +119,20 @@ var (
 		Scheme: "http",
 		Host:   "baidupcs.com",
 	}
-
-	netdiskUAHeader = map[string]string{
-		"User-Agent": NetdiskUA,
-	}
 )
 
 type (
 	// BaiduPCS 百度 PCS API 详情
 	BaiduPCS struct {
-		appID    int                   // app_id
-		isHTTPS  bool                  // 是否启用https
-		uid      uint64                // 百度uid
-		client   *requester.HTTPClient // http 客户端
-		ph       *panhome.PanHome
-		cacheMap cachemap.CacheMap
+		appID      int                   // app_id
+		isHTTPS    bool                  // 是否启用https
+		uid        uint64                // 百度uid
+		client     *requester.HTTPClient // http 客户端
+		pcsUA      string
+		panUA      string
+		isSetPanUA bool
+		ph         *panhome.PanHome
+		cacheMap   cachemap.CacheMap
 	}
 
 	userInfoJSON struct {
@@ -197,6 +196,9 @@ func (pcs *BaiduPCS) lazyInit() {
 	if pcs.ph == nil {
 		pcs.ph = panhome.NewPanHome(pcs.client)
 	}
+	if !pcs.isSetPanUA {
+		pcs.panUA = NetdiskUA
+	}
 }
 
 // GetClient 获取当前的http client
@@ -246,9 +248,15 @@ func (pcs *BaiduPCS) SetStoken(stoken string) {
 	})
 }
 
-// SetUserAgent 设置 User-Agent
-func (pcs *BaiduPCS) SetUserAgent(ua string) {
-	pcs.client.SetUserAgent(ua)
+// SetPCSUserAgent 设置 PCS User-Agent
+func (pcs *BaiduPCS) SetPCSUserAgent(ua string) {
+	pcs.pcsUA = ua
+}
+
+// SetPanUserAgent 设置 Pan User-Agent
+func (pcs *BaiduPCS) SetPanUserAgent(ua string) {
+	pcs.panUA = ua
+	pcs.isSetPanUA = true
 }
 
 // SetHTTPS 是否启用https连接
@@ -261,6 +269,12 @@ func (pcs *BaiduPCS) URL() *url.URL {
 	return &url.URL{
 		Scheme: GetHTTPScheme(pcs.isHTTPS),
 		Host:   PCSBaiduCom,
+	}
+}
+
+func (pcs *BaiduPCS) getPanUAHeader() (header map[string]string) {
+	return map[string]string{
+		"User-Agent": pcs.panUA,
 	}
 }
 

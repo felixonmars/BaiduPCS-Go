@@ -98,7 +98,7 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 
 	// 检测opt
 	if opt.Parallel <= 0 {
-		opt.Parallel = pcsconfig.Config.MaxUploadParallel()
+		opt.Parallel = pcsconfig.Config.MaxUploadParallel
 	}
 
 	if opt.MaxRetry < 0 {

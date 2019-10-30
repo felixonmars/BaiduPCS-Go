@@ -44,7 +44,7 @@ var (
 )
 
 func (pcs *BaiduPCS) getLocateDownloadLink(pcspath string) (link string, pcsError pcserror.Error) {
-	info, pcsError := pcs.LocateDownloadWithUserAgent(pcspath, NetdiskUA)
+	info, pcsError := pcs.LocateDownload(pcspath)
 	if pcsError != nil {
 		return
 	}
@@ -112,9 +112,7 @@ func (pcs *BaiduPCS) GetRapidUploadInfoByLink(link string, compareRInfo *RapidUp
 	errInfo.ErrType = pcserror.ErrTypeOthers
 
 	var (
-		header = map[string]string{
-			"User-Agent": NetdiskUA,
-		}
+		header     = pcs.getPanUAHeader()
 		isSetRange = compareRInfo != nil && compareRInfo.ContentLength > SliceMD5Size // 是否设置Range
 	)
 	if isSetRange {

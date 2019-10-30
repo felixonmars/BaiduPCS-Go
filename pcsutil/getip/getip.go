@@ -26,7 +26,7 @@ func IPInfoByClient(c *requester.HTTPClient) (ipAddr string, err error) {
 	return
 }
 
-//IPInfo 获取IP地址和IP位置
+//IPInfo 从ipify获取IP地址
 func IPInfo(https bool) (ipAddr string, err error) {
 	c := requester.NewHTTPClient()
 	c.SetHTTPSecure(https)

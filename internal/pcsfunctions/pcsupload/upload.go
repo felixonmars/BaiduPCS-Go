@@ -40,7 +40,7 @@ func (pu *PCSUpload) TmpFile(ctx context.Context, partseq int, partOffset int64,
 
 	var respErr *uploader.MultiError
 	checksum, pcsError := pu.pcs.UploadTmpFile(func(uploadURL string, jar http.CookieJar) (resp *http.Response, err error) {
-		client := pcsconfig.Config.HTTPClient()
+		client := pcsconfig.Config.PCSHTTPClient()
 		client.SetCookiejar(jar)
 		client.SetTimeout(0)
 

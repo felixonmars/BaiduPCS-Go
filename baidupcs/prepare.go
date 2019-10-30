@@ -17,6 +17,15 @@ import (
 	"unsafe"
 )
 
+type (
+	reqType int
+)
+
+const (
+	reqTypePCS = iota
+	reqTypePan
+)
+
 func handleRespClose(resp *http.Response) error {
 	if resp != nil {
 		return resp.Body.Close()
@@ -37,19 +46,61 @@ func handleRespStatusError(opreation string, resp *http.Response) pcserror.Error
 	return nil
 }
 
+func (pcs *BaiduPCS) sendReqReturnResp(rt reqType, op, method, urlStr string, post interface{}, header map[string]string) (resp *http.Response, pcsError pcserror.Error) {
+	if header == nil {
+		header = map[string]string{}
+	}
+
+	var (
+		_, uaok = header["User-Agent"]
+	)
+
+	if !uaok {
+		switch rt {
+		case reqTypePCS:
+			header["User-Agent"] = pcs.pcsUA
+		case reqTypePan:
+			header["User-Agent"] = pcs.panUA
+		}
+	}
+
+	resp, err := pcs.client.Req(method, urlStr, post, header)
+	if err != nil {
+		handleRespClose(resp)
+		switch rt {
+		case reqTypePCS:
+			return nil, &pcserror.PCSErrInfo{
+				Operation: op,
+				ErrType:   pcserror.ErrTypeNetError,
+				Err:       err,
+			}
+		case reqTypePan:
+			return nil, &pcserror.PanErrorInfo{
+				Operation: op,
+				ErrType:   pcserror.ErrTypeNetError,
+				Err:       err,
+			}
+		}
+		panic("unreachable")
+	}
+	return resp, nil
+}
+
+func (pcs *BaiduPCS) sendReqReturnReadCloser(rt reqType, op, method, urlStr string, post interface{}, header map[string]string) (readCloser io.ReadCloser, pcsError pcserror.Error) {
+	resp, pcsError := pcs.sendReqReturnResp(rt, op, method, urlStr, post, header)
+	if pcsError != nil {
+		return
+	}
+	return resp.Body, nil
+}
+
 // PrepareUK 获取用户 UK, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareUK() (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
 	pcs.lazyInit()
 	pcsURL := GetHTTPScheme(pcs.isHTTPS) + "://pan.baidu.com/api/user/getinfo?need_selfinfo=1"
 
-	errInfo := pcserror.NewPanErrorInfo(OperationGetUK)
-	resp, err := pcs.client.Req("GET", pcsURL, nil, netdiskUAHeader)
-	if err != nil {
-		handleRespClose(resp)
-		errInfo.SetNetError(err)
-		return nil, errInfo
-	}
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationGetUK, http.MethodGet, pcsURL, nil, nil)
+	return
 }
 
 // PrepareQuotaInfo 获取当前用户空间配额信息, 只返回服务器响应数据和错误信息
@@ -58,17 +109,8 @@ func (pcs *BaiduPCS) PrepareQuotaInfo() (dataReadCloser io.ReadCloser, pcsError 
 	pcsURL := pcs.generatePCSURL("quota", "info")
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationQuotaInfo, pcsURL)
 
-	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, nil)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationQuotaInfo,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationQuotaInfo, http.MethodGet, pcsURL.String(), nil, nil)
+	return
 }
 
 // PrepareFilesDirectoriesBatchMeta 获取多个文件/目录的元信息, 只返回服务器响应数据和错误信息
@@ -87,17 +129,8 @@ func (pcs *BaiduPCS) PrepareFilesDirectoriesBatchMeta(paths ...string) (dataRead
 	mr.AddFormFeild("param", bytes.NewReader(sendData))
 	mr.CloseMultipart()
 
-	resp, err := pcs.client.Req("POST", pcsURL.String(), mr, nil)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationFilesDirectoriesMeta,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationFilesDirectoriesMeta, http.MethodPost, pcsURL.String(), mr, nil)
+	return
 }
 
 // PrepareFilesDirectoriesList 获取目录下的文件和目录列表, 只返回服务器响应数据和错误信息
@@ -118,17 +151,8 @@ func (pcs *BaiduPCS) PrepareFilesDirectoriesList(path string, options *OrderOpti
 	})
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationFilesDirectoriesList, pcsURL)
 
-	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, nil)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationFilesDirectoriesList,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationFilesDirectoriesList, http.MethodGet, pcsURL.String(), nil, nil)
+	return
 }
 
 // PrepareSearch 按文件名搜索文件, 只返回服务器响应数据和错误信息
@@ -145,18 +169,10 @@ func (pcs *BaiduPCS) PrepareSearch(targetPath, keyword string, recursive bool) (
 		"wd":   keyword,
 		"re":   re,
 	})
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationSearch, pcsURL)
 
-	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, nil)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationSearch,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationSearch, http.MethodGet, pcsURL.String(), nil, nil)
+	return
 }
 
 // PrepareRemove 批量删除文件/目录, 只返回服务器响应数据和错误信息
@@ -175,17 +191,8 @@ func (pcs *BaiduPCS) PrepareRemove(paths ...string) (dataReadCloser io.ReadClose
 	mr.AddFormFeild("param", bytes.NewReader(sendData))
 	mr.CloseMultipart()
 
-	resp, err := pcs.client.Req("POST", pcsURL.String(), mr, nil)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationRemove,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationRemove, http.MethodPost, pcsURL.String(), mr, nil)
+	return
 }
 
 // PrepareMkdir 创建目录, 只返回服务器响应数据和错误信息
@@ -196,17 +203,8 @@ func (pcs *BaiduPCS) PrepareMkdir(pcspath string) (dataReadCloser io.ReadCloser,
 	})
 	baiduPCSVerbose.Infof("%s URL: %s", OperationMkdir, pcsURL)
 
-	resp, err := pcs.client.Req("POST", pcsURL.String(), nil, nil)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationMkdir,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationMkdir, http.MethodPost, pcsURL.String(), nil, nil)
+	return
 }
 
 func (pcs *BaiduPCS) prepareCpMvOp(op string, cpmvJSON ...*CpMvJSON) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
@@ -221,7 +219,6 @@ func (pcs *BaiduPCS) prepareCpMvOp(op string, cpmvJSON ...*CpMvJSON) (dataReadCl
 		panic("Unknown opreation: " + op)
 	}
 
-	errInfo := pcserror.NewPCSErrorInfo(op)
 	sendData, err := (&CpMvListJSON{
 		List: cpmvJSON,
 	}).JSON()
@@ -238,14 +235,8 @@ func (pcs *BaiduPCS) prepareCpMvOp(op string, cpmvJSON ...*CpMvJSON) (dataReadCl
 	mr.AddFormFeild("param", bytes.NewReader(sendData))
 	mr.CloseMultipart()
 
-	resp, err := pcs.client.Req("POST", pcsURL.String(), mr, nil)
-	if err != nil {
-		handleRespClose(resp)
-		errInfo.SetNetError(err)
-		return nil, errInfo
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, op, http.MethodPost, pcsURL.String(), mr, nil)
+	return
 }
 
 // PrepareRename 重命名文件/目录, 只返回服务器响应数据和错误信息
@@ -279,17 +270,8 @@ func (pcs *BaiduPCS) prepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 
 	})
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationRapidUpload, pcsURL)
 
-	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, nil)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationRapidUpload,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationRapidUpload, http.MethodGet, pcsURL.String(), nil, nil)
+	return
 }
 
 // PrepareRapidUpload 秒传文件, 只返回服务器响应数据和错误信息
@@ -303,8 +285,8 @@ func (pcs *BaiduPCS) PrepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32 
 	return pcs.prepareRapidUpload(targetPath, contentMD5, sliceMD5, crc32, length)
 }
 
-// prepareLocateDownload 获取下载链接, 可指定 User-Agent
-func (pcs *BaiduPCS) prepareLocateDownload(pcspath, userAgent string) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+// PrepareLocateDownload 获取下载链接, 只返回服务器响应数据和错误信息
+func (pcs *BaiduPCS) PrepareLocateDownload(pcspath string) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
 	pcs.lazyInit()
 	bduss := pcs.GetBDUSS()
 	// 检测uid
@@ -320,7 +302,7 @@ func (pcs *BaiduPCS) prepareLocateDownload(pcspath, userAgent string) (dataReadC
 		pcs.uid = t.Baidu.UID
 	}
 
-	sign := netdisksign.NewLocateDownloadSign(pcs.uid, bduss)
+	ns := netdisksign.NewLocateDownloadSign(pcs.uid, bduss)
 	pcsURL := &url.URL{
 		Scheme: GetHTTPScheme(pcs.isHTTPS),
 		Host:   PCSBaiduCom,
@@ -330,38 +312,16 @@ func (pcs *BaiduPCS) prepareLocateDownload(pcspath, userAgent string) (dataReadC
 			"method": []string{"locatedownload"},
 			"path":   []string{pcspath},
 			"ver":    []string{"2"},
-			"time":   []string{strconv.FormatInt(sign.Time, 10)},
-			"rand":   []string{sign.Rand},
-			"devuid": []string{sign.DevUID},
-		}).Encode(),
+		}).Encode() + "&" + ns.URLParam(),
 	}
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationLocateDownload, pcsURL)
 
-	var header map[string]string
-	if userAgent != "" {
-		header = netdiskUAHeader
-	}
-
-	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, header)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationLocateDownload,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
-}
-
-// PrepareLocateDownload 获取下载链接, 只返回服务器响应数据和错误信息
-func (pcs *BaiduPCS) PrepareLocateDownload(pcspath string) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
-	return pcs.prepareLocateDownload(pcspath, "")
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationLocateDownload, http.MethodGet, pcsURL.String(), nil, pcs.getPanUAHeader())
+	return
 }
 
 // PrepareLocatePanAPIDownload 从百度网盘首页获取下载链接, 只返回服务器响应数据和错误信息
-func (pcs *BaiduPCS) PrepareLocatePanAPIDownload(fidList ...int64) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+func (pcs *BaiduPCS) PrepareLocatePanAPIDownload(fidList ...int64) (dataReadCloser io.ReadCloser, panError pcserror.Error) {
 	pcs.lazyInit()
 	// 初始化
 	var (
@@ -378,24 +338,14 @@ func (pcs *BaiduPCS) PrepareLocatePanAPIDownload(fidList ...int64) (dataReadClos
 	panURL := pcs.generatePanURL("download", nil)
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationLocatePanAPIDownload, panURL)
 
-	resp, err := pcs.client.Req("POST", panURL.String(), map[string]string{
+	dataReadCloser, panError = pcs.sendReqReturnReadCloser(reqTypePan, OperationLocatePanAPIDownload, http.MethodPost, panURL.String(), map[string]string{
 		"sign":      sign.Sign(),
 		"timestamp": sign.Timestamp(),
 		"fidlist":   mergeInt64List(fidList...),
 	}, map[string]string{
 		"Content-Type": "application/x-www-form-urlencoded",
-		"User-Agent":   NetdiskUA,
 	})
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PanErrorInfo{
-			Operation: OperationLocatePanAPIDownload,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	return
 }
 
 // PrepareUpload 上传单个文件, 只返回服务器响应数据和错误信息
@@ -479,30 +429,21 @@ func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(targetPath string, blockList .
 	mr.AddFormFeild("param", bytes.NewReader(sendData))
 	mr.CloseMultipart()
 
-	resp, err := pcs.client.Req("POST", pcsURL.String(), mr, nil)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationUploadCreateSuperFile,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationUploadCreateSuperFile, http.MethodPost, pcsURL.String(), mr, nil)
+	return
 }
 
 // PrepareUploadPrecreate 分片上传—Precreate, 只返回服务器响应数据和错误信息
-func (pcs *BaiduPCS) PrepareUploadPrecreate(targetPath, contentMD5, sliceMD5, crc32 string, size int64, bolckList ...string) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+func (pcs *BaiduPCS) PrepareUploadPrecreate(targetPath, contentMD5, sliceMD5, crc32 string, size int64, bolckList ...string) (dataReadCloser io.ReadCloser, panError pcserror.Error) {
 	pcs.lazyInit()
-	pcsURL := &url.URL{
+	panURL := &url.URL{
 		Scheme: GetHTTPScheme(pcs.isHTTPS),
 		Host:   PanBaiduCom,
 		Path:   "api/precreate",
 	}
-	baiduPCSVerbose.Infof("%s URL: %s\n", OperationUploadPrecreate, pcsURL)
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationUploadPrecreate, panURL)
 
-	resp, err := pcs.client.Req("POST", pcsURL.String(), map[string]string{
+	dataReadCloser, panError = pcs.sendReqReturnReadCloser(reqTypePan, OperationUploadPrecreate, http.MethodPost, panURL.String(), map[string]string{
 		"path":         targetPath,
 		"size":         strconv.FormatInt(size, 10),
 		"isdir":        "0",
@@ -514,23 +455,8 @@ func (pcs *BaiduPCS) PrepareUploadPrecreate(targetPath, contentMD5, sliceMD5, cr
 		"rtype":        "2",
 	}, map[string]string{
 		"Content-Type": "application/x-www-form-urlencoded",
-		"User-Agent":   NetdiskUA,
 	})
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationUploadPrecreate,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	pcsError = handleRespStatusError(OperationUploadPrecreate, resp)
-	if pcsError != nil {
-		return
-	}
-
-	return resp.Body, nil
+	return
 }
 
 // PrepareUploadSuperfile2 另一个上传接口
@@ -560,7 +486,6 @@ func (pcs *BaiduPCS) PrepareUploadSuperfile2(uploadid, targetPath string, partse
 	if pcsError != nil {
 		return
 	}
-
 	return resp.Body, nil
 }
 
@@ -574,17 +499,8 @@ func (pcs *BaiduPCS) PrepareCloudDlAddTask(sourceURL, savePath string) (dataRead
 	})
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationCloudDlAddTask, pcsURL2)
 
-	resp, err := pcs.client.Req("POST", pcsURL2.String(), nil, nil)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationCloudDlAddTask,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationCloudDlAddTask, http.MethodPost, pcsURL2.String(), nil, nil)
+	return
 }
 
 // PrepareCloudDlQueryTask 精确查询离线下载任务, 只返回服务器响应数据和错误信息,
@@ -601,17 +517,8 @@ func (pcs *BaiduPCS) PrepareCloudDlQueryTask(taskIDs string) (dataReadCloser io.
 	mr.AddFormFeild("task_ids", strings.NewReader(taskIDs))
 	mr.CloseMultipart()
 
-	resp, err := pcs.client.Req("POST", pcsURL2.String(), mr, nil)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationCloudDlQueryTask,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationCloudDlQueryTask, http.MethodPost, pcsURL2.String(), mr, nil)
+	return
 }
 
 // PrepareCloudDlListTask 查询离线下载任务列表, 只返回服务器响应数据和错误信息
@@ -625,17 +532,8 @@ func (pcs *BaiduPCS) PrepareCloudDlListTask() (dataReadCloser io.ReadCloser, pcs
 	})
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationCloudDlListTask, pcsURL2)
 
-	resp, err := pcs.client.Req("POST", pcsURL2.String(), nil, nil)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationCloudDlListTask,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationCloudDlListTask, http.MethodPost, pcsURL2.String(), nil, nil)
+	return
 }
 
 func (pcs *BaiduPCS) prepareCloudDlCDTask(opreation, method string, taskID int64) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
@@ -645,17 +543,8 @@ func (pcs *BaiduPCS) prepareCloudDlCDTask(opreation, method string, taskID int64
 	})
 	baiduPCSVerbose.Infof("%s URL: %s\n", opreation, pcsURL2)
 
-	resp, err := pcs.client.Req("POST", pcsURL2.String(), nil, nil)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: opreation,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, opreation, http.MethodPost, pcsURL2.String(), nil, nil)
+	return
 }
 
 // PrepareCloudDlCancelTask 取消离线下载任务, 只返回服务器响应数据和错误信息
@@ -674,79 +563,53 @@ func (pcs *BaiduPCS) PrepareCloudDlClearTask() (dataReadCloser io.ReadCloser, pc
 	pcsURL2 := pcs.generatePCSURL2("services/cloud_dl", "clear_task")
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationCloudDlClearTask, pcsURL2)
 
-	resp, err := pcs.client.Req("POST", pcsURL2.String(), nil, nil)
-	if err != nil {
-		handleRespClose(resp)
-		return nil, &pcserror.PCSErrInfo{
-			Operation: OperationCloudDlClearTask,
-			ErrType:   pcserror.ErrTypeNetError,
-			Err:       err,
-		}
-	}
-
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationCloudDlClearTask, http.MethodPost, pcsURL2.String(), nil, nil)
+	return
 }
 
 // PrepareSharePSet 私密分享文件, 只返回服务器响应数据和错误信息
-func (pcs *BaiduPCS) PrepareSharePSet(paths []string, period int) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+func (pcs *BaiduPCS) PrepareSharePSet(paths []string, period int) (dataReadCloser io.ReadCloser, panError pcserror.Error) {
 	pcs.lazyInit()
-	pcsURL := &url.URL{
+	panURL := &url.URL{
 		Scheme: GetHTTPScheme(pcs.isHTTPS),
 		Host:   PanBaiduCom,
 		Path:   "share/pset",
 	}
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationShareSet, panURL)
 
-	errInfo := pcserror.NewPanErrorInfo(OperationShareSet)
-	baiduPCSVerbose.Infof("%s URL: %s\n", OperationShareSet, pcsURL)
-
-	resp, err := pcs.client.Req("POST", pcsURL.String(), map[string]string{
+	dataReadCloser, panError = pcs.sendReqReturnReadCloser(reqTypePan, OperationShareSet, http.MethodPost, panURL.String(), map[string]string{
 		"path_list":    mergeStringList(paths...),
 		"schannel":     "0",
 		"channel_list": "[]",
 		"period":       strconv.Itoa(period),
 	}, map[string]string{
 		"Content-Type": "application/x-www-form-urlencoded",
-		"User-Agent":   NetdiskUA,
 	})
-	if err != nil {
-		handleRespClose(resp)
-		errInfo.SetNetError(err)
-		return nil, errInfo
-	}
-	return resp.Body, nil
+	return
 }
 
 // PrepareShareCancel 取消分享, 只返回服务器响应数据和错误信息
-func (pcs *BaiduPCS) PrepareShareCancel(shareIDs []int64) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+func (pcs *BaiduPCS) PrepareShareCancel(shareIDs []int64) (dataReadCloser io.ReadCloser, panError pcserror.Error) {
 	pcs.lazyInit()
-
-	pcsURL := &url.URL{
+	panURL := &url.URL{
 		Scheme: GetHTTPScheme(pcs.isHTTPS),
 		Host:   PanBaiduCom,
 		Path:   "share/cancel",
 	}
 
-	errInfo := pcserror.NewPanErrorInfo(OperationShareCancel)
-	baiduPCSVerbose.Infof("%s URL: %s\n", OperationShareCancel, pcsURL)
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationShareCancel, panURL)
 
 	ss := converter.SliceInt64ToString(shareIDs)
-
-	resp, err := pcs.client.Req("POST", pcsURL.String(), map[string]string{
+	dataReadCloser, panError = pcs.sendReqReturnReadCloser(reqTypePan, OperationShareCancel, http.MethodPost, panURL.String(), map[string]string{
 		"shareid_list": "[" + strings.Join(ss, ",") + "]",
 	}, map[string]string{
 		"Content-Type": "application/x-www-form-urlencoded",
-		"User-Agent":   NetdiskUA,
 	})
-	if err != nil {
-		handleRespClose(resp)
-		errInfo.SetNetError(err)
-		return nil, errInfo
-	}
-	return resp.Body, nil
+	return
 }
 
 // PrepareShareList 列出分享列表, 只返回服务器响应数据和错误信息
-func (pcs *BaiduPCS) PrepareShareList(page int) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+func (pcs *BaiduPCS) PrepareShareList(page int) (dataReadCloser io.ReadCloser, panError pcserror.Error) {
 	pcs.lazyInit()
 
 	query := url.Values{}
@@ -754,27 +617,20 @@ func (pcs *BaiduPCS) PrepareShareList(page int) (dataReadCloser io.ReadCloser, p
 	query.Set("desc", "1")
 	query.Set("order", "time")
 
-	pcsURL := &url.URL{
+	panURL := &url.URL{
 		Scheme:   GetHTTPScheme(pcs.isHTTPS),
 		Host:     PanBaiduCom,
 		Path:     "share/record",
 		RawQuery: query.Encode(),
 	}
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationShareList, panURL)
 
-	errInfo := pcserror.NewPanErrorInfo(OperationShareList)
-	baiduPCSVerbose.Infof("%s URL: %s\n", OperationShareList, pcsURL)
-
-	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, netdiskUAHeader)
-	if err != nil {
-		handleRespClose(resp)
-		errInfo.SetNetError(err)
-		return nil, errInfo
-	}
-	return resp.Body, nil
+	dataReadCloser, panError = pcs.sendReqReturnReadCloser(reqTypePan, OperationShareList, http.MethodGet, panURL.String(), nil, nil)
+	return
 }
 
 // PrepareRecycleList 列出回收站文件列表, 只返回服务器响应数据和错误信息
-func (pcs *BaiduPCS) PrepareRecycleList(page int) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+func (pcs *BaiduPCS) PrepareRecycleList(page int) (dataReadCloser io.ReadCloser, panError pcserror.Error) {
 	pcs.lazyInit()
 
 	panURL := pcs.generatePanURL("recycle/list", map[string]string{
@@ -782,16 +638,10 @@ func (pcs *BaiduPCS) PrepareRecycleList(page int) (dataReadCloser io.ReadCloser,
 		"page": strconv.Itoa(page),
 	})
 
-	errInfo := pcserror.NewPanErrorInfo(OperationRecycleList)
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationRecycleList, panURL)
 
-	resp, err := pcs.client.Req("GET", panURL.String(), nil, netdiskUAHeader)
-	if err != nil {
-		handleRespClose(resp)
-		errInfo.SetNetError(err)
-		return nil, errInfo
-	}
-	return resp.Body, nil
+	dataReadCloser, panError = pcs.sendReqReturnReadCloser(reqTypePan, OperationRecycleList, http.MethodGet, panURL.String(), nil, nil)
+	return
 }
 
 // PrepareRecycleRestore 还原回收站文件或目录, 只返回服务器响应数据和错误信息
@@ -799,8 +649,6 @@ func (pcs *BaiduPCS) PrepareRecycleRestore(fidList ...int64) (dataReadCloser io.
 	pcs.lazyInit()
 
 	pcsURL := pcs.generatePCSURL("file", "restore")
-
-	errInfo := pcserror.NewPCSErrorInfo(OperationRecycleRestore)
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationRecycleRestore, pcsURL)
 
 	fsIDList := make([]*FsIDJSON, 0, len(fidList))
@@ -823,36 +671,23 @@ func (pcs *BaiduPCS) PrepareRecycleRestore(fidList ...int64) (dataReadCloser io.
 	mr.AddFormFeild("param", bytes.NewReader(sendData))
 	mr.CloseMultipart()
 
-	resp, err := pcs.client.Req("POST", pcsURL.String(), mr, nil)
-	if err != nil {
-		handleRespClose(resp)
-		errInfo.SetNetError(err)
-		return nil, errInfo
-	}
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationRecycleRestore, http.MethodPost, pcsURL.String(), mr, nil)
+	return
 }
 
 // PrepareRecycleDelete 删除回收站文件或目录, 只返回服务器响应数据和错误信息
-func (pcs *BaiduPCS) PrepareRecycleDelete(fidList ...int64) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+func (pcs *BaiduPCS) PrepareRecycleDelete(fidList ...int64) (dataReadCloser io.ReadCloser, panError pcserror.Error) {
 	pcs.lazyInit()
 
 	panURL := pcs.generatePanURL("recycle/delete", nil)
-
-	errInfo := pcserror.NewPanErrorInfo(OperationRecycleDelete)
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationRecycleDelete, panURL)
 
-	resp, err := pcs.client.Req("POST", panURL.String(), map[string]string{
+	dataReadCloser, panError = pcs.sendReqReturnReadCloser(reqTypePan, OperationRecycleDelete, http.MethodPost, panURL.String(), map[string]string{
 		"fidlist": mergeInt64List(fidList...),
 	}, map[string]string{
 		"Content-Type": "application/x-www-form-urlencoded",
-		"User-Agent":   NetdiskUA,
 	})
-	if err != nil {
-		handleRespClose(resp)
-		errInfo.SetNetError(err)
-		return nil, errInfo
-	}
-	return resp.Body, nil
+	return
 }
 
 // PrepareRecycleClear 清空回收站, 只返回服务器响应数据和错误信息
@@ -863,14 +698,8 @@ func (pcs *BaiduPCS) PrepareRecycleClear() (dataReadCloser io.ReadCloser, pcsErr
 		"type": "recycle",
 	})
 
-	errInfo := pcserror.NewPCSErrorInfo(OperationRecycleClear)
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationRecycleClear, pcsURL)
 
-	resp, err := pcs.client.Req("GET", pcsURL.String(), nil, nil)
-	if err != nil {
-		handleRespClose(resp)
-		errInfo.SetNetError(err)
-		return nil, errInfo
-	}
-	return resp.Body, nil
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationRecycleClear, http.MethodGet, pcsURL.String(), nil, nil)
+	return
 }

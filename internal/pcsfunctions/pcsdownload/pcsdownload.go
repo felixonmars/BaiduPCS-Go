@@ -30,11 +30,6 @@ func BaiduPCSURLCheckFunc(client *requester.HTTPClient, durl string) (contentLen
 	}
 
 	contentLengthStr := resp.Header.Get("x-bs-file-size")
-	contentLength, err = strconv.ParseInt(contentLengthStr, 10, 64)
-	if err != nil {
-		resp.Body.Close()
-		return 0, nil, err
-	}
-
+	contentLength, _ = strconv.ParseInt(contentLengthStr, 10, 64)
 	return contentLength, resp, nil
 }
