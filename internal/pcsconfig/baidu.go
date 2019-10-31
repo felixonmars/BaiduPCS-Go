@@ -43,6 +43,7 @@ type Baidu struct {
 // BaiduPCS 初始化*baidupcs.BaiduPCS
 func (baidu *Baidu) BaiduPCS() *baidupcs.BaiduPCS {
 	pcs := baidupcs.NewPCS(Config.AppID, baidu.BDUSS)
+	pcs.SetStoken(baidu.STOKEN)
 	pcs.SetHTTPS(Config.EnableHTTPS)
 	pcs.SetPCSUserAgent(Config.PCSUA)
 	pcs.SetPanUserAgent(Config.PanUA)

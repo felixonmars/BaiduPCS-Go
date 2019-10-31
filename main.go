@@ -536,12 +536,7 @@ func main() {
 					}
 				}
 
-				if err = pcsconfig.Config.Save(); err != nil {
-					fmt.Printf("保存配置错误: %s\n", err)
-					return nil
-				}
-
-				fmt.Printf("切换用户成功, %s\n", switchedUser.Name)
+				fmt.Printf("切换用户: %s\n", switchedUser.Name)
 				return nil
 			},
 		},

@@ -76,6 +76,7 @@ func (c *PCSConfig) AverageParallel() int {
 func (c *PCSConfig) PrintTable() {
 	tb := pcstable.NewTable(os.Stdout)
 	tb.SetHeader([]string{"名称", "值", "建议值", "描述"})
+	tb.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	tb.SetColumnAlignment([]int{tablewriter.ALIGN_DEFAULT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT, tablewriter.ALIGN_LEFT})
 	tb.AppendBulk([][]string{
 		[]string{"appid", fmt.Sprint(c.AppID), "", "百度 PCS 应用ID"},

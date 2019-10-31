@@ -16,8 +16,8 @@ var (
 		Scheme: "https",
 		Host:   "pan.baidu.com",
 	}
-	// AndroidUserAgent Android User-Agent
-	AndroidUserAgent = "Android"
+	// PanHomeUserAgent PanHome User-Agent
+	PanHomeUserAgent = "Mozilla/5.0"
 )
 
 type (

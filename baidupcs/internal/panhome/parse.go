@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"regexp"
 	"unsafe"
 )
@@ -22,7 +23,7 @@ func (ph *PanHome) getSignInfo() error {
 	u := *panBaiduComURL
 	u.Path = "/disk/home"
 	resp, err := ph.client.Req("GET", u.String(), nil, map[string]string{
-		"User-Agent": AndroidUserAgent,
+		"User-Agent": PanHomeUserAgent,
 	})
 	if resp != nil {
 		defer resp.Body.Close()
@@ -38,6 +39,13 @@ func (ph *PanHome) getSignInfo() error {
 	case "":
 		//pass
 	default:
+		locU, err := url.Parse(loc)
+		if err != nil {
+			return ErrUnknownLocation
+		}
+		if locU.Host == "passport.baidu.com" {
+			return ErrCookieInvalid
+		}
 		return ErrUnknownLocation
 	}
 
