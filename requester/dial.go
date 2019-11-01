@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/expires"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/expires/cachemap"
 	mathrand "math/rand"
 	"net"
 	"net/http"
@@ -20,6 +22,8 @@ var (
 
 	// ErrProxyAddrEmpty 代理地址为空
 	ErrProxyAddrEmpty = errors.New("proxy addr is empty")
+
+	tcpCache = cachemap.GlobalCacheOpMap.LazyInitCachePoolOp("requester/tcp")
 )
 
 // SetLocalTCPAddrList 设置网卡地址
@@ -124,25 +128,18 @@ func resolveTCP(ctx context.Context, address string) (tcpaddr *net.TCPAddr, err 
 func dialContext(ctx context.Context, network, address string) (conn net.Conn, err error) {
 	switch network {
 	case "tcp", "tcp4", "tcp6":
-		var (
-			ta = TCPAddrCache.Get(address)
-		)
-
-		// 检测缓存
-		if ta != nil {
-			return net.DialTCP(network, getLocalTCPAddr(), ta)
-		}
-
-		// Resolve TCP address
-		ta, err = resolveTCP(ctx, address)
-
+		data := cachemap.GlobalCacheOpMap.CacheOperation("requester/tcp", address, func() expires.DataExpires {
+			var tcpAddr *net.TCPAddr
+			tcpAddr, err = resolveTCP(ctx, address)
+			if err != nil {
+				return nil
+			}
+			return expires.NewDataExpires(tcpAddr, 30*time.Minute)
+		})
 		if err != nil {
 			return nil, err
 		}
-
-		// 加入缓存
-		TCPAddrCache.Set(address, ta)
-		return net.DialTCP(network, getLocalTCPAddr(), ta)
+		return net.DialTCP(network, getLocalTCPAddr(), data.Data().(*net.TCPAddr))
 	}
 
 	// 非 tcp 请求

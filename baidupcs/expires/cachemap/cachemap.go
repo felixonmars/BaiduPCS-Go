@@ -5,29 +5,32 @@ import (
 	"sync"
 )
 
+var (
+	GlobalCacheOpMap = CacheOpMap{}
+)
+
 type (
-	CacheMap struct {
+	CacheOpMap struct {
 		cachePool sync.Map
 	}
 )
 
-func (cm *CacheMap) LazyInitCachePoolOp(op string) *sync.Map {
-	cm.ClearInvalidate()
+func (cm *CacheOpMap) LazyInitCachePoolOp(op string) CacheUnit {
 	cacheItf, ok := cm.cachePool.Load(op)
 	if !ok {
-		cache := &sync.Map{}
+		cache := &cacheUnit{}
 		cm.cachePool.Store(op, cache)
 		return cache
 	}
-	return cacheItf.(*sync.Map)
+	return cacheItf.(CacheUnit)
 }
 
-func (cm *CacheMap) ClearInvalidate() {
+// ClearInvalidate 清除已过期的数据(一般用不到)
+func (cm *CacheOpMap) ClearInvalidate() {
 	cm.cachePool.Range(func(_, cacheItf interface{}) bool {
-		cache := cacheItf.(*sync.Map)
-		cache.Range(func(key, validateItf interface{}) bool {
-			expire := validateItf.(expires.Expires)
-			if expire.IsExpires() {
+		cache := cacheItf.(CacheUnit)
+		cache.Range(func(key interface{}, exp expires.DataExpires) bool {
+			if exp.IsExpires() {
 				cache.Delete(key)
 			}
 			return true

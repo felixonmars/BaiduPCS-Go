@@ -20,7 +20,7 @@ func (pcs *BaiduPCS) Remove(paths ...string) (pcsError pcserror.Error) {
 	}
 
 	// 更新缓存
-	pcs.updateFilesDirectoriesCache(allRelatedDir(paths))
+	pcs.deleteCache(allRelatedDir(paths))
 	return nil
 }
 
@@ -39,6 +39,6 @@ func (pcs *BaiduPCS) Mkdir(pcspath string) (pcsError pcserror.Error) {
 	}
 
 	// 更新缓存
-	pcs.updateFilesDirectoriesCache([]string{path.Dir(pcspath)})
+	pcs.deleteCache([]string{path.Dir(pcspath)})
 	return
 }

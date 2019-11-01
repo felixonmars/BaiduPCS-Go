@@ -7,41 +7,28 @@ import (
 	"time"
 )
 
-type (
-	filesDirectoriesListValidate struct {
-		fds FileDirectoryList
-		expires.Expires
-	}
-)
-
-// updateFilesDirectoriesCache 更新缓存
-func (pcs *BaiduPCS) updateFilesDirectoriesCache(dirs []string) {
-	cache := pcs.cacheMap.LazyInitCachePoolOp(OperationFilesDirectoriesList)
+// deleteCache 删除含有 dirs 的缓存
+func (pcs *BaiduPCS) deleteCache(dirs []string) {
+	cache := pcs.cacheOpMap.LazyInitCachePoolOp(OperationFilesDirectoriesList)
 	for _, v := range dirs {
-		filesDirectoriesListValidateItf, ok := cache.Load(v + "_" + defaultOrderOptionsStr)
+		data, ok := cache.Load(v + "_" + defaultOrderOptionsStr)
 		if ok {
-			filesDirectoriesListValidateItf.(*filesDirectoriesListValidate).SetExpires(false)
+			data.SetExpires(true)
 		}
 	}
 }
 
 // CacheFilesDirectoriesList 缓存获取
-func (pcs *BaiduPCS) CacheFilesDirectoriesList(path string, options *OrderOptions) (data FileDirectoryList, pcsError pcserror.Error) {
-	var (
-		cache                               = pcs.cacheMap.LazyInitCachePoolOp(OperationFilesDirectoriesList)
-		key                                 = path + "_" + fmt.Sprint(options)
-		filesDirectoriesListValidateItf, ok = cache.Load(key)
-	)
-	if !ok {
-		data, pcsError = pcs.FilesDirectoriesList(path, options)
+func (pcs *BaiduPCS) CacheFilesDirectoriesList(path string, options *OrderOptions) (fdl FileDirectoryList, pcsError pcserror.Error) {
+	data := pcs.cacheOpMap.CacheOperation(OperationFilesDirectoriesList, path+"_"+fmt.Sprint(options), func() expires.DataExpires {
+		fdl, pcsError = pcs.FilesDirectoriesList(path, options)
 		if pcsError != nil {
-			return
+			return nil
 		}
-		cache.Store(key, &filesDirectoriesListValidate{
-			fds:     data,
-			Expires: expires.NewExpires(1 * time.Minute),
-		})
+		return expires.NewDataExpires(fdl, 1*time.Minute)
+	})
+	if pcsError != nil {
 		return
 	}
-	return filesDirectoriesListValidateItf.(*filesDirectoriesListValidate).fds, nil
+	return data.Data().(FileDirectoryList), nil
 }

@@ -18,7 +18,6 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil/getip"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/pcstime"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
-	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/olekukonko/tablewriter"
 	"github.com/peterh/liner"
 	"github.com/urfave/cli"
@@ -87,9 +86,6 @@ func init() {
 	default:
 		fmt.Printf("WARNING: config init error: %s\n", err)
 	}
-
-	// 启动缓存回收
-	requester.TCPAddrCache.GC()
 }
 
 func main() {
@@ -1352,11 +1348,7 @@ func main() {
 				}
 
 				for k, filePath := range c.Args() {
-					lp, err := checksum.GetFileSum(filePath, &checksum.SumConfig{
-						IsMD5Sum:      true,
-						IsCRC32Sum:    true,
-						IsSliceMD5Sum: true,
-					})
+					lp, err := checksum.GetFileSum(filePath, checksum.CHECKSUM_MD5|checksum.CHECKSUM_SLICE_MD5|checksum.CHECKSUM_CRC32)
 					if err != nil {
 						fmt.Printf("[%d] %s\n", k+1, err)
 						continue

@@ -37,6 +37,6 @@ func (pcs *BaiduPCS) cpmvOp(op string, cpmvJSON ...*CpMvJSON) (pcsError pcserror
 	}
 
 	// 更新缓存
-	pcs.updateFilesDirectoriesCache((*CpMvJSONList)(unsafe.Pointer(&cpmvJSON)).AllRelatedDir())
+	pcs.deleteCache((*CpMvJSONList)(unsafe.Pointer(&cpmvJSON)).AllRelatedDir())
 	return nil
 }

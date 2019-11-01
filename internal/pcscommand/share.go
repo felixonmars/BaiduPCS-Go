@@ -169,7 +169,7 @@ func getLink(shareLink, passwd, filePath string, skipRoot bool) (dlink string, e
 			}
 
 			if rf.Path == filePath {
-				dlink, err = dc.LinkRedirect(rf.Link)
+				dlink, err = dc.CacheLinkRedirect(rf.Link)
 				if err != nil {
 					return "", ErrDlinkNotFound
 				}

@@ -97,7 +97,7 @@ func (pcs *BaiduPCS) RapidUpload(targetPath, contentMD5, sliceMD5, crc32 string,
 	}
 
 	// 更新缓存
-	pcs.updateFilesDirectoriesCache([]string{path.Dir(targetPath)})
+	pcs.deleteCache([]string{path.Dir(targetPath)})
 	return nil
 }
 
@@ -144,7 +144,7 @@ func (pcs *BaiduPCS) Upload(targetPath string, uploadFunc UploadFunc) (pcsError 
 	}
 
 	// 更新缓存
-	pcs.updateFilesDirectoriesCache([]string{path.Dir(targetPath)})
+	pcs.deleteCache([]string{path.Dir(targetPath)})
 	return nil
 }
 
@@ -192,7 +192,7 @@ func (pcs *BaiduPCS) UploadCreateSuperFile(targetPath string, blockList ...strin
 	}
 
 	// 更新缓存
-	pcs.updateFilesDirectoriesCache([]string{path.Dir(targetPath)})
+	pcs.deleteCache([]string{path.Dir(targetPath)})
 	return nil
 }
 

@@ -18,8 +18,8 @@ const (
 
 // DlinkClient 客户端
 type DlinkClient struct {
-	client   *requester.HTTPClient
-	cacheMap cachemap.CacheMap
+	client     *requester.HTTPClient
+	cacheOpMap cachemap.CacheOpMap
 }
 
 func NewDlinkClient() *DlinkClient {

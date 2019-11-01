@@ -132,7 +132,7 @@ type (
 		panUA      string
 		isSetPanUA bool
 		ph         *panhome.PanHome
-		cacheMap   cachemap.CacheMap
+		cacheOpMap cachemap.CacheOpMap
 	}
 
 	userInfoJSON struct {

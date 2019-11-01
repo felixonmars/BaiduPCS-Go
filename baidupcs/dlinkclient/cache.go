@@ -7,80 +7,46 @@ import (
 	"time"
 )
 
-type (
-	regValidate struct {
-		short string
-		expires.Expires
-	}
-
-	listValidate struct {
-		fds []*FileDirectory
-		expires.Expires
-	}
-
-	linkRedirectValidate struct {
-		nlink string
-		expires.Expires
-	}
-)
-
 func (dc *DlinkClient) CacheShareReg(shareURL, passwd string) (short string, dlinkError pcserror.Error) {
-	var (
-		cache                = dc.cacheMap.LazyInitCachePoolOp(OperationReg)
-		key                  = shareURL + "_" + passwd
-		shortValidateItf, ok = cache.Load(key)
-	)
-	if !ok {
+	data := dc.cacheOpMap.CacheOperation(OperationReg, shareURL+"_"+passwd, func() expires.DataExpires {
 		short, dlinkError = dc.ShareReg(shareURL, passwd)
 		if dlinkError != nil {
-			return
+			return nil
 		}
-		cache.Store(key, &regValidate{
-			short:   short,
-			Expires: expires.NewExpires(10 * time.Minute),
-		})
+		return expires.NewDataExpires(short, 10*time.Minute)
+	})
+	if dlinkError != nil {
 		return
 	}
-	return shortValidateItf.(*regValidate).short, nil
+	return data.Data().(string), nil
 }
 
 func (dc *DlinkClient) CacheShareList(short, dir string, page int) (fds []*FileDirectory, dlinkError pcserror.Error) {
-	var (
-		cache               = dc.cacheMap.LazyInitCachePoolOp(OperationList)
-		key                 = short + "_" + dir + "_" + strconv.Itoa(page)
-		listValidateItf, ok = cache.Load(key)
-	)
-	if !ok {
+	data := dc.cacheOpMap.CacheOperation(OperationList, short+"_"+dir+"_"+strconv.Itoa(page), func() expires.DataExpires {
 		fds, dlinkError = dc.ShareList(short, dir, page)
 		if dlinkError != nil {
-			return
+			return nil
 		}
-		cache.Store(key, &listValidate{
-			fds:     fds,
-			Expires: expires.NewExpires(1 * time.Minute),
-		})
+		return expires.NewDataExpires(fds, 1*time.Minute)
+	})
+	if dlinkError != nil {
 		return
 	}
-	return listValidateItf.(*listValidate).fds, nil
+	return data.Data().([]*FileDirectory), nil
 }
 
 func (dc *DlinkClient) cacheLinkRedirect(op string, link string) (nlink string, dlinkError pcserror.Error) {
-	var (
-		cache                       = dc.cacheMap.LazyInitCachePoolOp(op)
-		linkRedirectValidateItf, ok = cache.Load(link)
-	)
-	if !ok {
+	data := dc.cacheOpMap.CacheOperation(OperationList, link, func() expires.DataExpires {
 		nlink, dlinkError = dc.linkRedirect(op, link)
 		if dlinkError != nil {
-			return
+			return nil
 		}
-		cache.Store(link, &linkRedirectValidate{
-			nlink:   nlink,
-			Expires: expires.NewExpires(2 * time.Hour),
-		})
+		return expires.NewDataExpires(nlink, 2*time.Minute)
+	})
+	if dlinkError != nil {
 		return
 	}
-	return linkRedirectValidateItf.(*linkRedirectValidate).nlink, nil
+	return data.Data().(string), nil
 }
 
 func (dc *DlinkClient) CacheLinkRedirect(link string) (nlink string, dlinkError pcserror.Error) {

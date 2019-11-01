@@ -28,7 +28,7 @@ func NewExpires(dur time.Duration) Expires {
 	t := time.Now().Add(dur)
 	StripMono(&t)
 	return &expires{
-		expiresAt: t, //
+		expiresAt: t,
 	}
 }
 
@@ -44,7 +44,7 @@ func (ep *expires) GetExpires() time.Time {
 }
 
 func (ep *expires) SetExpires(e bool) {
-	ep.abort = !e
+	ep.abort = e
 }
 
 func (ep *expires) IsExpires() bool {

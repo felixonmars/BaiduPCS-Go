@@ -224,7 +224,7 @@ func checkFileValid(filePath string, fileInfo *baidupcs.FileDirectory) error {
 		return ErrDownloadNotSupportChecksum
 	}
 
-	f := checksum.NewLocalFileInfo(filePath, int(256*converter.KB))
+	f := checksum.NewLocalFileChecksum(filePath, int(baidupcs.SliceMD5Size))
 	err := f.OpenPath()
 	if err != nil {
 		return err
@@ -232,7 +232,10 @@ func checkFileValid(filePath string, fileInfo *baidupcs.FileDirectory) error {
 
 	defer f.Close()
 
-	f.Md5Sum()
+	err = f.Sum(checksum.CHECKSUM_MD5)
+	if err != nil {
+		return err
+	}
 	md5Str := hex.EncodeToString(f.MD5)
 
 	if md5Str != fileInfo.MD5 { // md5不一致
