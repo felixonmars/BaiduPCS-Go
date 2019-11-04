@@ -1,4 +1,4 @@
-package downloader
+package transfer
 
 import (
 	"errors"
@@ -36,7 +36,7 @@ var (
 
 //Len 长度
 func (r *Range) Len() int64 {
-	return r.LoadEnd() - r.LoadBegin() + 1
+	return r.LoadEnd() - r.LoadBegin()
 }
 
 //LoadBegin 读取Begin, 原子操作
@@ -107,6 +107,20 @@ func (gen *RangeListGen) RangeGenMode() RangeGenMode {
 	return gen.rangeGenMode
 }
 
+// RangeCount 返回预计生成的Range数量
+func (gen *RangeListGen) RangeCount() (rangeCount int) {
+	switch gen.rangeGenMode {
+	case RangeGenMode_Default:
+		rangeCount = gen.parallel
+	case RangeGenMode_BlockSize:
+		rangeCount = int(gen.total / gen.blockSize)
+		if gen.total%gen.blockSize != 0 {
+			rangeCount++
+		}
+	}
+	return
+}
+
 // LoadBegin 返回begin
 func (gen *RangeListGen) LoadBegin() (begin int64) {
 	gen.mu.Lock()
@@ -156,7 +170,7 @@ func (gen *RangeListGen) GenRange() (index int, r *Range) {
 
 		gen.count++
 		if gen.count >= gen.parallel {
-			end = gen.total - 1
+			end = gen.total
 		} else {
 			end = int64(gen.count) * gen.blockSize
 		}
@@ -165,7 +179,7 @@ func (gen *RangeListGen) GenRange() (index int, r *Range) {
 			End:   end,
 		}
 
-		gen.begin = end + 1
+		gen.begin = end
 		index = gen.count - 1
 		return
 	case RangeGenMode_BlockSize:
@@ -182,13 +196,13 @@ func (gen *RangeListGen) GenRange() (index int, r *Range) {
 		gen.count++
 		end = gen.begin + gen.blockSize
 		if end >= gen.total {
-			end = gen.total - 1
+			end = gen.total
 		}
 		r = &Range{
 			Begin: gen.begin,
 			End:   end,
 		}
-		gen.begin = end + 1
+		gen.begin = end
 		index = gen.count - 1
 		return
 	}

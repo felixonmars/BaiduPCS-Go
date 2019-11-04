@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
+	"github.com/iikira/BaiduPCS-Go/requester/transfer"
 	"sort"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 )
@@ -22,7 +20,7 @@ type (
 	//Monitor 线程监控器
 	Monitor struct {
 		workers         WorkerList
-		status          *DownloadStatus
+		status          *transfer.DownloadStatus
 		instanceState   *InstanceState
 		completed       chan struct{}
 		err             error
@@ -31,7 +29,7 @@ type (
 
 		// 临时变量
 		lastAvaliableIndex int
-		allWorkerRanges    RangeList // worker 的 Range 内存地址, 必须不变
+		allWorkerRanges    transfer.RangeList // worker 的 Range 内存地址, 必须不变
 		allWorkerRangesMu  sync.Mutex
 	}
 
@@ -50,7 +48,7 @@ func (mt *Monitor) lazyInit() {
 		mt.workers = make(WorkerList, 0, 100)
 	}
 	if mt.status == nil {
-		mt.status = NewDownloadStatus()
+		mt.status = transfer.NewDownloadStatus()
 	}
 	if mt.resetController == nil {
 		mt.resetController = NewResetController(80)
@@ -76,7 +74,7 @@ func (mt *Monitor) SetWorkers(workers WorkerList) {
 }
 
 //SetStatus 设置DownloadStatus
-func (mt *Monitor) SetStatus(status *DownloadStatus) {
+func (mt *Monitor) SetStatus(status *transfer.DownloadStatus) {
 	mt.status = status
 }
 
@@ -86,7 +84,7 @@ func (mt *Monitor) SetInstanceState(instanceState *InstanceState) {
 }
 
 //Status 返回DownloadStatus
-func (mt *Monitor) Status() *DownloadStatus {
+func (mt *Monitor) Status() *transfer.DownloadStatus {
 	return mt.status
 }
 
@@ -115,14 +113,14 @@ func (mt *Monitor) GetAvaliableWorker() *Worker {
 }
 
 //GetAllWorkersRange 获取所有worker的范围
-func (mt *Monitor) GetAllWorkersRange() RangeList {
+func (mt *Monitor) GetAllWorkersRange() transfer.RangeList {
 	mt.allWorkerRangesMu.Lock()
 	defer mt.allWorkerRangesMu.Unlock()
 
 	if mt.allWorkerRanges != nil && len(mt.allWorkerRanges) == len(mt.workers) {
 		return mt.allWorkerRanges
 	}
-	mt.allWorkerRanges = make(RangeList, 0, len(mt.workers))
+	mt.allWorkerRanges = make(transfer.RangeList, 0, len(mt.workers))
 	for _, worker := range mt.workers {
 		mt.allWorkerRanges = append(mt.allWorkerRanges, worker.GetRange())
 	}
@@ -185,7 +183,8 @@ func (mt *Monitor) registerAllCompleted() {
 			}
 			// status 在 lazyInit 之后, 不可能为空
 			// 完成条件: 所有worker 都已经完成, 且 rangeGen 已生成完毕
-			if completeNum >= workerNum && (mt.status.gen == nil || mt.status.gen.IsDone()) { // 已完成
+			gen := mt.status.RangeListGen()
+			if completeNum >= workerNum && (gen == nil || gen.IsDone()) { // 已完成
 				close(mt.completed)
 				return
 			}
@@ -242,7 +241,11 @@ func (mt *Monitor) Resume() {
 
 // TryAddNewWork 尝试加入新range
 func (mt *Monitor) TryAddNewWork() {
-	if mt.status == nil || mt.status.gen == nil || mt.status.gen.IsDone() {
+	if mt.status == nil {
+		return
+	}
+	gen := mt.status.RangeListGen()
+	if gen == nil || gen.IsDone() {
 		return
 	}
 
@@ -256,7 +259,7 @@ func (mt *Monitor) TryAddNewWork() {
 	}
 
 	// 有空闲的range, 执行
-	_, r := mt.status.gen.GenRange()
+	_, r := gen.GenRange()
 	if r == nil {
 		// 没有range了
 		return
@@ -384,7 +387,7 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 
 			// 保存断点信息到文件
 			if mt.instanceState != nil {
-				mt.instanceState.Put(&InstanceInfo{
+				mt.instanceState.Put(&transfer.DownloadInstanceInfo{
 					DownloadStatus: mt.status,
 					Ranges:         mt.GetAllWorkersRange(),
 				})
@@ -423,20 +426,4 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 			} // end if 2
 		} //end select
 	} //end for
-}
-
-//ShowWorkers 返回所有worker的状态
-func (mt *Monitor) ShowWorkers() string {
-	var (
-		builder = &strings.Builder{}
-		tb      = pcstable.NewTable(builder)
-	)
-	tb.SetHeader([]string{"#", "status", "range", "left", "speeds", "error"})
-	mt.RangeWorker(func(key int, worker *Worker) bool {
-		wrange := worker.GetRange()
-		tb.Append([]string{fmt.Sprint(worker.ID()), worker.GetStatus().StatusText(), wrange.ShowDetails(), strconv.FormatInt(wrange.Len(), 10), strconv.FormatInt(worker.GetSpeedsPerSecond(), 10), fmt.Sprint(worker.Err())})
-		return true
-	})
-	tb.Render()
-	return "\n" + builder.String()
 }

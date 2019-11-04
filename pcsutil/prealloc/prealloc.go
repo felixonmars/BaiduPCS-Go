@@ -7,10 +7,7 @@ import (
 	"syscall"
 )
 
-func InitPrivilege() (err error) {
-	return nil
-}
-
+// PreAlloc 预分配文件空间
 func PreAlloc(fd uintptr, length int64) error {
 	err := syscall.Ftruncate(int(fd), length)
 	if err != nil {

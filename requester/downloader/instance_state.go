@@ -3,11 +3,12 @@ package downloader
 import (
 	"errors"
 	"github.com/golang/protobuf/proto"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/cachepool"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
+	"github.com/iikira/BaiduPCS-Go/requester/transfer"
 	"github.com/json-iterator/go"
 	"os"
 	"sync"
-	"time"
 )
 
 type (
@@ -15,20 +16,8 @@ type (
 	InstanceState struct {
 		saveFile *os.File
 		format   InstanceStateStorageFormat
-		ii       InstanceInfoExporter
+		ii       transfer.DownloadInstanceInfoExporter
 		mu       sync.Mutex
-	}
-
-	//InstanceInfo 状态详细信息, 用于导出状态文件
-	InstanceInfo struct {
-		DownloadStatus *DownloadStatus
-		Ranges         RangeList
-	}
-
-	// InstanceInfoExporter 断点续传类型接口
-	InstanceInfoExporter interface {
-		GetInstanceInfo() *InstanceInfo
-		SetInstanceInfo(*InstanceInfo)
 	}
 
 	// InstanceStateStorageFormat 断点续传储存类型
@@ -41,53 +30,6 @@ const (
 	// InstanceStateStorageFormatProto3 protobuf 格式
 	InstanceStateStorageFormatProto3
 )
-
-// GetInstanceInfo 从断点信息获取下载状态
-func (m *InstanceInfoExport) GetInstanceInfo() (eii *InstanceInfo) {
-	eii = &InstanceInfo{
-		Ranges: m.Ranges,
-	}
-
-	var downloaded int64
-	switch m.RangeGenMode {
-	case RangeGenMode_BlockSize:
-		downloaded = m.GenBegin - eii.Ranges.Len()
-	default:
-		downloaded = m.TotalSize - eii.Ranges.Len()
-	}
-	eii.DownloadStatus = &DownloadStatus{
-		startTime:  time.Now(),
-		totalSize:  m.TotalSize,
-		downloaded: downloaded,
-		gen:        NewRangeListGenBlockSize(m.TotalSize, m.GenBegin, m.BlockSize),
-	}
-	switch m.RangeGenMode {
-	case RangeGenMode_BlockSize:
-		eii.DownloadStatus.gen = NewRangeListGenBlockSize(m.TotalSize, m.GenBegin, m.BlockSize)
-	default:
-		eii.DownloadStatus.gen = NewRangeListGenDefault(m.TotalSize, m.TotalSize, len(m.Ranges), len(m.Ranges))
-	}
-	return eii
-}
-
-// SetInstanceInfo 从下载状态导出断点信息
-func (m *InstanceInfoExport) SetInstanceInfo(eii *InstanceInfo) {
-	if eii == nil {
-		return
-	}
-
-	if eii.DownloadStatus != nil {
-		m.TotalSize = eii.DownloadStatus.TotalSize()
-		if eii.DownloadStatus.gen != nil {
-			m.GenBegin = eii.DownloadStatus.gen.LoadBegin()
-			m.BlockSize = eii.DownloadStatus.gen.LoadBlockSize()
-			m.RangeGenMode = eii.DownloadStatus.gen.RangeGenMode()
-		} else {
-			m.RangeGenMode = RangeGenMode_Default
-		}
-	}
-	m.Ranges = eii.Ranges
-}
 
 //NewInstanceState 初始化InstanceState
 func NewInstanceState(saveFile *os.File, format InstanceStateStorageFormat) *InstanceState {
@@ -117,14 +59,14 @@ func (is *InstanceState) getSaveFileContents() []byte {
 	}
 	intSize := int(size)
 
-	buf := make([]byte, intSize)
+	buf := cachepool.RawMallocByteSlice(intSize)
 
 	n, _ := is.saveFile.ReadAt(buf, 0)
 	return buf[:n]
 }
 
 //Get 拉取信息
-func (is *InstanceState) Get() (eii *InstanceInfo) {
+func (is *InstanceState) Get() (eii *transfer.DownloadInstanceInfo) {
 	if !is.checkSaveFile() {
 		return nil
 	}
@@ -137,11 +79,11 @@ func (is *InstanceState) Get() (eii *InstanceInfo) {
 		return
 	}
 
-	is.ii = &InstanceInfoExport{}
+	is.ii = &transfer.DownloadInstanceInfoExport{}
 	var err error
 	switch is.format {
 	case InstanceStateStorageFormatProto3:
-		err = proto.Unmarshal(contents, is.ii.(*InstanceInfoExport))
+		err = proto.Unmarshal(contents, is.ii.(*transfer.DownloadInstanceInfoExport))
 	default:
 		err = jsoniter.Unmarshal(contents, is.ii)
 	}
@@ -156,7 +98,7 @@ func (is *InstanceState) Get() (eii *InstanceInfo) {
 }
 
 //Put 提交信息
-func (is *InstanceState) Put(eii *InstanceInfo) {
+func (is *InstanceState) Put(eii *transfer.DownloadInstanceInfo) {
 	if !is.checkSaveFile() {
 		return
 	}
@@ -165,7 +107,7 @@ func (is *InstanceState) Put(eii *InstanceInfo) {
 	defer is.mu.Unlock()
 
 	if is.ii == nil {
-		is.ii = &InstanceInfoExport{}
+		is.ii = &transfer.DownloadInstanceInfoExport{}
 	}
 	is.ii.SetInstanceInfo(eii)
 	var (
@@ -174,7 +116,7 @@ func (is *InstanceState) Put(eii *InstanceInfo) {
 	)
 	switch is.format {
 	case InstanceStateStorageFormatProto3:
-		data, err = proto.Marshal(is.ii.(*InstanceInfoExport))
+		data, err = proto.Marshal(is.ii.(*transfer.DownloadInstanceInfoExport))
 	default:
 		data, err = jsoniter.Marshal(is.ii)
 	}

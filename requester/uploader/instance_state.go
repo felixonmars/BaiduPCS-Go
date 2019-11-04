@@ -1,11 +1,15 @@
 package uploader
 
+import (
+	"github.com/iikira/BaiduPCS-Go/requester/transfer"
+)
+
 type (
 	// BlockState 文件区块信息
 	BlockState struct {
-		ID       int       `json:"id"`
-		Range    ReadRange `json:"range"`
-		CheckSum string    `json:"checksum"`
+		ID       int            `json:"id"`
+		Range    transfer.Range `json:"range"`
+		CheckSum string         `json:"checksum"`
 	}
 
 	// InstanceState 上传断点续传信息
@@ -21,7 +25,7 @@ func (muer *MultiUploader) getWorkerListByInstanceState(is *InstanceState) worke
 			workers = append(workers, &worker{
 				id:         blockState.ID,
 				partOffset: blockState.Range.Begin,
-				splitUnit:  NewBufioSplitUnit(muer.file, blockState.Range, &muer.speedsStat, muer.rateLimit),
+				splitUnit:  NewBufioSplitUnit(muer.file, blockState.Range, muer.speedsStat, muer.rateLimit),
 				checksum:   blockState.CheckSum,
 			})
 		} else {

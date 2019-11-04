@@ -46,7 +46,7 @@ func (cp *cachePool) Get(id int32) []byte {
 }
 
 func (cp *cachePool) Set(id int32, size int) []byte {
-	cache := make([]byte, size)
+	cache := RawMallocByteSlice(size)
 	cp.cachepool.Store(id, cache)
 	return cp.Get(id)
 }

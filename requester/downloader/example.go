@@ -3,6 +3,7 @@ package downloader
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
+	"github.com/iikira/BaiduPCS-Go/requester/transfer"
 	"io"
 	"os"
 )
@@ -10,16 +11,13 @@ import (
 // DoDownload 执行下载
 func DoDownload(durl string, savePath string, cfg *Config) {
 	var (
-		file      *os.File
-		writer    io.WriterAt
-		warn, err error
+		file   *os.File
+		writer io.WriterAt
+		err    error
 	)
 
 	if savePath != "" {
-		writer, file, warn, err = NewDownloaderWriterByFilename(savePath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
-		if warn != nil {
-			fmt.Printf("warn: %s\n", warn)
-		}
+		writer, file, err = NewDownloaderWriterByFilename(savePath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -31,7 +29,7 @@ func DoDownload(durl string, savePath string, cfg *Config) {
 
 	exitDownloadFunc := make(chan struct{})
 
-	download.OnDownloadStatusEvent(func(status DownloadStatuser, workersCallback func(RangeWorkerFunc)) {
+	download.OnDownloadStatusEvent(func(status transfer.DownloadStatuser, workersCallback func(RangeWorkerFunc)) {
 		var ts string
 		if status.TotalSize() <= 0 {
 			ts = converter.ConvertFileSize(status.Downloaded(), 2)

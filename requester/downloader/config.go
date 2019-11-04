@@ -1,5 +1,9 @@
 package downloader
 
+import (
+	"github.com/iikira/BaiduPCS-Go/requester/transfer"
+)
+
 const (
 	//CacheSize 默认的下载缓存
 	CacheSize = 8192
@@ -12,7 +16,7 @@ var (
 
 //Config 下载配置
 type Config struct {
-	Mode                       RangeGenMode               // 下载Range分配模式
+	Mode                       transfer.RangeGenMode      // 下载Range分配模式
 	MaxParallel                int                        // 最大下载并发量
 	CacheSize                  int                        // 下载缓冲
 	BlockSize                  int64                      // 每个Range区块的大小, RangeGenMode 为 RangeGenMode2 时才有效

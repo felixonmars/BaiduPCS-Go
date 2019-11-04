@@ -5,12 +5,13 @@ import (
 	"context"
 	"errors"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/cachepool"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/prealloc"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/waitgroup"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/BaiduPCS-Go/requester/downloader/cachepool"
-	"github.com/iikira/BaiduPCS-Go/requester/downloader/prealloc"
 	"github.com/iikira/BaiduPCS-Go/requester/rio/speeds"
+	"github.com/iikira/BaiduPCS-Go/requester/transfer"
 	"io"
 	"net/http"
 	"sync"
@@ -91,9 +92,9 @@ func (der *Downloader) lazyInit() {
 }
 
 // SelectParallel 获取合适的 parallel
-func (der *Downloader) SelectParallel(acceptRanges string, maxParallel int, totalSize int64, instanceRangeList RangeList) (parallel int) {
+func (der *Downloader) SelectParallel(single bool, maxParallel int, totalSize int64, instanceRangeList transfer.RangeList) (parallel int) {
 	isRange := instanceRangeList != nil && len(instanceRangeList) > 0
-	if acceptRanges == "" { //不支持多线程
+	if single { //不支持多线程
 		parallel = 1
 	} else if isRange {
 		parallel = len(instanceRangeList)
@@ -111,35 +112,41 @@ func (der *Downloader) SelectParallel(acceptRanges string, maxParallel int, tota
 }
 
 // SelectBlockSizeAndInitRangeGen 获取合适的 BlockSize, 和初始化 RangeGen
-func (der *Downloader) SelectBlockSizeAndInitRangeGen(status *DownloadStatus, parallel int) (blockSize int64, initErr error) {
+func (der *Downloader) SelectBlockSizeAndInitRangeGen(single bool, status *transfer.DownloadStatus, parallel int) (blockSize int64, initErr error) {
 	// Range 生成器
-	if status.gen == nil {
+	if single { // 单线程
+		blockSize = -1
+		return
+	}
+	gen := status.RangeListGen()
+	if gen == nil {
 		switch der.config.Mode {
-		case RangeGenMode_Default:
-			status.gen = NewRangeListGenDefault(status.totalSize, 0, 0, parallel)
-			blockSize = status.gen.LoadBlockSize()
-		case RangeGenMode_BlockSize:
-			b2 := status.totalSize / int64(parallel)
+		case transfer.RangeGenMode_Default:
+			gen = transfer.NewRangeListGenDefault(status.TotalSize(), 0, 0, parallel)
+			blockSize = gen.LoadBlockSize()
+		case transfer.RangeGenMode_BlockSize:
+			b2 := status.TotalSize() / int64(parallel)
 			if b2 > der.config.BlockSize { // 选小的BlockSize, 以更高并发
 				blockSize = der.config.BlockSize
 			} else {
 				blockSize = b2
 			}
 
-			status.gen = NewRangeListGenBlockSize(status.totalSize, 0, blockSize)
+			gen = transfer.NewRangeListGenBlockSize(status.TotalSize(), 0, blockSize)
 		default:
-			initErr = ErrUnknownRangeGenMode
+			initErr = transfer.ErrUnknownRangeGenMode
 			return
 		}
 	} else {
-		blockSize = status.gen.blockSize
+		blockSize = gen.LoadBlockSize()
 	}
+	status.SetRangeListGen(gen)
 	return
 }
 
 // SelectCacheSize 获取合适的 cacheSize
 func (der *Downloader) SelectCacheSize(confCacheSize int, blockSize int64) (cacheSize int) {
-	if int64(confCacheSize) > blockSize {
+	if blockSize > 0 && int64(confCacheSize) > blockSize {
 		// 如果 cache size 过高, 则调低
 		cacheSize = int(blockSize)
 	} else {
@@ -190,6 +197,7 @@ func (der *Downloader) Execute() error {
 	} else {
 		acceptRanges = "bytes"
 	}
+	single := acceptRanges == ""
 
 	var (
 		loadBalancerResponses = make([]*LoadBalancerResponse, 0, len(der.loadBalansers)+1)
@@ -255,19 +263,26 @@ func (der *Downloader) Execute() error {
 
 	loadBalancerResponseList := NewLoadBalancerResponseList(loadBalancerResponses)
 
-	//load breakpoint
-	err = der.initInstanceState(der.config.InstanceStateStorageFormat)
-	if err != nil {
-		return err
+	var (
+		bii *transfer.DownloadInstanceInfo
+	)
+
+	if !single {
+		//load breakpoint
+		//服务端不支持多线程时, 不记录断点
+		err = der.initInstanceState(der.config.InstanceStateStorageFormat)
+		if err != nil {
+			return err
+		}
+		bii = der.instanceState.Get()
 	}
 
 	var (
-		bii        = der.instanceState.Get()
 		isInstance = bii != nil // 是否存在断点信息
-		status     *DownloadStatus
+		status     *transfer.DownloadStatus
 	)
 	if !isInstance {
-		bii = &InstanceInfo{}
+		bii = &transfer.DownloadInstanceInfo{}
 	}
 
 	if bii.DownloadStatus != nil {
@@ -275,19 +290,20 @@ func (der *Downloader) Execute() error {
 		status = bii.DownloadStatus
 	} else {
 		// 新建状态
-		status = NewDownloadStatus()
-		status.totalSize = contentLength
+		status = transfer.NewDownloadStatus()
+		status.SetTotalSize(contentLength)
 	}
 
 	// 设置限速
 	if der.config.MaxRate > 0 {
-		status.rateLimit = speeds.NewRateLimit(der.config.MaxRate)
-		defer status.rateLimit.Stop()
+		rl := speeds.NewRateLimit(der.config.MaxRate)
+		status.SetRateLimit(rl)
+		defer rl.Stop()
 	}
 
 	// 数据处理
-	parallel := der.SelectParallel(acceptRanges, der.config.MaxParallel, status.totalSize, bii.Ranges) // 实际的下载并行量
-	blockSize, err := der.SelectBlockSizeAndInitRangeGen(status, parallel)                             // 实际的BlockSize
+	parallel := der.SelectParallel(single, der.config.MaxParallel, status.TotalSize(), bii.Ranges) // 实际的下载并行量
+	blockSize, err := der.SelectBlockSizeAndInitRangeGen(single, status, parallel)                 // 实际的BlockSize
 	if err != nil {
 		return err
 	}
@@ -303,7 +319,7 @@ func (der *Downloader) Execute() error {
 	if !der.config.IsTest {
 		// 尝试修剪文件
 		if fder, ok := der.writer.(Fder); ok {
-			err = prealloc.PreAlloc(fder.Fd(), status.totalSize)
+			err = prealloc.PreAlloc(fder.Fd(), status.TotalSize())
 			if err != nil {
 				pcsverbose.Verbosef("DEBUG: truncate file error: %s\n", err)
 			}
@@ -314,13 +330,18 @@ func (der *Downloader) Execute() error {
 	// 数据平均分配给各个线程
 	isRange := bii.Ranges != nil && len(bii.Ranges) > 0
 	if !isRange {
-		bii.Ranges = make(RangeList, 0, parallel)
-		for i := 0; i < cap(bii.Ranges); i++ {
-			_, r := status.gen.GenRange()
-			if r == nil { // 没有了（不正常）
-				break
+		bii.Ranges = make(transfer.RangeList, 0, parallel)
+		if single { // 单线程
+			bii.Ranges = append(bii.Ranges, &transfer.Range{})
+		} else {
+			gen := status.RangeListGen()
+			for i := 0; i < cap(bii.Ranges); i++ {
+				_, r := gen.GenRange()
+				if r == nil { // 没有了（不正常）
+					break
+				}
+				bii.Ranges = append(bii.Ranges, r)
 			}
-			bii.Ranges = append(bii.Ranges, r)
 		}
 	}
 
@@ -370,7 +391,9 @@ func (der *Downloader) Execute() error {
 	err = der.monitor.Err()
 	if err == nil { // 成功
 		pcsutil.Trigger(der.onSuccessEvent)
-		der.removeInstanceState() // 移除断点续传文件
+		if !single {
+			der.removeInstanceState() // 移除断点续传文件
+		}
 	}
 
 	// 执行结束

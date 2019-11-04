@@ -3,6 +3,7 @@ package netdisksign
 import (
 	"crypto/sha1"
 	"encoding/hex"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/cachepool"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"strconv"
 	"time"
@@ -33,7 +34,7 @@ func (s *LocateDownloadSign) Sign(uid uint64, bduss string) {
 	randSha1 := sha1.New()
 	bdussSha1 := sha1.New()
 	bdussSha1.Write(converter.ToBytes(bduss))
-	sha1ResHex := make([]byte, 40)
+	sha1ResHex := cachepool.RawMallocByteSlice(40)
 	hex.Encode(sha1ResHex, bdussSha1.Sum(nil))
 	randSha1.Write(sha1ResHex)
 	uidStr := strconv.FormatUint(uid, 10)

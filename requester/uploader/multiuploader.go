@@ -26,7 +26,7 @@ type (
 		onFinishEvent       requester.Event        //结束上传事件
 		onCancelEvent       requester.Event        //取消上传事件
 		onErrorEvent        requester.EventOnError //上传出错事件
-		onUploadStatusEvent UploadStatusFunc       // 上传状态事件
+		onUploadStatusEvent UploadStatusFunc       //上传状态事件
 
 		instanceState *InstanceState
 
@@ -34,7 +34,7 @@ type (
 		file        rio.ReaderAtLen64 // 上传
 		config      *MultiUploaderConfig
 		workers     workerList
-		speedsStat  speeds.Speeds
+		speedsStat  *speeds.Speeds
 		rateLimit   *speeds.RateLimit
 
 		executeTime             time.Time
@@ -84,6 +84,9 @@ func (muer *MultiUploader) lazyInit() {
 	}
 	if muer.config.BlockSize <= 0 {
 		muer.config.BlockSize = 1 * converter.GB
+	}
+	if muer.speedsStat == nil {
+		muer.speedsStat = &speeds.Speeds{}
 	}
 }
 

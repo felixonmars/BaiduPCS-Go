@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/cachepool"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/escaper"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"io"
@@ -219,7 +220,7 @@ func (pcs *BaiduPCS) GetRapidUploadInfoByLink(link string, compareRInfo *RapidUp
 		}, nil
 	}
 
-	buf := make([]byte, int(SliceMD5Size))
+	buf := cachepool.RawMallocByteSlice(int(SliceMD5Size))
 	_, err = io.ReadFull(resp.Body, buf)
 	if err != nil {
 		errInfo.SetNetError(err)

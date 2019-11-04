@@ -8,11 +8,13 @@ import (
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/cachepool"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/checkaccess"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/jsonhelper"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
+	"github.com/iikira/BaiduPCS-Go/requester/transfer"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -166,17 +168,17 @@ func CheckUpdate(version string, yes bool) {
 	fmt.Printf("准备下载更新: %s\n", target.filename)
 
 	// 开始下载
-	buf := rio.NewBuffer(make([]byte, target.size))
+	buf := rio.NewBuffer(cachepool.RawMallocByteSlice(int(target.size)))
 	der := downloader.NewDownloader(target.downloadURL, buf, &downloader.Config{
 		MaxParallel: 20,
 		CacheSize:   10000,
 	})
 	der.SetClient(c)
 
-	der.OnDownloadStatusEvent(func(status downloader.DownloadStatuser, workersCallback func(downloader.RangeWorkerFunc)) {
+	der.OnDownloadStatusEvent(func(status transfer.DownloadStatuser, workersCallback func(downloader.RangeWorkerFunc)) {
 		var leftStr string
 		left := status.TimeLeft()
-		if left <= 0 {
+		if left < 0 {
 			leftStr = "-"
 		} else {
 			leftStr = left.String()

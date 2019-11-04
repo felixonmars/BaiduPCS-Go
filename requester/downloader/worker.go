@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/cachepool"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
-	"github.com/iikira/BaiduPCS-Go/requester/downloader/cachepool"
 	"github.com/iikira/BaiduPCS-Go/requester/rio/speeds"
+	"github.com/iikira/BaiduPCS-Go/requester/transfer"
 	"io"
 	"net/http"
 	"sync"
@@ -16,7 +17,7 @@ import (
 type (
 	//Worker 工作单元
 	Worker struct {
-		wrange       *Range
+		wrange       *transfer.Range
 		speedsStat   *speeds.Speeds
 		id           int    //id
 		cacheSize    int    //下载缓存
@@ -36,7 +37,7 @@ type (
 		readRespBodyCancelFunc func()
 		err                    error //错误信息
 		status                 WorkerStatus
-		downloadStatus         *DownloadStatus //总的下载状态
+		downloadStatus         *transfer.DownloadStatus //总的下载状态
 	}
 
 	// WorkerList worker列表
@@ -72,7 +73,7 @@ func (wer *Worker) lazyInit() {
 		wer.pauseChan = make(chan struct{})
 	}
 	if wer.wrange == nil {
-		wer.wrange = &Range{}
+		wer.wrange = &transfer.Range{}
 	}
 	if wer.wrange.LoadBegin() == 0 && wer.wrange.LoadEnd() == 0 {
 		// 取消多线程下载
@@ -101,7 +102,7 @@ func (wer *Worker) SetAcceptRange(acceptRanges string) {
 }
 
 //SetRange 设置请求范围
-func (wer *Worker) SetRange(r *Range) {
+func (wer *Worker) SetRange(r *transfer.Range) {
 	if wer.wrange == nil {
 		wer.wrange = r
 		return
@@ -121,7 +122,7 @@ func (wer *Worker) SetWriteMutex(mu *sync.Mutex) {
 }
 
 //SetDownloadStatus 增加其他需要统计的数据
-func (wer *Worker) SetDownloadStatus(downloadStatus *DownloadStatus) {
+func (wer *Worker) SetDownloadStatus(downloadStatus *transfer.DownloadStatus) {
 	wer.downloadStatus = downloadStatus
 }
 
@@ -132,7 +133,7 @@ func (wer *Worker) GetStatus() WorkerStatuser {
 }
 
 //GetRange 返回worker范围
-func (wer *Worker) GetRange() *Range {
+func (wer *Worker) GetRange() *transfer.Range {
 	return wer.wrange
 }
 
@@ -260,7 +261,7 @@ func (wer *Worker) Execute() {
 	}
 	//检测是否支持range
 	if wer.acceptRanges != "" && wer.wrange.Len() >= 0 {
-		header["Range"] = fmt.Sprintf("%s=%d-%d", wer.acceptRanges, wer.wrange.LoadBegin(), wer.wrange.LoadEnd())
+		header["Range"] = fmt.Sprintf("%s=%d-%d", wer.acceptRanges, wer.wrange.LoadBegin(), wer.wrange.LoadEnd()-1)
 	}
 
 	wer.status.statusCode = StatusCodePending
@@ -409,6 +410,9 @@ func (wer *Worker) Execute() {
 			wer.wrange.AddBegin(n64)
 			if wer.downloadStatus != nil {
 				wer.downloadStatus.AddDownloaded(n64)
+				if single {
+					wer.downloadStatus.AddTotalSize(n64)
+				}
 			}
 
 			if readErr != nil {

@@ -49,7 +49,7 @@ func (cp2 *cachePool2) Require(size int) Cache {
 	}
 	newCache := &cache{
 		isUsed: true,
-		b:      make([]byte, size),
+		b:      RawMallocByteSlice(size),
 	}
 	cp2.addCache(newCache)
 	return newCache

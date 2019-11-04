@@ -14,6 +14,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil/waitgroup"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
+	"github.com/iikira/BaiduPCS-Go/requester/transfer"
 	"github.com/oleiade/lane"
 	"io"
 	"net/http"
@@ -90,9 +91,9 @@ func downloadPrintFormat(load int) string {
 
 func download(id int, downloadURL, savePath string, loadBalansers []string, client *requester.HTTPClient, newCfg downloader.Config, downloadOptions *DownloadOptions) error {
 	var (
-		writer    downloader.Writer
-		file      *os.File
-		warn, err error
+		writer downloader.Writer
+		file   *os.File
+		err    error
 	)
 
 	if !newCfg.IsTest {
@@ -111,10 +112,7 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 		}
 
 		// 打开文件
-		writer, file, warn, err = downloader.NewDownloaderWriterByFilename(savePath, os.O_CREATE|os.O_WRONLY, 0666)
-		if warn != nil {
-			fmt.Fprintf(downloadOptions.Out, "warn: %s\n", warn)
-		}
+		writer, file, err = downloader.NewDownloaderWriterByFilename(savePath, os.O_CREATE|os.O_WRONLY, 0666)
 		if err != nil {
 			return fmt.Errorf("%s, %s", StrDownloadInitError, err)
 		}
@@ -132,7 +130,7 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 	var (
 		format = downloadPrintFormat(downloadOptions.Load)
 	)
-	download.OnDownloadStatusEvent(func(status downloader.DownloadStatuser, workersCallback func(downloader.RangeWorkerFunc)) {
+	download.OnDownloadStatusEvent(func(status transfer.DownloadStatuser, workersCallback func(downloader.RangeWorkerFunc)) {
 		if downloadOptions.IsPrintStatus {
 			// 输出所有的worker状态
 			var (
@@ -255,7 +253,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 
 	// 设置下载配置
 	cfg := &downloader.Config{
-		Mode:                       downloader.RangeGenMode_BlockSize,
+		Mode:                       transfer.RangeGenMode_BlockSize,
 		CacheSize:                  pcsconfig.Config.CacheSize,
 		BlockSize:                  baidupcs.MaxDownloadRangeSize,
 		MaxRate:                    pcsconfig.Config.MaxDownloadRate,

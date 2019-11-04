@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package downloader;
+package transfer;
 
 // RangeGenMode 线程分配方式
 enum RangeGenMode {
@@ -16,8 +16,8 @@ message Range {
     int64 end = 2;
 }
 
-// InstanceInfoExport 断点续传
-message InstanceInfoExport {
+// DownloadInstanceInfoExport 断点续传
+message DownloadInstanceInfoExport {
     RangeGenMode range_gen_mode = 1;
     int64 total_size = 2;  // 总大小
     int64 gen_begin = 3;

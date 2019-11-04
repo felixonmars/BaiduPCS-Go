@@ -2,14 +2,13 @@ package prealloc
 
 import (
 	"golang.org/x/sys/windows"
-	"sync"
+	"log"
 	"syscall"
 )
 
 var (
 	kernel32             = syscall.NewLazyDLL("kernel32.dll")
 	procSetFileValidData = kernel32.NewProc("SetFileValidData")
-	onceInit             = sync.Once{}
 )
 
 func initPrivilege() error {
@@ -61,12 +60,12 @@ func initPrivilege() error {
 	return nil
 }
 
-// InitPrivilege 初始化权限
-func InitPrivilege() (err error) {
-	onceInit.Do(func() {
-		err = initPrivilege()
-	})
-	return err
+// 初始化权限
+func init() {
+	err := initPrivilege()
+	if err != nil {
+		log.Printf("windows: init privileges error: %s\n", err) // 打印警告
+	}
 }
 
 // PreAlloc 预分配文件空间

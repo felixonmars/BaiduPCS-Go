@@ -20,7 +20,7 @@ func IsSkipMd5Checksum(size int64, md5Str string) bool {
 
 func BaiduPCSURLCheckFunc(client *requester.HTTPClient, durl string) (contentLength int64, resp *http.Response, err error) {
 	resp, err = client.Req("GET", durl, nil, map[string]string{
-		"Range": "bytes=0-" + strconv.FormatInt(baidupcs.MaxDownloadRangeSize, 10),
+		"Range": "bytes=0-" + strconv.FormatInt(baidupcs.MaxDownloadRangeSize-1, 10),
 	})
 	if err != nil {
 		if resp != nil {
