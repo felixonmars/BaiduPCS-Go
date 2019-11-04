@@ -43,6 +43,9 @@ type PCSConfig struct {
 	MaxUploadParallel int `json:"max_upload_parallel"` // 最大上传并发量
 	MaxDownloadLoad   int `json:"max_download_load"`   // 同时进行下载文件的最大数量
 
+	MaxDownloadRate int64 `json:"max_download_rate"` // 限制最大下载速度
+	MaxUploadRate   int64 `json:"max_upload_rate"`   // 限制最大上传速度
+
 	UserAgent   string `json:"user_agent"`   // 浏览器标识
 	PCSUA       string `json:"pcs_ua"`       // PCS浏览器标识
 	PanUA       string `json:"pan_ua"`       // PAN浏览器标识

@@ -93,7 +93,6 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 		writer    downloader.Writer
 		file      *os.File
 		warn, err error
-		exitChan  chan struct{}
 	)
 
 	if !newCfg.IsTest {
@@ -130,61 +129,49 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 		return pcserror.DecodePCSJSONError(baidupcs.OperationDownloadFile, respBody)
 	})
 
-	exitChan = make(chan struct{})
+	var (
+		format = downloadPrintFormat(downloadOptions.Load)
+	)
+	download.OnDownloadStatusEvent(func(status downloader.DownloadStatuser, workersCallback func(downloader.RangeWorkerFunc)) {
+		if downloadOptions.IsPrintStatus {
+			// 输出所有的worker状态
+			var (
+				builder = &strings.Builder{}
+				tb      = pcstable.NewTable(builder)
+			)
+			tb.SetHeader([]string{"#", "status", "range", "left", "speeds", "error"})
+			workersCallback(func(key int, worker *downloader.Worker) bool {
+				wrange := worker.GetRange()
+				tb.Append([]string{fmt.Sprint(worker.ID()), worker.GetStatus().StatusText(), wrange.ShowDetails(), strconv.FormatInt(wrange.Len(), 10), strconv.FormatInt(worker.GetSpeedsPerSecond(), 10), fmt.Sprint(worker.Err())})
+				return true
+			})
+			tb.Render()
+			fmt.Fprintf(downloadOptions.Out, "\n\n"+builder.String())
+		}
+
+		var leftStr string
+		left := status.TimeLeft()
+		if left < 0 {
+			leftStr = "-"
+		} else {
+			leftStr = left.String()
+		}
+
+		fmt.Fprintf(downloadOptions.Out, format, id,
+			converter.ConvertFileSize(status.Downloaded(), 2),
+			converter.ConvertFileSize(status.TotalSize(), 2),
+			converter.ConvertFileSize(status.SpeedsPerSecond(), 2),
+			status.TimeElapsed()/1e7*1e7, leftStr,
+		)
+	})
 
 	download.OnExecute(func() {
-		if downloadOptions.IsPrintStatus {
-			go func() {
-				for {
-					time.Sleep(1 * time.Second)
-					select {
-					case <-exitChan:
-						return
-					default:
-						download.PrintAllWorkers()
-					}
-				}
-			}()
-		}
-
 		if newCfg.IsTest {
 			fmt.Fprintf(downloadOptions.Out, "[%d] 测试下载开始\n\n", id)
-		}
-
-		var (
-			ds                            = download.GetDownloadStatusChan()
-			format                        = downloadPrintFormat(downloadOptions.Load)
-			downloaded, totalSize, speeds int64
-			leftStr                       string
-		)
-		for {
-			select {
-			case <-exitChan:
-				return
-			case v, ok := <-ds:
-				if !ok { // channel 已经关闭
-					return
-				}
-
-				downloaded, totalSize, speeds = v.Downloaded(), v.TotalSize(), v.SpeedsPerSecond()
-				if speeds <= 0 {
-					leftStr = "-"
-				} else {
-					leftStr = (time.Duration((totalSize-downloaded)/(speeds)) * time.Second).String()
-				}
-
-				fmt.Fprintf(downloadOptions.Out, format, id,
-					converter.ConvertFileSize(v.Downloaded(), 2),
-					converter.ConvertFileSize(v.TotalSize(), 2),
-					converter.ConvertFileSize(v.SpeedsPerSecond(), 2),
-					v.TimeElapsed()/1e7*1e7, leftStr,
-				)
-			}
 		}
 	})
 
 	err = download.Execute()
-	close(exitChan)
 	fmt.Fprintf(downloadOptions.Out, "\n")
 	if err != nil {
 		if !newCfg.IsTest {
@@ -271,6 +258,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 		Mode:                       downloader.RangeGenMode_BlockSize,
 		CacheSize:                  pcsconfig.Config.CacheSize,
 		BlockSize:                  baidupcs.MaxDownloadRangeSize,
+		MaxRate:                    pcsconfig.Config.MaxDownloadRate,
 		InstanceStateStorageFormat: downloader.InstanceStateStorageFormatProto3,
 		IsTest:                     options.IsTest,
 		TryHTTP:                    !pcsconfig.Config.EnableHTTPS,

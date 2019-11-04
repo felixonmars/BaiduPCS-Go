@@ -2,7 +2,6 @@
 package converter
 
 import (
-	"fmt"
 	"github.com/mattn/go-runewidth"
 	"reflect"
 	"strconv"
@@ -12,51 +11,9 @@ import (
 )
 
 const (
-	// B byte
-	B = (int64)(1 << (10 * iota))
-	// KB kilobyte
-	KB
-	// MB megabyte
-	MB
-	// GB gigabyte
-	GB
-	// TB terabyte
-	TB
-	// PB petabyte
-	PB
-)
-
-const (
 	// InvalidChars 文件名中的非法字符
 	InvalidChars = `\/:*?"<>|`
 )
-
-// ConvertFileSize 文件大小格式化输出
-func ConvertFileSize(size int64, precision ...int) string {
-	pint := "6"
-	if len(precision) == 1 {
-		pint = fmt.Sprint(precision[0])
-	}
-	if size < 0 {
-		return "0B"
-	}
-	if size < KB {
-		return fmt.Sprintf("%dB", size)
-	}
-	if size < MB {
-		return fmt.Sprintf("%."+pint+"fKB", float64(size)/float64(KB))
-	}
-	if size < GB {
-		return fmt.Sprintf("%."+pint+"fMB", float64(size)/float64(MB))
-	}
-	if size < TB {
-		return fmt.Sprintf("%."+pint+"fGB", float64(size)/float64(GB))
-	}
-	if size < PB {
-		return fmt.Sprintf("%."+pint+"fTB", float64(size)/float64(TB))
-	}
-	return fmt.Sprintf("%."+pint+"fPB", float64(size)/float64(PB))
-}
 
 // ToString unsafe 转换, 将 []byte 转换为 string
 func ToString(p []byte) string {

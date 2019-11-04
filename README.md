@@ -738,6 +738,12 @@ Windows: `%APPDATA%\BaiduPCS-Go`
 
 可通过设置环境变量 `BAIDUPCS_GO_CONFIG_DIR`, 指定配置文件存放的目录.
 
+谨慎修改 `appid`, `user_agent`, `pcs_ua`, `pan_ua` 的值, 否则访问网盘服务器时, 可能会出现错误.
+
+`cache_size` 的值支持可选设置单位了, 单位不区分大小写, `b` 和 `B` 均表示字节的意思, 如 `64KB`, `1MB`, `32kb`, `65536b`, `65536`.
+
+`max_upload_parallel`, `max_download_load` 的值支持可选设置单位了, 单位为每秒的传输速率, 后缀`/s` 可省略, 如 `2MB/s`, `2MB`, `2m`, `2mb` 均为一个意思.
+
 #### 例子
 ```
 # 显示所有可以设置的值

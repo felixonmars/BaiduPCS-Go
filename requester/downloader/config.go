@@ -16,6 +16,7 @@ type Config struct {
 	MaxParallel                int                        // 最大下载并发量
 	CacheSize                  int                        // 下载缓冲
 	BlockSize                  int64                      // 每个Range区块的大小, RangeGenMode 为 RangeGenMode2 时才有效
+	MaxRate                    int64                      // 限制最大下载速度
 	InstanceStateStorageFormat InstanceStateStorageFormat // 断点续传储存类型
 	InstanceStatePath          string                     // 断点续传信息路径
 	IsTest                     bool                       // 是否测试下载

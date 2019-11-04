@@ -338,16 +338,18 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 		stepUploadUpload:
 			task.step = StepUploadUpload
 			{
-				muer := uploader.NewMultiUploader(pcsupload.NewPCSUpload(pcs, task.savePath), rio.NewFileReaderAtLen64(task.localFileChecksum.GetFile()))
-				muer.SetParallel(opt.Parallel)
-
 				var blockSize int64
 				if opt.NotSplitFile {
 					blockSize = task.localFileChecksum.Length
 				} else {
 					blockSize = getBlockSize(task.localFileChecksum.Length)
 				}
-				muer.SetBlockSize(blockSize)
+
+				muer := uploader.NewMultiUploader(pcsupload.NewPCSUpload(pcs, task.savePath), rio.NewFileReaderAtLen64(task.localFileChecksum.GetFile()), &uploader.MultiUploaderConfig{
+					Parallel:  opt.Parallel,
+					BlockSize: blockSize,
+					MaxRate:   pcsconfig.Config.MaxUploadRate,
+				})
 
 				// 设置断点续传
 				if state != nil {
@@ -355,34 +357,20 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 				}
 
 				exitChan := make(chan struct{})
-				muer.OnExecute(func() {
-					statusChan := muer.GetStatusChan()
-					updateChan := muer.UpdateInstanceStateChan()
-					for {
-						select {
-						case <-exitChan:
-							return
-						case v, ok := <-statusChan:
-							if !ok {
-								return
-							}
-
-							if v.TotalSize() == 0 {
-								fmt.Printf("\r[%d] Prepareing upload...", task.ID)
-								continue
-							}
-
-							fmt.Printf("\r[%d] ↑ %s/%s %s/s in %s ............", task.ID,
-								converter.ConvertFileSize(v.Uploaded(), 2),
-								converter.ConvertFileSize(v.TotalSize(), 2),
-								converter.ConvertFileSize(v.SpeedsPerSecond(), 2),
-								v.TimeElapsed(),
-							)
-						case <-updateChan:
-							uploadDatabase.UpdateUploading(&task.localFileChecksum.LocalFileMeta, muer.InstanceState())
-							uploadDatabase.Save()
-						}
+				muer.OnUploadStatusEvent(func(status uploader.Status, updateChan <-chan struct{}) {
+					select {
+					case <-updateChan:
+						uploadDatabase.UpdateUploading(&task.localFileChecksum.LocalFileMeta, muer.InstanceState())
+						uploadDatabase.Save()
+					default:
 					}
+
+					fmt.Printf("\r[%d] ↑ %s/%s %s/s in %s ............", task.ID,
+						converter.ConvertFileSize(status.Uploaded(), 2),
+						converter.ConvertFileSize(status.TotalSize(), 2),
+						converter.ConvertFileSize(status.SpeedsPerSecond(), 2),
+						status.TimeElapsed(),
+					)
 				})
 				muer.OnSuccess(func() {
 					close(exitChan)

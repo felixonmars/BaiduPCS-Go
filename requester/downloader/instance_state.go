@@ -21,8 +21,8 @@ type (
 
 	//InstanceInfo 状态详细信息, 用于导出状态文件
 	InstanceInfo struct {
-		DlStatus *DownloadStatus
-		Ranges   RangeList
+		DownloadStatus *DownloadStatus
+		Ranges         RangeList
 	}
 
 	// InstanceInfoExporter 断点续传类型接口
@@ -55,19 +55,17 @@ func (m *InstanceInfoExport) GetInstanceInfo() (eii *InstanceInfo) {
 	default:
 		downloaded = m.TotalSize - eii.Ranges.Len()
 	}
-	eii.DlStatus = &DownloadStatus{
-		nowTime:          time.Now(),
-		totalSize:        m.TotalSize,
-		downloaded:       downloaded,
-		speedsDownloaded: downloaded,
-		oldDownloaded:    downloaded,
-		gen:              NewRangeListGenBlockSize(m.TotalSize, m.GenBegin, m.BlockSize),
+	eii.DownloadStatus = &DownloadStatus{
+		startTime:  time.Now(),
+		totalSize:  m.TotalSize,
+		downloaded: downloaded,
+		gen:        NewRangeListGenBlockSize(m.TotalSize, m.GenBegin, m.BlockSize),
 	}
 	switch m.RangeGenMode {
 	case RangeGenMode_BlockSize:
-		eii.DlStatus.gen = NewRangeListGenBlockSize(m.TotalSize, m.GenBegin, m.BlockSize)
+		eii.DownloadStatus.gen = NewRangeListGenBlockSize(m.TotalSize, m.GenBegin, m.BlockSize)
 	default:
-		eii.DlStatus.gen = NewRangeListGenDefault(m.TotalSize, m.TotalSize, len(m.Ranges), len(m.Ranges))
+		eii.DownloadStatus.gen = NewRangeListGenDefault(m.TotalSize, m.TotalSize, len(m.Ranges), len(m.Ranges))
 	}
 	return eii
 }
@@ -78,12 +76,12 @@ func (m *InstanceInfoExport) SetInstanceInfo(eii *InstanceInfo) {
 		return
 	}
 
-	if eii.DlStatus != nil {
-		m.TotalSize = eii.DlStatus.TotalSize()
-		if eii.DlStatus.gen != nil {
-			m.GenBegin = eii.DlStatus.gen.LoadBegin()
-			m.BlockSize = eii.DlStatus.gen.LoadBlockSize()
-			m.RangeGenMode = eii.DlStatus.gen.RangeGenMode()
+	if eii.DownloadStatus != nil {
+		m.TotalSize = eii.DownloadStatus.TotalSize()
+		if eii.DownloadStatus.gen != nil {
+			m.GenBegin = eii.DownloadStatus.gen.LoadBegin()
+			m.BlockSize = eii.DownloadStatus.gen.LoadBlockSize()
+			m.RangeGenMode = eii.DownloadStatus.gen.RangeGenMode()
 		} else {
 			m.RangeGenMode = RangeGenMode_Default
 		}

@@ -4,21 +4,25 @@ import (
 	"time"
 )
 
-// Status 上传状态
-type Status interface {
-	TotalSize() int64           // 总大小
-	Uploaded() int64            // 已上传数据
-	SpeedsPerSecond() int64     // 每秒的上传速度
-	TimeElapsed() time.Duration // 上传时间
-}
+type (
+	// Status 上传状态接口
+	Status interface {
+		TotalSize() int64           // 总大小
+		Uploaded() int64            // 已上传数据
+		SpeedsPerSecond() int64     // 每秒的上传速度
+		TimeElapsed() time.Duration // 上传时间
+	}
 
-// UploadStatus 上传状态
-type UploadStatus struct {
-	totalSize       int64         // 总大小
-	uploaded        int64         // 已上传数据
-	speedsPerSecond int64         // 每秒的上传速度
-	timeElapsed     time.Duration // 上传时间
-}
+	// UploadStatus 上传状态
+	UploadStatus struct {
+		totalSize       int64         // 总大小
+		uploaded        int64         // 已上传数据
+		speedsPerSecond int64         // 每秒的上传速度
+		timeElapsed     time.Duration // 上传时间
+	}
+
+	UploadStatusFunc func(status Status, updateChan <-chan struct{})
+)
 
 // TotalSize 返回总大小
 func (us *UploadStatus) TotalSize() int64 {
@@ -64,7 +68,7 @@ func (u *Uploader) GetStatusChan() <-chan Status {
 					totalSize:       u.readed64.Len(),
 					uploaded:        readed,
 					speedsPerSecond: readed - old,
-					timeElapsed:     time.Since(u.executeTime) / 1000000 * 1000000,
+					timeElapsed:     time.Since(u.executeTime) / 1e7 * 1e7,
 				}
 			}
 		}
@@ -72,51 +76,27 @@ func (u *Uploader) GetStatusChan() <-chan Status {
 	return c
 }
 
-// GetStatusChan 获取上传状态
-func (muer *MultiUploader) GetStatusChan() <-chan Status {
-	muer.lazyInit()
-	c := make(chan Status)
+func (muer *MultiUploader) uploadStatusEvent() {
+	if muer.onUploadStatusEvent == nil {
+		return
+	}
 
 	go func() {
+		ticker := time.NewTicker(1 * time.Second) // 每秒统计
+		defer ticker.Stop()
 		for {
 			select {
 			case <-muer.finished:
-				close(c)
 				return
-			default:
-				if !muer.executed {
-					time.Sleep(1 * time.Second)
-					continue
-				}
-
-				old := muer.workers.Readed()
-				time.Sleep(1 * time.Second) // 每秒统计
-
+			case <-ticker.C:
 				readed := muer.workers.Readed()
-				c <- &UploadStatus{
+				muer.onUploadStatusEvent(&UploadStatus{
 					totalSize:       muer.file.Len(),
 					uploaded:        readed,
-					speedsPerSecond: readed - old,
-					timeElapsed:     time.Since(muer.executeTime) / 1000000 * 1000000,
-				}
+					speedsPerSecond: muer.speedsStat.GetSpeeds(),
+					timeElapsed:     time.Since(muer.executeTime) / 1e8 * 1e8,
+				}, muer.updateInstanceStateChan)
 			}
 		}
 	}()
-	return c
-}
-
-// UpdateInstanceStateChan 更新状态的信号
-func (muer *MultiUploader) UpdateInstanceStateChan() <-chan struct{} {
-	c := make(chan struct{}, 1)
-	go func() {
-		for {
-			select {
-			case signal := <-muer.updateInstanceStateChan:
-				c <- signal
-			case <-muer.finished:
-				return
-			}
-		}
-	}()
-	return c
 }

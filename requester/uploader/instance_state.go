@@ -1,9 +1,5 @@
 package uploader
 
-import (
-	"io"
-)
-
 type (
 	// BlockState 文件区块信息
 	BlockState struct {
@@ -18,38 +14,25 @@ type (
 	}
 )
 
-func workerListToInstanceState(workers workerList) *InstanceState {
-	blockStates := make([]*BlockState, 0, len(workers))
-	for _, wer := range workers {
-		blockStates = append(blockStates, &BlockState{
-			ID:       wer.id,
-			Range:    wer.splitUnit.Range(),
-			CheckSum: wer.checksum,
-		})
-	}
-	return &InstanceState{
-		BlockList: blockStates,
-	}
-}
-
-func instanceStateToWorkerList(is *InstanceState, file io.ReaderAt) workerList {
+func (muer *MultiUploader) getWorkerListByInstanceState(is *InstanceState) workerList {
 	workers := make(workerList, 0, len(is.BlockList))
 	for _, blockState := range is.BlockList {
 		if blockState.CheckSum == "" {
 			workers = append(workers, &worker{
 				id:         blockState.ID,
 				partOffset: blockState.Range.Begin,
-				splitUnit:  NewBufioSplitUnit(file, blockState.Range),
+				splitUnit:  NewBufioSplitUnit(muer.file, blockState.Range, &muer.speedsStat, muer.rateLimit),
 				checksum:   blockState.CheckSum,
 			})
 		} else {
+			// 已经完成的, 也要加入 (可继续优化)
 			workers = append(workers, &worker{
 				id:         blockState.ID,
 				partOffset: blockState.Range.Begin,
 				splitUnit: &fileBlock{
 					readRange: blockState.Range,
 					readed:    blockState.Range.End - blockState.Range.Begin,
-					readerAt:  file,
+					readerAt:  muer.file,
 				},
 				checksum: blockState.CheckSum,
 			})

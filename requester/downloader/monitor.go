@@ -18,21 +18,26 @@ var (
 	ErrNoWokers = errors.New("no workers")
 )
 
-//Monitor 线程监控器
-type Monitor struct {
-	workers         WorkerList
-	status          *DownloadStatus
-	instanceState   *InstanceState
-	completed       <-chan struct{}
-	err             error
-	resetController *ResetController
-	isReloadWorker  bool //是否重载worker, 单线程模式不重载
+type (
+	//Monitor 线程监控器
+	Monitor struct {
+		workers         WorkerList
+		status          *DownloadStatus
+		instanceState   *InstanceState
+		completed       chan struct{}
+		err             error
+		resetController *ResetController
+		isReloadWorker  bool //是否重载worker, 单线程模式不重载
 
-	// 临时变量
-	lastAvaliableIndex int
-	allWorkerRanges    RangeList // worker 的 Range 内存地址, 必须不变
-	allWorkerRangesMu  sync.Mutex
-}
+		// 临时变量
+		lastAvaliableIndex int
+		allWorkerRanges    RangeList // worker 的 Range 内存地址, 必须不变
+		allWorkerRangesMu  sync.Mutex
+	}
+
+	// RangeWorkerFunc 遍历workers的函数
+	RangeWorkerFunc func(key int, worker *Worker) bool
+)
 
 //NewMonitor 初始化Monitor
 func NewMonitor() *Monitor {
@@ -95,23 +100,6 @@ func (mt *Monitor) CompletedChan() <-chan struct{} {
 	return mt.completed
 }
 
-//GetSpeedsPerSecondFunc 获取每秒的速度, 返回获取速度的函数
-func (mt *Monitor) GetSpeedsPerSecondFunc() func() int64 {
-	if mt.status == nil {
-		return nil
-	}
-	old := mt.status.Downloaded()
-	nowTime := time.Now()
-	return func() int64 {
-		d := mt.status.Downloaded() - old
-		s := time.Since(nowTime)
-
-		old = mt.status.Downloaded()
-		nowTime = time.Now()
-		return int64(float64(d) / s.Seconds())
-	}
-}
-
 //GetAvaliableWorker 获取空闲的worker
 func (mt *Monitor) GetAvaliableWorker() *Worker {
 	workerCount := len(mt.workers)
@@ -172,10 +160,10 @@ func (mt *Monitor) IsLeftWorkersAllFailed() bool {
 	return failedNum != 0
 }
 
-//AllCompleted 全部完成则发送消息
-func (mt *Monitor) AllCompleted() <-chan struct{} {
+//registerAllCompleted 全部完成则发送消息
+func (mt *Monitor) registerAllCompleted() {
+	mt.completed = make(chan struct{}, 0)
 	var (
-		c           = make(chan struct{}, 0)
 		workerNum   = len(mt.workers)
 		completeNum = 0
 	)
@@ -184,28 +172,25 @@ func (mt *Monitor) AllCompleted() <-chan struct{} {
 		for {
 			time.Sleep(1 * time.Second)
 
-			if mt.status != nil && mt.status.gen != nil && !mt.status.gen.IsDone() {
-				continue
-			}
-
 			completeNum = 0
 			for _, worker := range mt.workers {
 				switch worker.GetStatus().StatusCode() {
 				case StatusCodeInternalError:
 					mt.err = fmt.Errorf("ERROR: fatal internal error: %s", worker.Err())
-					close(c)
+					close(mt.completed)
 					return
 				case StatusCodeSuccessed, StatusCodeCanceled:
 					completeNum++
 				}
 			}
-			if completeNum >= workerNum {
-				close(c)
+			// status 在 lazyInit 之后, 不可能为空
+			// 完成条件: 所有worker 都已经完成, 且 rangeGen 已生成完毕
+			if completeNum >= workerNum && (mt.status.gen == nil || mt.status.gen.IsDone()) { // 已完成
+				close(mt.completed)
 				return
 			}
 		}
 	}()
-	return c
 }
 
 //ResetFailedAndNetErrorWorkers 重设部分网络错误的worker
@@ -233,7 +218,7 @@ func (mt *Monitor) ResetFailedAndNetErrorWorkers() {
 }
 
 //RangeWorker 遍历worker
-func (mt *Monitor) RangeWorker(f func(key int, worker *Worker) bool) {
+func (mt *Monitor) RangeWorker(f RangeWorkerFunc) {
 	for k := range mt.workers {
 		if !f(k, mt.workers[k]) {
 			break
@@ -374,7 +359,9 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 		go worker.Execute()
 	}
 
-	mt.completed = mt.AllCompleted()
+	mt.registerAllCompleted() // 注册completed
+	ticker := time.NewTicker(990 * time.Millisecond)
+	defer ticker.Stop()
 
 	//开始监控
 	for {
@@ -389,19 +376,17 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 			return
 		case <-mt.completed:
 			return
-		default:
-			time.Sleep(1 * time.Second)
-
+		case <-ticker.C:
 			// 初始化监控工作
 			mt.ResetFailedAndNetErrorWorkers()
 
-			mt.status.updateSpeeds()
+			mt.status.UpdateSpeeds() // 更新速度
 
 			// 保存断点信息到文件
 			if mt.instanceState != nil {
 				mt.instanceState.Put(&InstanceInfo{
-					DlStatus: mt.status,
-					Ranges:   mt.GetAllWorkersRange(),
+					DownloadStatus: mt.status,
+					Ranges:         mt.GetAllWorkersRange(),
 				})
 			}
 
@@ -420,7 +405,7 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 				if isLeftWorkersAllFailed {
 					pcsverbose.Verbosef("DEBUG: monitor: All workers failed\n")
 				}
-				mt.status.ResetMaxSpeeds() //清空统计
+				mt.status.StoreMaxSpeeds(0) //清空统计
 
 				// 先进行动态分配线程
 				pcsverbose.Verbosef("DEBUG: monitor: start duplicate.\n")

@@ -11,6 +11,11 @@ type (
 		rio.ReaderLen64
 		Readed() int64
 	}
+
+	readed64 struct {
+		readed int64
+		rio.ReaderLen64
+	}
 )
 
 // NewReaded64 实现Readed64接口
@@ -19,11 +24,6 @@ func NewReaded64(rl rio.ReaderLen64) Readed64 {
 		readed:      0,
 		ReaderLen64: rl,
 	}
-}
-
-type readed64 struct {
-	readed int64
-	rio.ReaderLen64
 }
 
 func (r64 *readed64) Read(p []byte) (n int, err error) {

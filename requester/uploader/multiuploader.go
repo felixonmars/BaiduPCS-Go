@@ -6,6 +6,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
+	"github.com/iikira/BaiduPCS-Go/requester/rio/speeds"
 	"sync"
 	"time"
 )
@@ -20,45 +21,44 @@ type (
 
 	// MultiUploader 多线程上传
 	MultiUploader struct {
-		onExecuteEvent requester.Event        //开始上传事件
-		onSuccessEvent requester.Event        //成功上传事件
-		onFinishEvent  requester.Event        //结束上传事件
-		onCancelEvent  requester.Event        //取消上传事件
-		onErrorEvent   requester.EventOnError //上传出错事件
+		onExecuteEvent      requester.Event        //开始上传事件
+		onSuccessEvent      requester.Event        //成功上传事件
+		onFinishEvent       requester.Event        //结束上传事件
+		onCancelEvent       requester.Event        //取消上传事件
+		onErrorEvent        requester.EventOnError //上传出错事件
+		onUploadStatusEvent UploadStatusFunc       // 上传状态事件
 
 		instanceState *InstanceState
 
 		multiUpload MultiUpload       // 上传体接口
 		file        rio.ReaderAtLen64 // 上传
-		blockSize   int64
-		parallel    int
+		config      *MultiUploaderConfig
 		workers     workerList
+		speedsStat  speeds.Speeds
+		rateLimit   *speeds.RateLimit
 
 		executeTime             time.Time
-		executed                bool
 		finished                chan struct{}
 		canceled                chan struct{}
 		closeCanceledOnce       sync.Once
 		updateInstanceStateChan chan struct{}
 	}
+
+	// MultiUploaderConfig 多线程上传配置
+	MultiUploaderConfig struct {
+		Parallel  int   // 上传并发量
+		BlockSize int64 // 上传分块
+		MaxRate   int64 // 限制最大上传速度
+	}
 )
 
 // NewMultiUploader 初始化上传
-func NewMultiUploader(multiUpload MultiUpload, file rio.ReaderAtLen64) *MultiUploader {
+func NewMultiUploader(multiUpload MultiUpload, file rio.ReaderAtLen64, config *MultiUploaderConfig) *MultiUploader {
 	return &MultiUploader{
 		multiUpload: multiUpload,
 		file:        file,
+		config:      config,
 	}
-}
-
-// SetBlockSize 设置block size
-func (muer *MultiUploader) SetBlockSize(blockSize int64) {
-	muer.blockSize = blockSize
-}
-
-// SetParallel 设置parallel, 上传并发量
-func (muer *MultiUploader) SetParallel(parallel int) {
-	muer.parallel = parallel
 }
 
 // SetInstanceState 设置InstanceState, 断点续传信息
@@ -76,11 +76,14 @@ func (muer *MultiUploader) lazyInit() {
 	if muer.updateInstanceStateChan == nil {
 		muer.updateInstanceStateChan = make(chan struct{}, 1)
 	}
-	if muer.parallel <= 0 {
-		muer.parallel = 10
+	if muer.config == nil {
+		muer.config = &MultiUploaderConfig{}
 	}
-	if muer.blockSize <= 0 {
-		muer.blockSize = 1 * converter.GB
+	if muer.config.Parallel <= 0 {
+		muer.config.Parallel = 4
+	}
+	if muer.config.BlockSize <= 0 {
+		muer.config.BlockSize = 1 * converter.GB
 	}
 }
 
@@ -97,22 +100,30 @@ func (muer *MultiUploader) check() {
 func (muer *MultiUploader) Execute() {
 	muer.check()
 	muer.lazyInit()
+
+	// 初始化限速
+	if muer.config.MaxRate > 0 {
+		muer.rateLimit = speeds.NewRateLimit(muer.config.MaxRate)
+		defer muer.rateLimit.Stop()
+	}
+
 	// 分配任务
 	if muer.instanceState != nil {
-		muer.workers = instanceStateToWorkerList(muer.instanceState, muer.file)
+		muer.workers = muer.getWorkerListByInstanceState(muer.instanceState)
 		uploaderVerbose.Infof("upload task CREATED from instance state\n")
 	} else {
-		muer.workers = instanceStateToWorkerList(&InstanceState{
-			BlockList: SplitBlock(muer.file.Len(), muer.blockSize),
-		}, muer.file)
+		muer.workers = muer.getWorkerListByInstanceState(&InstanceState{
+			BlockList: SplitBlock(muer.file.Len(), muer.config.BlockSize),
+		})
 
-		uploaderVerbose.Infof("upload task CREATED: block size: %d, num: %d\n", muer.blockSize, len(muer.workers))
+		uploaderVerbose.Infof("upload task CREATED: block size: %d, num: %d\n", muer.config.BlockSize, len(muer.workers))
 	}
 
 	// 开始上传
-	muer.executed = true
 	muer.executeTime = time.Now()
 	pcsutil.Trigger(muer.onExecuteEvent)
+
+	muer.uploadStatusEvent()
 
 	err := muer.upload()
 
@@ -134,7 +145,17 @@ func (muer *MultiUploader) Execute() {
 
 // InstanceState 返回断点续传信息
 func (muer *MultiUploader) InstanceState() *InstanceState {
-	return workerListToInstanceState(muer.workers)
+	blockStates := make([]*BlockState, 0, len(muer.workers))
+	for _, wer := range muer.workers {
+		blockStates = append(blockStates, &BlockState{
+			ID:       wer.id,
+			Range:    wer.splitUnit.Range(),
+			CheckSum: wer.checksum,
+		})
+	}
+	return &InstanceState{
+		BlockList: blockStates,
+	}
 }
 
 // Cancel 取消上传
@@ -165,4 +186,9 @@ func (muer *MultiUploader) OnCancel(onCancelEvent requester.Event) {
 //OnError 设置上传发生错误事件
 func (muer *MultiUploader) OnError(onErrorEvent requester.EventOnError) {
 	muer.onErrorEvent = onErrorEvent
+}
+
+//OnUploadStatusEvent 设置上传状态事件
+func (muer *MultiUploader) OnUploadStatusEvent(f UploadStatusFunc) {
+	muer.onUploadStatusEvent = f
 }

@@ -31,31 +31,20 @@ func DoDownload(durl string, savePath string, cfg *Config) {
 
 	exitDownloadFunc := make(chan struct{})
 
-	download.OnExecute(func() {
-		dc := download.GetDownloadStatusChan()
+	download.OnDownloadStatusEvent(func(status DownloadStatuser, workersCallback func(RangeWorkerFunc)) {
 		var ts string
-
-		for {
-			select {
-			case v, ok := <-dc:
-				if !ok { // channel 已经关闭
-					return
-				}
-
-				if v.TotalSize() <= 0 {
-					ts = converter.ConvertFileSize(v.Downloaded(), 2)
-				} else {
-					ts = converter.ConvertFileSize(v.TotalSize(), 2)
-				}
-
-				fmt.Printf("\r ↓ %s/%s %s/s in %s ............",
-					converter.ConvertFileSize(v.Downloaded(), 2),
-					ts,
-					converter.ConvertFileSize(v.SpeedsPerSecond(), 2),
-					v.TimeElapsed(),
-				)
-			}
+		if status.TotalSize() <= 0 {
+			ts = converter.ConvertFileSize(status.Downloaded(), 2)
+		} else {
+			ts = converter.ConvertFileSize(status.TotalSize(), 2)
 		}
+
+		fmt.Printf("\r ↓ %s/%s %s/s in %s ............",
+			converter.ConvertFileSize(status.Downloaded(), 2),
+			ts,
+			converter.ConvertFileSize(status.SpeedsPerSecond(), 2),
+			status.TimeElapsed(),
+		)
 	})
 
 	err = download.Execute()

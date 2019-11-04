@@ -5,56 +5,56 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-	"unsafe"
 )
 
-//Adder 增加
-type Adder interface {
-	Add(int64)
-}
+type (
+	// Speeds 统计速度
+	Speeds struct {
+		count    int64
+		interval time.Duration // 刷新周期
+		nowTime  time.Time
+		once     sync.Once
+	}
+)
 
-// Speeds 统计下载速度
-type Speeds struct {
-	readed      int64
-	timeElapsed time.Duration
-	inited      bool
-	nowTime     time.Time
-	once        sync.Once
-}
-
-// Init 初始化
-func (sps *Speeds) Init() {
+func (sps *Speeds) initOnce() {
 	sps.once.Do(func() {
 		sps.nowTime = time.Now()
-		sps.inited = true
+		if sps.interval <= 0 {
+			sps.interval = 1 * time.Second
+		}
 	})
 }
 
-// Add 原子操作, 增加数据量
-func (sps *Speeds) Add(readed int64) {
-	// 初始化
-	if !sps.inited {
-		sps.Init()
+// SetInterval 设置刷新周期
+func (sps *Speeds) SetInterval(interval time.Duration) {
+	if interval <= 0 {
+		return
 	}
-
-	atomic.AddInt64(&sps.readed, readed)
+	sps.interval = interval
 }
 
-// GetSpeedsPerSecond 结束统计速度, 并返回每秒的速度
-func (sps *Speeds) GetSpeedsPerSecond() (speeds int64) {
-	if !sps.inited {
-		sps.Init()
-	}
+// Add 原子操作, 增加数据量
+func (sps *Speeds) Add(count int64) {
+	// 初始化
+	sps.initOnce()
+	atomic.AddInt64(&sps.count, count)
+}
 
-	int64Ptr := (*int64)(unsafe.Pointer(&sps.timeElapsed))
-	atomic.StoreInt64(int64Ptr, (int64)(time.Since(sps.nowTime)))
-	if atomic.LoadInt64(int64Ptr) == 0 {
+// GetSpeeds 结束统计速度, 并返回速度
+func (sps *Speeds) GetSpeeds() (speeds int64) {
+	sps.initOnce()
+
+	since := time.Since(sps.nowTime)
+	if since <= 0 {
 		return 0
 	}
+	speeds = int64(float64(atomic.LoadInt64(&sps.count)) * sps.interval.Seconds() / since.Seconds())
 
-	speeds = int64(float64(atomic.LoadInt64(&sps.readed)) / sps.timeElapsed.Seconds())
-
-	atomic.StoreInt64(&sps.readed, 0)
-	sps.nowTime = time.Now()
+	// 更新下一轮
+	if since >= sps.interval {
+		atomic.StoreInt64(&sps.count, 0)
+		sps.nowTime = time.Now()
+	}
 	return
 }

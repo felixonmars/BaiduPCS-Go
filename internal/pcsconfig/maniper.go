@@ -1,6 +1,7 @@
 package pcsconfig
 
 import (
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"strings"
 )
@@ -138,6 +139,36 @@ func (c *PCSConfig) SetAppID(appID int) {
 	if c.pcs != nil {
 		c.pcs.SetAPPID(appID)
 	}
+}
+
+// SetCacheSizeByStr 设置cache_size
+func (c *PCSConfig) SetCacheSizeByStr(sizeStr string) error {
+	size, err := converter.ParseFileSizeStr(sizeStr)
+	if err != nil {
+		return err
+	}
+	c.CacheSize = int(size)
+	return nil
+}
+
+// SetMaxDownloadRateByStr 设置 max_download_rate
+func (c *PCSConfig) SetMaxDownloadRateByStr(sizeStr string) error {
+	size, err := converter.ParseFileSizeStr(stripPerSecond(sizeStr))
+	if err != nil {
+		return err
+	}
+	c.MaxDownloadRate = size
+	return nil
+}
+
+// SetMaxUploadRateByStr 设置 max_upload_rate
+func (c *PCSConfig) SetMaxUploadRateByStr(sizeStr string) error {
+	size, err := converter.ParseFileSizeStr(stripPerSecond(sizeStr))
+	if err != nil {
+		return err
+	}
+	c.MaxUploadRate = size
+	return nil
 }
 
 // SetUserAgent 设置User-Agent

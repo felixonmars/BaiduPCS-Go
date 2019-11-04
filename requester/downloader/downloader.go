@@ -4,13 +4,13 @@ package downloader
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/waitgroup"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader/cachepool"
 	"github.com/iikira/BaiduPCS-Go/requester/downloader/prealloc"
+	"github.com/iikira/BaiduPCS-Go/requester/rio/speeds"
 	"io"
 	"net/http"
 	"sync"
@@ -20,18 +20,19 @@ import (
 type (
 	// Downloader 下载
 	Downloader struct {
-		onExecuteEvent    requester.Event //开始下载事件
-		onSuccessEvent    requester.Event //成功下载事件
-		onFinishEvent     requester.Event //结束下载事件
-		onPauseEvent      requester.Event //暂停下载事件
-		onResumeEvent     requester.Event //恢复下载事件
-		onCancelEvent     requester.Event //取消下载事件
+		onExecuteEvent        requester.Event    //开始下载事件
+		onSuccessEvent        requester.Event    //成功下载事件
+		onFinishEvent         requester.Event    //结束下载事件
+		onPauseEvent          requester.Event    //暂停下载事件
+		onResumeEvent         requester.Event    //恢复下载事件
+		onCancelEvent         requester.Event    //取消下载事件
+		onDownloadStatusEvent DownloadStatusFunc //状态处理事件
+
 		monitorCancelFunc context.CancelFunc
 
 		durlCheckFunc           DURLCheckFunc
 		statusCodeBodyCheckFunc StatusCodeBodyCheckFunc
 		executeTime             time.Time
-		executed                bool
 		durl                    string
 		loadBalansers           []string
 		writer                  io.WriterAt
@@ -190,9 +191,6 @@ func (der *Downloader) Execute() error {
 		acceptRanges = "bytes"
 	}
 
-	status := NewDownloadStatus()
-	status.totalSize = contentLength
-
 	var (
 		loadBalancerResponses = make([]*LoadBalancerResponse, 0, len(der.loadBalansers)+1)
 		handleLoadBalancer    = func(req *http.Request) {
@@ -266,13 +264,25 @@ func (der *Downloader) Execute() error {
 	var (
 		bii        = der.instanceState.Get()
 		isInstance = bii != nil // 是否存在断点信息
+		status     *DownloadStatus
 	)
 	if !isInstance {
 		bii = &InstanceInfo{}
 	}
 
-	if bii.DlStatus != nil {
-		status = bii.DlStatus
+	if bii.DownloadStatus != nil {
+		// 使用断点信息的状态
+		status = bii.DownloadStatus
+	} else {
+		// 新建状态
+		status = NewDownloadStatus()
+		status.totalSize = contentLength
+	}
+
+	// 设置限速
+	if der.config.MaxRate > 0 {
+		status.rateLimit = speeds.NewRateLimit(der.config.MaxRate)
+		defer status.rateLimit.Stop()
 	}
 
 	// 数据处理
@@ -352,8 +362,8 @@ func (der *Downloader) Execute() error {
 
 	// 开始执行
 	der.executeTime = time.Now()
-	der.executed = true
 	pcsutil.Trigger(der.onExecuteEvent)
+	der.downloadStatusEvent() // 启动执行状态处理事件
 	der.monitor.Execute(moniterCtx)
 
 	// 检查错误
@@ -368,36 +378,25 @@ func (der *Downloader) Execute() error {
 	return err
 }
 
-//GetDownloadStatusChan 获取下载统计信息
-func (der *Downloader) GetDownloadStatusChan() <-chan DlStatus {
-	if der.monitor == nil {
-		pcsverbose.Verbosef("DEBUG: GetDownloadStatusChan: monitor is nil\n")
-		return nil
+//downloadStatusEvent 执行状态处理事件
+func (der *Downloader) downloadStatusEvent() {
+	if der.onDownloadStatusEvent == nil {
+		return
 	}
 
 	status := der.monitor.Status()
-	if status == nil {
-		pcsverbose.Verbosef("DEBUG: GetDownloadStatusChan: monitor.status is nil\n")
-		return nil
-	}
-
-	c := make(chan DlStatus)
 	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
 		for {
 			select {
-			case <-der.monitor.CompletedChan():
-				close(c)
+			case <-der.monitor.completed:
 				return
-			default:
-				if der.executed {
-					status.timeElapsed = time.Since(der.executeTime)
-					c <- status
-				}
-				time.Sleep(1 * time.Second)
+			case <-ticker.C:
+				der.onDownloadStatusEvent(status, der.monitor.RangeWorker)
 			}
 		}
 	}()
-	return c
 }
 
 //Pause 暂停
@@ -425,14 +424,6 @@ func (der *Downloader) Cancel() {
 	}
 	pcsutil.Trigger(der.onCancelEvent)
 	pcsutil.Trigger(der.monitorCancelFunc)
-}
-
-//PrintAllWorkers 输出所有的worker
-func (der *Downloader) PrintAllWorkers() {
-	if der.monitor == nil {
-		return
-	}
-	fmt.Println(der.monitor.ShowWorkers())
 }
 
 //OnExecute 设置开始下载事件
@@ -463,4 +454,9 @@ func (der *Downloader) OnResume(onResumeEvent requester.Event) {
 //OnCancel 设置取消下载事件
 func (der *Downloader) OnCancel(onCancelEvent requester.Event) {
 	der.onCancelEvent = onCancelEvent
+}
+
+//OnDownloadStatusEvent 设置状态处理函数
+func (der *Downloader) OnDownloadStatusEvent(f DownloadStatusFunc) {
+	der.onDownloadStatusEvent = f
 }

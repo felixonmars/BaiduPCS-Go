@@ -11,9 +11,10 @@ import (
 func (pcs *BaiduPCS) deleteCache(dirs []string) {
 	cache := pcs.cacheOpMap.LazyInitCachePoolOp(OperationFilesDirectoriesList)
 	for _, v := range dirs {
-		data, ok := cache.Load(v + "_" + defaultOrderOptionsStr)
+		key := v + "_" + defaultOrderOptionsStr
+		_, ok := cache.Load(key)
 		if ok {
-			data.SetExpires(true)
+			cache.Delete(key)
 		}
 	}
 }

@@ -18,7 +18,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const (
@@ -174,48 +173,34 @@ func CheckUpdate(version string, yes bool) {
 	})
 	der.SetClient(c)
 
-	exitChan := make(chan struct{})
-	der.OnExecute(func() {
-		defer fmt.Println()
-		var (
-			ds                            = der.GetDownloadStatusChan()
-			downloaded, totalSize, speeds int64
-			leftStr                       string
-		)
-		for {
-			select {
-			case <-exitChan:
-				return
-			case v, ok := <-ds:
-				if !ok { // channel 已经关闭
-					return
-				}
-
-				downloaded, totalSize, speeds = v.Downloaded(), v.TotalSize(), v.SpeedsPerSecond()
-				if speeds <= 0 {
-					leftStr = "-"
-				} else {
-					leftStr = (time.Duration((totalSize-downloaded)/(speeds)) * time.Second).String()
-				}
-
-				fmt.Printf("\r ↓ %s/%s %s/s in %s, left %s ............",
-					converter.ConvertFileSize(v.Downloaded(), 2),
-					converter.ConvertFileSize(v.TotalSize(), 2),
-					converter.ConvertFileSize(v.SpeedsPerSecond(), 2),
-					v.TimeElapsed()/1e7*1e7, leftStr,
-				)
-			}
+	der.OnDownloadStatusEvent(func(status downloader.DownloadStatuser, workersCallback func(downloader.RangeWorkerFunc)) {
+		var leftStr string
+		left := status.TimeLeft()
+		if left <= 0 {
+			leftStr = "-"
+		} else {
+			leftStr = left.String()
 		}
+
+		fmt.Printf("\r ↓ %s/%s %s/s in %s, left %s ............",
+			converter.ConvertFileSize(status.Downloaded(), 2),
+			converter.ConvertFileSize(status.TotalSize(), 2),
+			converter.ConvertFileSize(status.SpeedsPerSecond(), 2),
+			status.TimeElapsed()/1e7*1e7, leftStr,
+		)
+	})
+	der.OnFinish(func() {
+		fmt.Println()
+	})
+	der.OnSuccess(func() {
+		fmt.Printf("下载完毕\n")
 	})
 
 	err = der.Execute()
-	close(exitChan)
 	if err != nil {
 		fmt.Printf("下载发生错误: %s\n", err)
 		return
 	}
-
-	fmt.Printf("下载完毕\n")
 
 	// 读取文件
 	reader, err := zip.NewReader(bytes.NewReader(buf.Bytes()), target.size)

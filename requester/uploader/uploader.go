@@ -3,6 +3,7 @@ package uploader
 
 import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
+	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
@@ -12,7 +13,7 @@ import (
 
 const (
 	// BufioReadSize bufio 缓冲区大小, 用于上传时读取文件
-	BufioReadSize = 64 * 1024 // 64KB
+	BufioReadSize = int(64 * converter.KB) // 64KB
 )
 
 type (

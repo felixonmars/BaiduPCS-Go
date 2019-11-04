@@ -38,3 +38,8 @@ func (cm *CacheOpMap) ClearInvalidate() {
 		return true
 	})
 }
+
+// PrintAll 输出所有缓冲项目
+func (cm *CacheOpMap) PrintAll() {
+
+}

@@ -11,26 +11,23 @@ import (
 	"io"
 	"net/http"
 	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type (
 	//Worker 工作单元
 	Worker struct {
-		speedsPerSecond int64 //速度
-		wrange          *Range
-		speedsStat      *speeds.Speeds
-		id              int    //id
-		cacheSize       int    //下载缓存
-		url             string //下载地址
-		referer         string //来源地址
-		acceptRanges    string
-		client          *requester.HTTPClient
-		firstResp       *http.Response // 第一个响应
-		writerAt        io.WriterAt
-		writeMu         *sync.Mutex
-		execMu          sync.Mutex
+		wrange       *Range
+		speedsStat   *speeds.Speeds
+		id           int    //id
+		cacheSize    int    //下载缓存
+		url          string //下载地址
+		referer      string //来源地址
+		acceptRanges string
+		client       *requester.HTTPClient
+		firstResp    *http.Response // 第一个响应
+		writerAt     io.WriterAt
+		writeMu      *sync.Mutex
+		execMu       sync.Mutex
 
 		paused                 bool
 		pauseChan              chan struct{}
@@ -129,7 +126,7 @@ func (wer *Worker) SetDownloadStatus(downloadStatus *DownloadStatus) {
 }
 
 //GetStatus 返回下载状态
-func (wer *Worker) GetStatus() Status {
+func (wer *Worker) GetStatus() WorkerStatuser {
 	// 空接口与空指针不等价
 	return &wer.status
 }
@@ -141,7 +138,7 @@ func (wer *Worker) GetRange() *Range {
 
 //GetSpeedsPerSecond 获取每秒的速度
 func (wer *Worker) GetSpeedsPerSecond() int64 {
-	return atomic.LoadInt64(&wer.speedsPerSecond)
+	return wer.speedsStat.GetSpeeds()
 }
 
 //Pause 暂停下载
@@ -219,22 +216,6 @@ func (wer *Worker) Failed() bool {
 //CleanStatus 清空状态
 func (wer *Worker) CleanStatus() {
 	wer.status.statusCode = StatusCodeInit
-}
-
-// updateSpeeds 更新速度
-func (wer *Worker) updateSpeeds(ctx context.Context) {
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				atomic.StoreInt64(&wer.speedsPerSecond, 0)
-				return
-			default:
-				atomic.StoreInt64(&wer.speedsPerSecond, wer.speedsStat.GetSpeedsPerSecond())
-				time.Sleep(1 * time.Second)
-			}
-		}
-	}()
 }
 
 //Err 返回worker错误
@@ -340,17 +321,12 @@ func (wer *Worker) Execute() {
 
 	fixCacheSize(&wer.cacheSize)
 	var (
-		speedsCtx, speedsCancelFunc = context.WithCancel(context.Background())
-		buf                         = cachepool.SyncPool.Get().([]byte)
-		n, nn                       int
-		n64, nn64                   int64
+		buf       = cachepool.SyncPool.Get().([]byte)
+		n, nn     int
+		n64, nn64 int64
 	)
 
-	wer.updateSpeeds(speedsCtx)
-	defer func() {
-		speedsCancelFunc() // 结束速度统计
-		cachepool.SyncPool.Put(buf)
-	}()
+	defer cachepool.SyncPool.Put(buf)
 
 	for {
 		select {
@@ -377,7 +353,7 @@ func (wer *Worker) Execute() {
 
 				// 更新速度统计
 				if wer.downloadStatus != nil {
-					wer.downloadStatus.AddSpeedsDownloaded(nn64)
+					wer.downloadStatus.AddSpeedsDownloaded(nn64) // 限速在这里阻塞
 				}
 				wer.speedsStat.Add(nn64)
 				n += nn
