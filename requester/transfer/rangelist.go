@@ -111,9 +111,9 @@ func (gen *RangeListGen) RangeGenMode() RangeGenMode {
 func (gen *RangeListGen) RangeCount() (rangeCount int) {
 	switch gen.rangeGenMode {
 	case RangeGenMode_Default:
-		rangeCount = gen.parallel
+		rangeCount = gen.parallel - gen.count
 	case RangeGenMode_BlockSize:
-		rangeCount = int(gen.total / gen.blockSize)
+		rangeCount = int((gen.total - gen.begin) / gen.blockSize)
 		if gen.total%gen.blockSize != 0 {
 			rangeCount++
 		}

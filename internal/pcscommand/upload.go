@@ -116,60 +116,52 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 	}
 
 	var (
-		pcs           = GetBaiduPCS()
-		ulist         = list.New()
-		lastID        int
-		globedPathDir string
-		subSavePath   string
+		pcs         = GetBaiduPCS()
+		ulist       = list.New()
+		lastID      int
+		subSavePath string
 	)
 
 	for k := range localPaths {
-		globedPaths, err := filepath.Glob(localPaths[k])
+		walkedFiles, err := pcsutil.WalkDir(localPaths[k], "")
 		if err != nil {
-			fmt.Printf("上传文件, 匹配本地路径失败, %s\n", err)
+			fmt.Printf("警告: 遍历错误: %s\n", err)
 			continue
 		}
 
-		for k2 := range globedPaths {
-			walkedFiles, err := pcsutil.WalkDir(globedPaths[k2], "")
-			if err != nil {
-				fmt.Printf("警告: %s\n", err)
-				continue
+		for k3 := range walkedFiles {
+			var localPathDir string
+			// 针对 windows 的目录处理
+			if os.PathSeparator == '\\' {
+				walkedFiles[k3] = pcsutil.ConvertToUnixPathSeparator(walkedFiles[k3])
+				localPathDir = pcsutil.ConvertToUnixPathSeparator(filepath.Dir(localPaths[k]))
+			} else {
+				localPathDir = filepath.Dir(localPaths[k])
 			}
 
-			for k3 := range walkedFiles {
-				// 针对 windows 的目录处理
-				if os.PathSeparator == '\\' {
-					walkedFiles[k3] = pcsutil.ConvertToUnixPathSeparator(walkedFiles[k3])
-					globedPathDir = pcsutil.ConvertToUnixPathSeparator(filepath.Dir(globedPaths[k2]))
-				} else {
-					globedPathDir = filepath.Dir(globedPaths[k2])
-				}
-
-				// 避免去除文件名开头的"."
-				if globedPathDir == "." {
-					globedPathDir = ""
-				}
-
-				subSavePath = strings.TrimPrefix(walkedFiles[k3], globedPathDir)
-
-				lastID++
-				ulist.PushBack(&utask{
-					ListTask: ListTask{
-						ID:       lastID,
-						MaxRetry: opt.MaxRetry,
-					},
-					localFileChecksum: checksum.NewLocalFileChecksum(walkedFiles[k3], int(baidupcs.SliceMD5Size)),
-					savePath:          path.Clean(savePath + baidupcs.PathSeparator + subSavePath),
-				})
-
-				fmt.Printf("[%d] 加入上传队列: %s\n", lastID, walkedFiles[k3])
+			// 避免去除文件名开头的"."
+			if localPathDir == "." {
+				localPathDir = ""
 			}
+
+			subSavePath = strings.TrimPrefix(walkedFiles[k3], localPathDir)
+
+			lastID++
+			ulist.PushBack(&utask{
+				ListTask: ListTask{
+					ID:       lastID,
+					MaxRetry: opt.MaxRetry,
+				},
+				localFileChecksum: checksum.NewLocalFileChecksum(walkedFiles[k3], int(baidupcs.SliceMD5Size)),
+				savePath:          path.Clean(savePath + baidupcs.PathSeparator + subSavePath),
+			})
+
+			fmt.Printf("[%d] 加入上传队列: %s\n", lastID, walkedFiles[k3])
 		}
 	}
 
 	if lastID == 0 {
-		fmt.Printf("未检测到上传的文件, 请检查文件路径或通配符是否正确.\n")
+		fmt.Printf("未检测到上传的文件.\n")
 		return
 	}
 
