@@ -222,7 +222,7 @@ func (c *PCSConfig) loadConfigFromFile() (err error) {
 func (c *PCSConfig) initDefaultConfig() {
 	c.AppID = 266719
 	c.CacheSize = 65536
-	c.MaxParallel = 128
+	c.MaxParallel = 8
 	c.MaxUploadParallel = 8
 	c.MaxDownloadLoad = 1
 	c.UserAgent = requester.UserAgent

@@ -5,17 +5,21 @@ import (
 	"sync/atomic"
 )
 
-// LoadBalancerResponse 负载均衡响应状态
-type LoadBalancerResponse struct {
-	URL     string
-	Referer string
-}
+type (
+	// LoadBalancerResponse 负载均衡响应状态
+	LoadBalancerResponse struct {
+		URL     string
+		Referer string
+	}
 
-// LoadBalancerResponseList 负载均衡列表
-type LoadBalancerResponseList struct {
-	lbr    []*LoadBalancerResponse
-	cursor int32
-}
+	// LoadBalancerResponseList 负载均衡列表
+	LoadBalancerResponseList struct {
+		lbr    []*LoadBalancerResponse
+		cursor int32
+	}
+
+	LoadBalancerCompareFunc func(info map[string]string, subResp *http.Response) bool
+)
 
 // NewLoadBalancerResponseList 初始化负载均衡列表
 func NewLoadBalancerResponseList(lbr []*LoadBalancerResponse) *LoadBalancerResponseList {
@@ -49,21 +53,17 @@ func (der *Downloader) AddLoadBalanceServer(urls ...string) {
 	der.loadBalansers = append(der.loadBalansers, urls...)
 }
 
-// ServerEqual 检测负载均衡的服务器是否一致
-func ServerEqual(resp, subResp *http.Response) bool {
-	if resp == nil || subResp == nil {
+// DefaultLoadBalancerCompareFunc 检测负载均衡的服务器是否一致
+func DefaultLoadBalancerCompareFunc(info map[string]string, subResp *http.Response) bool {
+	if info == nil || subResp == nil {
 		return false
 	}
 
-	header, subHeader := resp.Header, subResp.Header
-	if header.Get("Content-MD5") != subHeader.Get("Content-MD5") {
-		return false
+	for headerKey, value := range info {
+		if value != subResp.Header.Get(headerKey) {
+			return false
+		}
 	}
-	if header.Get("Content-Type") != subHeader.Get("Content-Type") {
-		return false
-	}
-	if header.Get("x-bs-meta-crc32") != subHeader.Get("x-bs-meta-crc32") {
-		return false
-	}
+
 	return true
 }

@@ -18,6 +18,11 @@ import (
 	"time"
 )
 
+const (
+	// DefaultAcceptRanges 默认的 Accept-Ranges
+	DefaultAcceptRanges = "bytes"
+)
+
 type (
 	// Downloader 下载
 	Downloader struct {
@@ -31,7 +36,9 @@ type (
 
 		monitorCancelFunc context.CancelFunc
 
-		durlCheckFunc           DURLCheckFunc
+		firstInfo               *DownloadFirstInfo      // 初始信息
+		loadBalancerCompareFunc LoadBalancerCompareFunc // 负载均衡检测函数
+		durlCheckFunc           DURLCheckFunc           // 下载url检测函数
 		statusCodeBodyCheckFunc StatusCodeBodyCheckFunc
 		executeTime             time.Time
 		durl                    string
@@ -60,6 +67,12 @@ func NewDownloader(durl string, writer io.WriterAt, config *Config) (der *Downlo
 	return
 }
 
+// SetFirstInfo 设置初始信息
+// 如果设置了此值, 将忽略检测url
+func (der *Downloader) SetFirstInfo(i *DownloadFirstInfo) {
+	der.firstInfo = i
+}
+
 //SetClient 设置http客户端
 func (der *Downloader) SetClient(client *requester.HTTPClient) {
 	der.client = client
@@ -68,6 +81,11 @@ func (der *Downloader) SetClient(client *requester.HTTPClient) {
 // SetDURLCheckFunc 设置下载URL检测函数
 func (der *Downloader) SetDURLCheckFunc(f DURLCheckFunc) {
 	der.durlCheckFunc = f
+}
+
+// SetLoadBalancerCompareFunc 设置负载均衡检测函数
+func (der *Downloader) SetLoadBalancerCompareFunc(f LoadBalancerCompareFunc) {
+	der.loadBalancerCompareFunc = f
 }
 
 //SetStatusCodeBodyCheckFunc 设置响应状态码出错的检查函数, 当FirstCheckMethod不为HEAD时才有效
@@ -88,6 +106,9 @@ func (der *Downloader) lazyInit() {
 	}
 	if der.durlCheckFunc == nil {
 		der.durlCheckFunc = DefaultDURLCheckFunc
+	}
+	if der.loadBalancerCompareFunc == nil {
+		der.loadBalancerCompareFunc = DefaultLoadBalancerCompareFunc
 	}
 }
 
@@ -125,7 +146,7 @@ func (der *Downloader) SelectBlockSizeAndInitRangeGen(single bool, status *trans
 			gen = transfer.NewRangeListGenDefault(status.TotalSize(), 0, 0, parallel)
 			blockSize = gen.LoadBlockSize()
 		case transfer.RangeGenMode_BlockSize:
-			b2 := status.TotalSize() / int64(parallel)
+			b2 := status.TotalSize()/int64(parallel) + 1
 			if b2 > der.config.BlockSize { // 选小的BlockSize, 以更高并发
 				blockSize = der.config.BlockSize
 			} else {
@@ -167,38 +188,7 @@ func DefaultDURLCheckFunc(client *requester.HTTPClient, durl string) (contentLen
 	return resp.ContentLength, resp, nil
 }
 
-//Execute 开始任务
-func (der *Downloader) Execute() error {
-	der.lazyInit()
-
-	// 检测
-	contentLength, resp, err := der.durlCheckFunc(der.client, der.durl)
-	if err != nil {
-		return err
-	}
-
-	// 检测网络错误
-	switch resp.StatusCode / 100 {
-	case 2: // succeed
-	case 4, 5: // error
-		if der.statusCodeBodyCheckFunc != nil {
-			err = der.statusCodeBodyCheckFunc(resp.Body)
-			resp.Body.Close() // 关闭连接
-			if err != nil {
-				return err
-			}
-		}
-		return errors.New(resp.Status)
-	}
-
-	acceptRanges := resp.Header.Get("Accept-Ranges")
-	if contentLength < 0 {
-		acceptRanges = ""
-	} else {
-		acceptRanges = "bytes"
-	}
-	single := acceptRanges == ""
-
+func (der *Downloader) checkLoadBalancers() *LoadBalancerResponseList {
 	var (
 		loadBalancerResponses = make([]*LoadBalancerResponse, 0, len(der.loadBalansers)+1)
 		handleLoadBalancer    = func(req *http.Request) {
@@ -218,7 +208,10 @@ func (der *Downloader) Execute() error {
 		}
 	)
 
-	handleLoadBalancer(resp.Request) // 加入第一个
+	// 加入第一个
+	loadBalancerResponses = append(loadBalancerResponses, &LoadBalancerResponse{
+		URL: der.durl,
+	})
 
 	// 负载均衡
 	wg := waitgroup.NewWaitGroup(10)
@@ -238,13 +231,27 @@ func (der *Downloader) Execute() error {
 				return
 			}
 
+			// 检测状态码
+			switch subResp.StatusCode / 100 {
+			case 2: // succeed
+			case 4, 5: // error
+				var err error
+				if der.statusCodeBodyCheckFunc != nil {
+					err = der.statusCodeBodyCheckFunc(subResp.Body)
+				} else {
+					err = errors.New(subResp.Status)
+				}
+				pcsverbose.Verbosef("DEBUG: loadBalanser Status Error: %s\n", err)
+				return
+			}
+
 			// 检测长度
-			if contentLength != subContentLength {
+			if der.firstInfo.ContentLength != subContentLength {
 				pcsverbose.Verbosef("DEBUG: loadBalanser Content-Length not equal to main server\n")
 				return
 			}
 
-			if !ServerEqual(resp, subResp) {
+			if !der.loadBalancerCompareFunc(der.firstInfo.ToMap(), subResp) {
 				pcsverbose.Verbosef("DEBUG: loadBalanser not equal to main server\n")
 				return
 			}
@@ -262,15 +269,68 @@ func (der *Downloader) Execute() error {
 	der.client.SetTimeout(privTimeout)
 
 	loadBalancerResponseList := NewLoadBalancerResponseList(loadBalancerResponses)
+	return loadBalancerResponseList
+}
+
+//Execute 开始任务
+func (der *Downloader) Execute() error {
+	der.lazyInit()
 
 	var (
-		bii *transfer.DownloadInstanceInfo
+		resp *http.Response
+	)
+	if der.firstInfo == nil {
+		// 检测
+		contentLength, resp, err := der.durlCheckFunc(der.client, der.durl)
+		if err != nil {
+			return err
+		}
+
+		// 检测网络错误
+		switch resp.StatusCode / 100 {
+		case 2: // succeed
+		case 4, 5: // error
+			if der.statusCodeBodyCheckFunc != nil {
+				err = der.statusCodeBodyCheckFunc(resp.Body)
+				resp.Body.Close() // 关闭连接
+				if err != nil {
+					return err
+				}
+			}
+			return errors.New(resp.Status)
+		}
+
+		acceptRanges := resp.Header.Get("Accept-Ranges")
+		if contentLength < 0 {
+			acceptRanges = ""
+		} else {
+			acceptRanges = DefaultAcceptRanges
+		}
+
+		// 初始化firstInfo
+		der.firstInfo = &DownloadFirstInfo{
+			ContentLength: contentLength,
+			ContentMD5:    resp.Header.Get("Content-MD5"),
+			ContentCRC32:  resp.Header.Get("x-bs-meta-crc32"),
+			AcceptRanges:  acceptRanges,
+			Referer:       resp.Header.Get("Referer"),
+		}
+	} else {
+		if der.firstInfo.AcceptRanges == "" {
+			der.firstInfo.AcceptRanges = DefaultAcceptRanges
+		}
+	}
+
+	var (
+		loadBalancerResponseList = der.checkLoadBalancers()
+		single                   = der.firstInfo.AcceptRanges == ""
+		bii                      *transfer.DownloadInstanceInfo
 	)
 
 	if !single {
 		//load breakpoint
 		//服务端不支持多线程时, 不记录断点
-		err = der.initInstanceState(der.config.InstanceStateStorageFormat)
+		err := der.initInstanceState(der.config.InstanceStateStorageFormat)
 		if err != nil {
 			return err
 		}
@@ -291,7 +351,7 @@ func (der *Downloader) Execute() error {
 	} else {
 		// 新建状态
 		status = transfer.NewDownloadStatus()
-		status.SetTotalSize(contentLength)
+		status.SetTotalSize(der.firstInfo.ContentLength)
 	}
 
 	// 设置限速
@@ -359,6 +419,7 @@ func (der *Downloader) Execute() error {
 		worker.SetCacheSize(cacheSize)
 		worker.SetWriteMutex(writeMu)
 		worker.SetReferer(loadBalancer.Referer)
+		worker.SetTotalSize(der.firstInfo.ContentLength)
 
 		// 使用第一个连接
 		// 断点续传时不使用
@@ -366,7 +427,7 @@ func (der *Downloader) Execute() error {
 			worker.firstResp = resp
 		}
 
-		worker.SetAcceptRange(acceptRanges)
+		worker.SetAcceptRange(der.firstInfo.AcceptRanges)
 		worker.SetRange(r) // 分配Range
 		der.monitor.Append(worker)
 	}

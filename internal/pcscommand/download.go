@@ -89,7 +89,7 @@ func downloadPrintFormat(load int) string {
 	return "[%d] ↓ %s/%s %s/s in %s, left %s ...\n"
 }
 
-func download(id int, downloadURL, savePath string, loadBalansers []string, client *requester.HTTPClient, newCfg downloader.Config, downloadOptions *DownloadOptions) error {
+func download(id int, fileInfo *baidupcs.FileDirectory, downloadURL, savePath string, loadBalansers []string, client *requester.HTTPClient, newCfg downloader.Config, downloadOptions *DownloadOptions) error {
 	var (
 		writer downloader.Writer
 		file   *os.File
@@ -120,6 +120,9 @@ func download(id int, downloadURL, savePath string, loadBalansers []string, clie
 	}
 
 	download := downloader.NewDownloader(downloadURL, writer, &newCfg)
+	// download.SetFirstInfo(&downloader.DownloadFirstInfo{
+	// 	ContentLength: fileInfo.Size,
+	// })
 	download.SetClient(client)
 	download.SetDURLCheckFunc(pcsdownload.BaiduPCSURLCheckFunc)
 	download.AddLoadBalanceServer(loadBalansers...)
@@ -505,7 +508,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 					}
 					client.SetTimeout(20 * time.Minute)
 					client.SetKeepAlive(true)
-					err = download(task.ID, dlink, task.savePath, dlinks, client, *cfg, options)
+					err = download(task.ID, task.downloadInfo, dlink, task.savePath, dlinks, client, *cfg, options)
 				} else {
 					if options.IsShareDownload || options.IsLocateDownload || options.IsLocatePanAPIDownload {
 						fmt.Fprintf(options.Out, "[%d] 错误: %s, 将使用默认的下载方式\n", task.ID, err)
@@ -517,7 +520,7 @@ func RunDownload(paths []string, options *DownloadOptions) {
 						h.SetKeepAlive(true)
 						h.SetTimeout(10 * time.Minute)
 
-						err := download(task.ID, downloadURL, task.savePath, dlinks, h, *cfg, options)
+						err := download(task.ID, task.downloadInfo, downloadURL, task.savePath, dlinks, h, *cfg, options)
 						if err != nil {
 							return err
 						}

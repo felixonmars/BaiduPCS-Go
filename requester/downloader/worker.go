@@ -17,6 +17,7 @@ import (
 type (
 	//Worker 工作单元
 	Worker struct {
+		totalSize    int64 // 整个文件的大小, worker请求range时会获取尝试获取该值, 如果不匹配, 则返回错误
 		wrange       *transfer.Range
 		speedsStat   *speeds.Speeds
 		id           int    //id
@@ -83,6 +84,11 @@ func (wer *Worker) lazyInit() {
 	if wer.speedsStat == nil {
 		wer.speedsStat = &speeds.Speeds{}
 	}
+}
+
+// SetTotalSize 设置整个文件的大小, worker请求range时会获取尝试获取该值, 如果不匹配, 则返回错误
+func (wer *Worker) SetTotalSize(size int64) {
+	wer.totalSize = size
 }
 
 //SetClient 设置http客户端
@@ -286,19 +292,7 @@ func (wer *Worker) Execute() {
 		return
 	}
 
-	var (
-		contentLength = resp.ContentLength
-		rangeLength   = wer.wrange.Len()
-	)
-
-	if !single {
-		if contentLength != rangeLength && wer.firstResp == nil { // 跳过检查第一个连接
-			wer.status.statusCode = StatusCodeNetError
-			wer.err = fmt.Errorf("Content-Length is unexpected: %d, need %d", contentLength, rangeLength)
-			return
-		}
-	}
-
+	// 判断响应状态
 	switch resp.StatusCode {
 	case 200, 206:
 		// do nothing, continue
@@ -320,13 +314,36 @@ func (wer *Worker) Execute() {
 		return
 	}
 
-	fixCacheSize(&wer.cacheSize)
+	var (
+		contentLength = resp.ContentLength
+		rangeLength   = wer.wrange.Len()
+	)
+
+	if !single {
+		// 检查请求长度
+		if contentLength != rangeLength && wer.firstResp == nil { // 跳过检查第一个连接
+			wer.status.statusCode = StatusCodeNetError
+			wer.err = fmt.Errorf("Content-Length is unexpected: %d, need %d", contentLength, rangeLength)
+			return
+		}
+		// 检查总大小
+		if wer.totalSize > 0 {
+			total := ParseContentRange(resp.Header.Get("Content-Range"))
+			if total > 0 {
+				if total != wer.totalSize {
+					wer.status.statusCode = StatusCodeInternalError // 这里设置为内部错误, 强制停止下载
+					wer.err = fmt.Errorf("Content-Range total length is unexpected: %d, need %d", total, wer.totalSize)
+					return
+				}
+			}
+		}
+	}
+
 	var (
 		buf       = cachepool.SyncPool.Get().([]byte)
 		n, nn     int
 		n64, nn64 int64
 	)
-
 	defer cachepool.SyncPool.Put(buf)
 
 	for {
@@ -406,7 +423,7 @@ func (wer *Worker) Execute() {
 				wer.status.statusCode = StatusCodeDownloading
 			}
 
-			// 更新数据
+			// 更新下载统计数据
 			wer.wrange.AddBegin(n64)
 			if wer.downloadStatus != nil {
 				wer.downloadStatus.AddDownloaded(n64)
