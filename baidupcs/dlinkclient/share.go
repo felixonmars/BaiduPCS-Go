@@ -2,6 +2,7 @@ package dlinkclient
 
 import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
+	"net/http"
 	"strconv"
 )
 
@@ -50,7 +51,7 @@ func (dc *DlinkClient) ShareReg(shareLink, pwd string) (short string, dlinkError
 		}
 	)
 
-	resp, err := dc.client.Req("GET", u.String(), nil, nil)
+	resp, err := dc.client.Req(http.MethodGet, u.String(), nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 	}
@@ -81,7 +82,7 @@ func (dc *DlinkClient) ShareList(short, dir string, page int) (fds []*FileDirect
 		}
 	)
 
-	resp, err := dc.client.Req("GET", u.String(), nil, nil)
+	resp, err := dc.client.Req(http.MethodGet, u.String(), nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

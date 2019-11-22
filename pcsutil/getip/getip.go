@@ -4,6 +4,7 @@ package getip
 import (
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"net"
+	"net/http"
 	"unsafe"
 )
 
@@ -13,7 +14,7 @@ func IPInfoByClient(c *requester.HTTPClient) (ipAddr string, err error) {
 		c = requester.NewHTTPClient()
 	}
 
-	body, err := c.Fetch("GET", "https://api.ipify.org", nil, nil)
+	body, err := c.Fetch(http.MethodGet, "https://api.ipify.org", nil, nil)
 	if err != nil {
 		return
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"github.com/iikira/BaiduPCS-Go/requester/transfer"
+	"net/http"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -41,7 +42,7 @@ func CheckUpdate(version string, yes bool) {
 	}
 	fmt.Println("检测更新中, 稍候...")
 	c := pcsconfig.Config.HTTPClient()
-	resp, err := c.Req("GET", "https://api.github.com/repos/iikira/BaiduPCS-Go/releases/latest", nil, nil)
+	resp, err := c.Req(http.MethodGet, "https://api.github.com/repos/iikira/BaiduPCS-Go/releases/latest", nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

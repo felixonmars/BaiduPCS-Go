@@ -10,6 +10,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/requester/downloader"
 	"io"
 	"mime"
+	"net/http"
 	"net/url"
 	"path"
 	"strconv"
@@ -120,7 +121,7 @@ func (pcs *BaiduPCS) GetRapidUploadInfoByLink(link string, compareRInfo *RapidUp
 		header["Range"] = "bytes=0-" + strconv.FormatInt(SliceMD5Size-1, 10)
 	}
 
-	resp, err := pcs.client.Req("GET", link, nil, header)
+	resp, err := pcs.client.Req(http.MethodGet, link, nil, header)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

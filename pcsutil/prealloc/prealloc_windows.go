@@ -64,7 +64,7 @@ func initPrivilege() error {
 func init() {
 	err := initPrivilege()
 	if err != nil {
-		log.Printf("windows: init privileges error: %s\n", err) // 打印警告
+		log.Printf("prealloc: init privileges error: %s\n", err) // 打印警告
 	}
 }
 

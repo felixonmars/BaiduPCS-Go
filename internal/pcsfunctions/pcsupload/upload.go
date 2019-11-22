@@ -50,7 +50,7 @@ func (pu *PCSUpload) TmpFile(ctx context.Context, partseq int, partOffset int64,
 
 		doneChan := make(chan struct{}, 1)
 		go func() {
-			resp, err = client.Req("POST", uploadURL, mr, nil)
+			resp, err = client.Req(http.MethodPost, uploadURL, mr, nil)
 			doneChan <- struct{}{}
 
 			if resp != nil {

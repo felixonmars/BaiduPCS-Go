@@ -104,7 +104,7 @@ func (u *Uploader) execute() (resp *http.Response, code int, err error) {
 		header["Content-Type"] = u.contentType
 	}
 
-	resp, err = u.client.Req("POST", u.url, u.readed64, header)
+	resp, err = u.client.Req(http.MethodPost, u.url, u.readed64, header)
 	if err != nil {
 		return nil, 2, err
 	}

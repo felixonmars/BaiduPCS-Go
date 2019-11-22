@@ -10,6 +10,14 @@ import (
 	"strings"
 )
 
+func IsPipeInput() bool {
+	fileInfo, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (fileInfo.Mode() & os.ModeNamedPipe) == os.ModeNamedPipe
+}
+
 // IsIPhoneOS 是否为苹果移动设备
 func IsIPhoneOS() bool {
 	if runtime.GOOS == "darwin" && (runtime.GOARCH == "arm" || runtime.GOARCH == "arm64") {

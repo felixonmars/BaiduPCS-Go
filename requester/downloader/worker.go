@@ -21,7 +21,6 @@ type (
 		wrange       *transfer.Range
 		speedsStat   *speeds.Speeds
 		id           int    //id
-		cacheSize    int    //下载缓存
 		url          string //下载地址
 		referer      string //来源地址
 		acceptRanges string
@@ -31,7 +30,6 @@ type (
 		writeMu      *sync.Mutex
 		execMu       sync.Mutex
 
-		paused                 bool
 		pauseChan              chan struct{}
 		workerCancelFunc       context.CancelFunc
 		resetFunc              context.CancelFunc
@@ -96,12 +94,6 @@ func (wer *Worker) SetClient(c *requester.HTTPClient) {
 	wer.client = c
 }
 
-//SetCacheSize 设置下载缓存
-func (wer *Worker) SetCacheSize(size int) {
-	wer.cacheSize = size
-	fixCacheSize(&wer.cacheSize)
-}
-
 //SetAcceptRange 设置AcceptRange
 func (wer *Worker) SetAcceptRange(acceptRanges string) {
 	wer.acceptRanges = acceptRanges
@@ -156,16 +148,18 @@ func (wer *Worker) Pause() {
 		return
 	}
 
-	if wer.paused {
+	if wer.status.statusCode == StatusCodePaused {
 		return
 	}
 	wer.pauseChan <- struct{}{}
-	wer.paused = true
+	wer.status.statusCode = StatusCodePaused
 }
 
 //Resume 恢复下载
 func (wer *Worker) Resume() {
-	wer.paused = false
+	if wer.status.statusCode != StatusCodePaused {
+		return
+	}
 	go wer.Execute()
 }
 
@@ -237,11 +231,11 @@ func (wer *Worker) Execute() {
 	wer.execMu.Lock()
 	defer wer.execMu.Unlock()
 
+	wer.status.statusCode = StatusCodeInit
 	single := wer.acceptRanges == ""
 
 	// 如果已暂停, 退出
-	if wer.paused {
-		wer.status.statusCode = StatusCodePaused
+	if wer.status.statusCode == StatusCodePaused {
 		return
 	}
 
@@ -276,7 +270,7 @@ func (wer *Worker) Execute() {
 	if wer.firstResp != nil {
 		resp = wer.firstResp // 使用第一个连接
 	} else {
-		resp, wer.err = wer.client.Req("GET", wer.url, nil, header)
+		resp, wer.err = wer.client.Req(http.MethodGet, wer.url, nil, header)
 	}
 	if resp != nil {
 		defer func() {
@@ -355,7 +349,6 @@ func (wer *Worker) Execute() {
 			wer.status.statusCode = StatusCodeReseted
 			return
 		case <-wer.pauseChan: //暂停
-			wer.status.statusCode = StatusCodePaused
 			return
 		default:
 			wer.status.statusCode = StatusCodeDownloading

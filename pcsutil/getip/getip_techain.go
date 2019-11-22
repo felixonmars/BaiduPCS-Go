@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/requester"
+	"net/http"
 )
 
 func IPInfoFromTechainBaiduByClient(c *requester.HTTPClient) (ipAddr string, err error) {
-	body, err := c.Fetch("GET", "https://techain.baidu.com/srcmon", nil, map[string]string{
+	body, err := c.Fetch(http.MethodGet, "https://techain.baidu.com/srcmon", nil, map[string]string{
 		"User-Agent":      "x18/600000101/10.0.63/4.1.3",
 		"Pragma":          "no-cache",
 		"Accept":          "*/*",

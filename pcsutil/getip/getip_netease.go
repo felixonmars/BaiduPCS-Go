@@ -4,6 +4,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/pcsutil/jsonhelper"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"net"
+	"net/http"
 )
 
 type (
@@ -16,7 +17,7 @@ type (
 )
 
 func IPInfoFromNeteaseByClient(c *requester.HTTPClient) (ipAddr string, err error) {
-	resp, err := c.Req("GET", "http://mam.netease.com/api/config/getClientIp", nil, nil)
+	resp, err := c.Req(http.MethodGet, "http://mam.netease.com/api/config/getClientIp", nil, nil)
 	if resp != nil {
 		defer resp.Body.Close()
 	}

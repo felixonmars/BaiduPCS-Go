@@ -178,7 +178,7 @@ func (der *Downloader) SelectCacheSize(confCacheSize int, blockSize int64) (cach
 
 // DefaultDURLCheckFunc 默认的 DURLCheckFunc
 func DefaultDURLCheckFunc(client *requester.HTTPClient, durl string) (contentLength int64, resp *http.Response, err error) {
-	resp, err = client.Req("GET", durl, nil, nil)
+	resp, err = client.Req(http.MethodGet, durl, nil, nil)
 	if err != nil {
 		if resp != nil {
 			resp.Body.Close()
@@ -192,19 +192,21 @@ func (der *Downloader) checkLoadBalancers() *LoadBalancerResponseList {
 	var (
 		loadBalancerResponses = make([]*LoadBalancerResponse, 0, len(der.loadBalansers)+1)
 		handleLoadBalancer    = func(req *http.Request) {
-			if req != nil {
-				if der.config.TryHTTP {
-					req.URL.Scheme = "http"
-				}
-
-				loadBalancer := &LoadBalancerResponse{
-					URL:     req.URL.String(),
-					Referer: req.Referer(),
-				}
-
-				loadBalancerResponses = append(loadBalancerResponses, loadBalancer)
-				pcsverbose.Verbosef("DEBUG: download task: URL: %s, Referer: %s\n", loadBalancer.URL, loadBalancer.Referer)
+			if req == nil {
+				return
 			}
+
+			if der.config.TryHTTP {
+				req.URL.Scheme = "http"
+			}
+
+			loadBalancer := &LoadBalancerResponse{
+				URL:     req.URL.String(),
+				Referer: req.Referer(),
+			}
+
+			loadBalancerResponses = append(loadBalancerResponses, loadBalancer)
+			pcsverbose.Verbosef("DEBUG: load balance task: URL: %s, Referer: %s\n", loadBalancer.URL, loadBalancer.Referer)
 		}
 	)
 
@@ -256,13 +258,7 @@ func (der *Downloader) checkLoadBalancers() *LoadBalancerResponseList {
 				return
 			}
 
-			if subResp.Request != nil {
-				loadBalancerResponses = append(loadBalancerResponses, &LoadBalancerResponse{
-					URL: subResp.Request.URL.String(),
-				})
-			}
 			handleLoadBalancer(subResp.Request)
-
 		}(loadBalanser)
 	}
 	wg.Wait()
@@ -315,6 +311,7 @@ func (der *Downloader) Execute() error {
 			AcceptRanges:  acceptRanges,
 			Referer:       resp.Header.Get("Referer"),
 		}
+		pcsverbose.Verbosef("DEBUG: download task: URL: %s, Referer: %s\n", resp.Request.URL, resp.Request.Referer())
 	} else {
 		if der.firstInfo.AcceptRanges == "" {
 			der.firstInfo.AcceptRanges = DefaultAcceptRanges
@@ -416,7 +413,6 @@ func (der *Downloader) Execute() error {
 
 		worker := NewWorker(k, loadBalancer.URL, writer)
 		worker.SetClient(der.client)
-		worker.SetCacheSize(cacheSize)
 		worker.SetWriteMutex(writeMu)
 		worker.SetReferer(loadBalancer.Referer)
 		worker.SetTotalSize(der.firstInfo.ContentLength)

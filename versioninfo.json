@@ -3,13 +3,13 @@
         "FileVersion": {
             "Major": 3,
             "Minor": 6,
-            "Patch": 0,
+            "Patch": 1,
             "Build": 0
         },
         "ProductVersion": {
             "Major": 3,
             "Minor": 6,
-            "Patch": 0,
+            "Patch": 1,
             "Build": 0
         },
         "FileFlagsMask": "3f",
@@ -22,14 +22,14 @@
         "Comments": "",
         "CompanyName": "iikira",
         "FileDescription": "百度网盘客户端",
-        "FileVersion": "v3.6",
+        "FileVersion": "v3.6.1",
         "InternalName": "",
         "LegalCopyright": "© 2016-2019 iikira.",
         "LegalTrademarks": "",
         "OriginalFilename": "",
         "PrivateBuild": "",
         "ProductName": "BaiduPCS-Go",
-        "ProductVersion": "v3.6",
+        "ProductVersion": "v3.6.1",
         "SpecialBuild": ""
     },
     "VarFileInfo": {

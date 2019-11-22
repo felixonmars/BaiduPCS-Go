@@ -22,7 +22,7 @@ func (ph *PanHome) getSignInfo() error {
 	}
 	u := *panBaiduComURL
 	u.Path = "/disk/home"
-	resp, err := ph.client.Req("GET", u.String(), nil, map[string]string{
+	resp, err := ph.client.Req(http.MethodGet, u.String(), nil, map[string]string{
 		"User-Agent": PanHomeUserAgent,
 	})
 	if resp != nil {

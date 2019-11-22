@@ -4,6 +4,7 @@ import (
 	"github.com/iikira/Baidu-Login/bdcrypto"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
+	"net/http"
 	"net/url"
 )
 
@@ -27,7 +28,7 @@ func (dc *DlinkClient) linkRedirect(op, link string) (nlink string, dlinkError p
 		uv.Set("link", converter.ToString(bdcrypto.Base64Encode(converter.ToBytes(link))))
 	}
 
-	resp, err := dc.client.Req("POST", u.String(), uv.Encode(), map[string]string{
+	resp, err := dc.client.Req(http.MethodPost, u.String(), uv.Encode(), map[string]string{
 		"Content-Type": "application/x-www-form-urlencoded",
 	})
 	if resp != nil {
