@@ -20,3 +20,20 @@ func (cm *CacheOpMap) CacheOperation(op string, key interface{}, opFunc func() e
 
 	return
 }
+
+func (cm *CacheOpMap) CacheOperationWithError(op string, key interface{}, opFunc func() (expires.DataExpires, error)) (data expires.DataExpires, err error) {
+	var (
+		cache = cm.LazyInitCachePoolOp(op)
+		ok    bool
+	)
+	data, ok = cache.Load(key)
+	if !ok {
+		data, err = opFunc()
+		if err != nil {
+			return
+		}
+		cache.Store(key, data)
+	}
+
+	return
+}

@@ -134,7 +134,7 @@ func (gen *RangeListGen) LoadBlockSize() (blockSize int64) {
 	switch gen.rangeGenMode {
 	case RangeGenMode_Default:
 		if gen.blockSize <= 0 {
-			gen.blockSize = gen.total / int64(gen.parallel)
+			gen.blockSize = (gen.total - gen.begin) / int64(gen.parallel)
 		}
 		blockSize = gen.blockSize
 	case RangeGenMode_BlockSize:
@@ -158,9 +158,7 @@ func (gen *RangeListGen) GenRange() (index int, r *Range) {
 	}
 	switch gen.rangeGenMode {
 	case RangeGenMode_Default:
-		if gen.blockSize <= 0 {
-			gen.blockSize = gen.total / int64(gen.parallel)
-		}
+		gen.LoadBlockSize()
 		gen.mu.Lock()
 		defer gen.mu.Unlock()
 
@@ -172,7 +170,7 @@ func (gen *RangeListGen) GenRange() (index int, r *Range) {
 		if gen.count >= gen.parallel {
 			end = gen.total
 		} else {
-			end = int64(gen.count) * gen.blockSize
+			end = gen.begin + gen.blockSize
 		}
 		r = &Range{
 			Begin: gen.begin,

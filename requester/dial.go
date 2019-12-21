@@ -14,6 +14,11 @@ import (
 	"time"
 )
 
+const (
+	// MaxDuration 最大的Duration
+	MaxDuration = 1<<63 - 1
+)
+
 var (
 	localTCPAddrList = []*net.TCPAddr{}
 
@@ -94,6 +99,12 @@ func SetGlobalProxy(proxyAddr string) {
 	ProxyAddr = proxyAddr
 }
 
+// SetTCPHostBind 设置host绑定ip
+func SetTCPHostBind(host, ip string) {
+	tcpCache.Store(host, expires.NewDataExpires(net.ParseIP(ip), MaxDuration))
+	return
+}
+
 func getServerName(address string) string {
 	host, _, err := net.SplitHostPort(address)
 	if err != nil {
@@ -102,44 +113,44 @@ func getServerName(address string) string {
 	return host
 }
 
-func resolveTCP(ctx context.Context, address string) (tcpaddr *net.TCPAddr, err error) {
-	host, port, err := net.SplitHostPort(address)
-	if err != nil {
-		return
-	}
-
+// resolveTCPHost
+// 解析的tcpaddr没有port!!!
+func resolveTCPHost(ctx context.Context, host string) (ip net.IP, err error) {
 	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
 	if err != nil {
 		return
 	}
 
-	p, err := strconv.Atoi(port)
-	if err != nil {
-		return
-	}
-
-	return &net.TCPAddr{
-		IP:   addrs[0].IP,
-		Port: p,
-		Zone: addrs[0].Zone,
-	}, nil
+	return addrs[0].IP, nil
 }
 
 func dialContext(ctx context.Context, network, address string) (conn net.Conn, err error) {
 	switch network {
 	case "tcp", "tcp4", "tcp6":
-		data := cachemap.GlobalCacheOpMap.CacheOperation("requester/tcp", address, func() expires.DataExpires {
-			var tcpAddr *net.TCPAddr
-			tcpAddr, err = resolveTCP(ctx, address)
+		host, portStr, err := net.SplitHostPort(address)
+		if err != nil {
+			return nil, err
+		}
+		data, err := cachemap.GlobalCacheOpMap.CacheOperationWithError("requester/tcp", host, func() (expires.DataExpires, error) {
+			ip, err := resolveTCPHost(ctx, host)
 			if err != nil {
-				return nil
+				return nil, err
 			}
-			return expires.NewDataExpires(tcpAddr, 30*time.Minute)
+			return expires.NewDataExpires(ip, 10*time.Minute), nil // 传值
 		})
 		if err != nil {
 			return nil, err
 		}
-		return net.DialTCP(network, getLocalTCPAddr(), data.Data().(*net.TCPAddr))
+
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return nil, err
+		}
+
+		return net.DialTCP(network, getLocalTCPAddr(), &net.TCPAddr{
+			IP:   data.Data().(net.IP),
+			Port: port, // 设置端口
+		})
 	}
 
 	// 非 tcp 请求
