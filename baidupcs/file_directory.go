@@ -79,7 +79,7 @@ type (
 
 	fdData struct {
 		*pcserror.PCSErrInfo
-		List []*FileDirectory
+		List FileDirectoryList
 	}
 
 	fdDataJSONExport struct {
@@ -147,7 +147,9 @@ func (pcs *BaiduPCS) FilesDirectoriesBatchMeta(paths ...string) (data FileDirect
 		return
 	}
 
-	// 结果处理
+	// 修复MD5
+	jsonData.List.fixMD5()
+
 	data = jsonData.List
 	return
 }
@@ -169,6 +171,9 @@ func (pcs *BaiduPCS) FilesDirectoriesList(path string, options *OrderOptions) (d
 	if pcsError != nil {
 		return nil, pcsError
 	}
+
+	// 修复MD5
+	jsonData.List.fixMD5()
 
 	data = jsonData.List
 	return
@@ -197,7 +202,9 @@ func (pcs *BaiduPCS) Search(targetPath, keyword string, recursive bool) (fdl Fil
 		return
 	}
 
-	// 结果处理
+	// 修复MD5
+	jsonData.List.fixMD5()
+
 	fdl = jsonData.List
 	return
 }
@@ -245,6 +252,16 @@ func (pcs *BaiduPCS) FilesDirectoriesRecurseList(path string, options *OrderOpti
 	return data
 }
 
+// fixMD5 尝试修复MD5字段
+// 服务器返回的MD5字段不一定正确了, 即是BlockList只有一个md5
+// MD5字段使用BlockList中的md5
+func (f *FileDirectory) fixMD5() {
+	if len(f.BlockList) != 1 {
+		return
+	}
+	f.MD5 = f.BlockList[0]
+}
+
 func (f *FileDirectory) String() string {
 	builder := &strings.Builder{}
 	tb := pcstable.NewTable(builder)
@@ -285,6 +302,12 @@ func (f *FileDirectory) String() string {
 
 	tb.Render()
 	return builder.String()
+}
+
+func (fl FileDirectoryList) fixMD5() {
+	for _, v := range fl {
+		v.fixMD5()
+	}
 }
 
 // TotalSize 获取目录下文件的总大小
