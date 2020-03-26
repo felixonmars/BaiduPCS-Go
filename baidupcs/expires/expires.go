@@ -21,8 +21,10 @@ type (
 )
 
 // StripMono strip monotonic clocks
-//go:linkname StripMono time.(*Time).stripMono
-func StripMono(t *time.Time)
+// go:linkname StripMono time.(*Time).stripMono
+func StripMono(t *time.Time) {
+	t.Round(0)
+}
 
 func NewExpires(dur time.Duration) Expires {
 	t := time.Now().Add(dur)

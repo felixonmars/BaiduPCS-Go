@@ -1155,8 +1155,8 @@ func main() {
 				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1], &pcscommand.UploadOptions{
 					Parallel:       c.Int("p"),
 					MaxRetry:       c.Int("retry"),
-					NotRapidUpload: c.Bool("norapid"),
-					NotSplitFile:   c.Bool("nosplit"),
+					NoRapidUpload: c.Bool("norapid"),
+					NoSplitFile:   c.Bool("nosplit"),
 				})
 				return nil
 			},

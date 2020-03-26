@@ -407,8 +407,17 @@ func (pcs *BaiduPCS) PrepareUploadTmpFile(uploadFunc UploadFunc) (dataReadCloser
 }
 
 // PrepareUploadCreateSuperFile 分片上传—合并分片文件, 只返回服务器响应数据和错误信息
-func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(targetPath string, blockList ...string) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
+func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(checkDir bool, targetPath string, blockList ...string) (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
 	pcs.lazyInit()
+
+	if checkDir {
+		// 检查是否为目录
+		pcsError = pcs.checkIsdir(OperationUploadCreateSuperFile, targetPath)
+		if pcsError != nil {
+			return nil, pcsError
+		}
+	}
+
 	bl := BlockListJSON{
 		BlockList: blockList,
 	}
@@ -420,7 +429,7 @@ func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(targetPath string, blockList .
 
 	pcsURL := pcs.generatePCSURL("file", "createsuperfile", map[string]string{
 		"path":  targetPath,
-		"ondup": "newcopy",
+		"ondup": "overwrite",
 	})
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationUploadCreateSuperFile, pcsURL)
 

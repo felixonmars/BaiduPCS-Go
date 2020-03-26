@@ -178,8 +178,8 @@ func (pcs *BaiduPCS) UploadTmpFile(uploadFunc UploadFunc) (md5 string, pcsError 
 }
 
 // UploadCreateSuperFile 分片上传—合并分片文件
-func (pcs *BaiduPCS) UploadCreateSuperFile(targetPath string, blockList ...string) (pcsError pcserror.Error) {
-	dataReadCloser, pcsError := pcs.PrepareUploadCreateSuperFile(targetPath, blockList...)
+func (pcs *BaiduPCS) UploadCreateSuperFile(checkDir bool, targetPath string, blockList ...string) (pcsError pcserror.Error) {
+	dataReadCloser, pcsError := pcs.PrepareUploadCreateSuperFile(checkDir, targetPath, blockList...)
 	if pcsError != nil {
 		return pcsError
 	}

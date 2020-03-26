@@ -3,6 +3,7 @@ module github.com/iikira/BaiduPCS-Go
 go 1.12
 
 require (
+	github.com/GeertJohan/go.incremental v1.0.0
 	github.com/GeertJohan/go.rice v0.0.0-20170420135705-c02ca9a983da // indirect
 	github.com/astaxie/beego v1.10.1 // indirect
 	github.com/bitly/go-simplejson v0.5.0 // indirect

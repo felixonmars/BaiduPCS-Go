@@ -3,10 +3,13 @@ package pcsupload
 import (
 	"context"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
+	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/iikira/BaiduPCS-Go/requester/multipartreader"
 	"github.com/iikira/BaiduPCS-Go/requester/rio"
 	"github.com/iikira/BaiduPCS-Go/requester/uploader"
+	"io"
 	"net/http"
 )
 
@@ -15,7 +18,18 @@ type (
 		pcs        *baidupcs.BaiduPCS
 		targetPath string
 	}
+
+	EmptyReaderLen64 struct {
+	}
 )
+
+func (e EmptyReaderLen64) Read(p []byte) (n int, err error) {
+	return 0, io.EOF
+}
+
+func (e EmptyReaderLen64) Len() int64 {
+	return 0
+}
 
 func NewPCSUpload(pcs *baidupcs.BaiduPCS, targetPath string) uploader.MultiUpload {
 	return &PCSUpload{
@@ -83,5 +97,23 @@ func (pu *PCSUpload) TmpFile(ctx context.Context, partseq int, partOffset int64,
 
 func (pu *PCSUpload) CreateSuperFile(checksumList ...string) (err error) {
 	pu.lazyInit()
-	return pu.pcs.UploadCreateSuperFile(pu.targetPath, checksumList...)
+
+	// 先在网盘目标位置, 上传一个空文件
+	// 防止出现file does not exist
+	pcsError := pu.pcs.Upload(pu.targetPath, func(uploadURL string, jar http.CookieJar) (resp *http.Response, err error) {
+		mr := multipartreader.NewMultipartReader()
+		mr.AddFormFile("file", "file", &EmptyReaderLen64{})
+		mr.CloseMultipart()
+
+		c := requester.NewHTTPClient()
+		c.SetCookiejar(jar)
+		return c.Req(http.MethodPost, uploadURL, mr, nil)
+	})
+	if pcsError != nil {
+		// 修改操作
+		pcsError.(*pcserror.PCSErrInfo).Operation = baidupcs.OperationUploadCreateSuperFile
+		return pcsError
+	}
+
+	return pu.pcs.UploadCreateSuperFile(false, pu.targetPath, checksumList...)
 }

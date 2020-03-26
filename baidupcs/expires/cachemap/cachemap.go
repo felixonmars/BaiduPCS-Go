@@ -16,13 +16,12 @@ type (
 )
 
 func (cm *CacheOpMap) LazyInitCachePoolOp(op string) CacheUnit {
-	cacheItf, ok := cm.cachePool.Load(op)
-	if !ok {
-		cache := &cacheUnit{}
-		cm.cachePool.Store(op, cache)
-		return cache
-	}
+	cacheItf, _ := cm.cachePool.LoadOrStore(op, &cacheUnit{})
 	return cacheItf.(CacheUnit)
+}
+
+func (cm *CacheOpMap) RemoveCachePoolOp(op string) {
+	cm.cachePool.Delete(op)
 }
 
 // ClearInvalidate 清除已过期的数据(一般用不到)
@@ -41,5 +40,4 @@ func (cm *CacheOpMap) ClearInvalidate() {
 
 // PrintAll 输出所有缓冲项目
 func (cm *CacheOpMap) PrintAll() {
-
 }

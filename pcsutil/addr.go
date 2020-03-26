@@ -6,12 +6,12 @@ import (
 
 // ListAddresses 列出本地可用的 IP 地址
 func ListAddresses() (addresses []string) {
-	ifaces, _ := net.Interfaces()
-	addresses = make([]string, 0, len(ifaces))
-	for k := range ifaces {
-		ifAddrs, _ := ifaces[k].Addrs()
-		for l := range ifAddrs {
-			switch v := ifAddrs[l].(type) {
+	iFaces, _ := net.Interfaces()
+	addresses = make([]string, 0, len(iFaces))
+	for k := range iFaces {
+		iFaceAddrs, _ := iFaces[k].Addrs()
+		for l := range iFaceAddrs {
+			switch v := iFaceAddrs[l].(type) {
 			case *net.IPNet:
 				addresses = append(addresses, v.IP.String())
 			case *net.IPAddr:

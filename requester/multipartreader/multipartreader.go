@@ -57,6 +57,10 @@ func NewMultipartReader() (mr *MultipartReader) {
 
 // AddFormFeild 增加 form 表单
 func (mr *MultipartReader) AddFormFeild(fieldname string, readerlen rio.ReaderLen) {
+	if (readerlen == nil) {
+		return
+	}
+
 	mpart := &part{
 		form:      fmt.Sprintf("--%s\r\nContent-Disposition: form-data; name=\"%s\"\r\n\r\n", mr.boundary, fieldname),
 		readerlen: readerlen,
@@ -67,6 +71,10 @@ func (mr *MultipartReader) AddFormFeild(fieldname string, readerlen rio.ReaderLe
 
 // AddFormFile 增加 form 文件表单
 func (mr *MultipartReader) AddFormFile(fieldname, filename string, readerlen64 rio.ReaderLen64) {
+	if (readerlen64 == nil) {
+		return
+	}
+
 	mpart64 := &part64{
 		form:        fmt.Sprintf("--%s\r\nContent-Disposition: form-data; name=\"%s\"; filename=\"%s\"\r\n\r\n", mr.boundary, fieldname, filename),
 		readerlen64: readerlen64,
