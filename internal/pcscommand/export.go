@@ -26,7 +26,7 @@ type (
 	ExportOptions struct {
 		RootPath  string // 根路径
 		SavePath  string // 输出路径
-		MaxRerty  int
+		MaxRetry  int
 		Recursive bool
 	}
 )
@@ -116,7 +116,7 @@ func RunExport(pcspaths []string, opt *ExportOptions) {
 		l.PushBack(&etask{
 			ListTask: &ListTask{
 				ID:       id,
-				MaxRetry: opt.MaxRerty,
+				MaxRetry: opt.MaxRetry,
 			},
 			path:     pcspaths[id],
 			rootPath: rootPath,
@@ -174,7 +174,7 @@ func RunExport(pcspaths []string, opt *ExportOptions) {
 				l.PushBack(&etask{
 					ListTask: &ListTask{
 						ID:       id,
-						MaxRetry: opt.MaxRerty,
+						MaxRetry: opt.MaxRetry,
 					},
 					path:     fd.Path,
 					fd:       fd,

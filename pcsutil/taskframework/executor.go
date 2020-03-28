@@ -13,6 +13,10 @@ type (
 		incr     *incremental.Int // 任务id生成
 		deque    *lane.Deque      // 队列
 		parallel int              // 任务的最大并发量
+
+		// 是否统计失败队列
+		IsFailedDeque bool
+		failedDeque   *lane.Deque
 	}
 )
 
@@ -27,8 +31,11 @@ func (te *TaskExecutor) lazyInit() {
 	if te.incr == nil {
 		te.incr = &incremental.Int{}
 	}
-	if (te.parallel < 1) {
+	if te.parallel < 1 {
 		te.parallel = 1
+	}
+	if te.IsFailedDeque {
+		te.failedDeque = lane.NewDeque()
 	}
 }
 
@@ -45,9 +52,9 @@ func (te *TaskExecutor) Append(unit TaskUnit, maxRetry int) *TaskInfo {
 		maxRetry: maxRetry,
 	}
 	unit.SetTaskInfo(taskInfo)
-	te.deque.Append(&taskInfoItem{
-		info: taskInfo,
-		unit: unit,
+	te.deque.Append(&TaskInfoItem{
+		Info: taskInfo,
+		Unit: unit,
 	})
 	return taskInfo
 }
@@ -78,23 +85,23 @@ func (te *TaskExecutor) Execute() {
 			}
 
 			// 获取任务
-			task := e.(*taskInfoItem)
+			task := e.(*TaskInfoItem)
 			wg.AddDelta()
 
-			go func(task *taskInfoItem) {
+			go func(task *TaskInfoItem) {
 				defer wg.Done()
 
-				result := task.unit.Run()
+				result := task.Unit.Run()
 
 				// 返回结果为空
 				if result == nil {
-					task.unit.OnComplete(result)
+					task.Unit.OnComplete(result)
 					return
 				}
 
 				if result.Succeed {
-					task.unit.OnSuccess(result)
-					task.unit.OnComplete(result)
+					task.Unit.OnSuccess(result)
+					task.Unit.OnComplete(result)
 					return
 				}
 
@@ -102,24 +109,32 @@ func (te *TaskExecutor) Execute() {
 				if result.NeedRetry {
 					// 重试次数超出限制
 					// 执行失败
-					if task.info.IsExceedRetry() {
-						task.unit.OnFailed(result)
-						task.unit.OnComplete(result)
+					if task.Info.IsExceedRetry() {
+						task.Unit.OnFailed(result)
+						if te.IsFailedDeque {
+							// 加入失败队列
+							te.failedDeque.Append(task)
+						}
+						task.Unit.OnComplete(result)
 						return
 					}
 
-					task.info.retry++         // 增加重试次数
-					task.unit.OnRetry(result) // 调用重试
-					task.unit.OnComplete(result)
+					task.Info.retry++         // 增加重试次数
+					task.Unit.OnRetry(result) // 调用重试
+					task.Unit.OnComplete(result)
 
-					time.Sleep(task.unit.RetryWait()) // 等待
+					time.Sleep(task.Unit.RetryWait()) // 等待
 					te.deque.Append(task)             // 重新加入队列末尾
 					return
 				}
 
 				// 执行失败
-				task.unit.OnFailed(result)
-				task.unit.OnComplete(result)
+				task.Unit.OnFailed(result)
+				if te.IsFailedDeque {
+					// 加入失败队列
+					te.failedDeque.Append(task)
+				}
+				task.Unit.OnComplete(result)
 			}(task)
 		}
 
@@ -130,6 +145,11 @@ func (te *TaskExecutor) Execute() {
 			break
 		}
 	}
+}
+
+//FailedDeque 获取失败队列
+func (te *TaskExecutor) FailedDeque() *lane.Deque {
+	return te.failedDeque
 }
 
 //Stop 停止执行

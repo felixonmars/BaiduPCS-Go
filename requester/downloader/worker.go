@@ -185,7 +185,7 @@ func (wer *Worker) Reset() {
 	if wer.readRespBodyCancelFunc != nil {
 		wer.readRespBodyCancelFunc()
 	}
-	wer.CleanStatus()
+	wer.ClearStatus()
 	go wer.Execute()
 }
 
@@ -214,8 +214,8 @@ func (wer *Worker) Failed() bool {
 	}
 }
 
-//CleanStatus 清空状态
-func (wer *Worker) CleanStatus() {
+//ClearStatus 清空状态
+func (wer *Worker) ClearStatus() {
 	wer.status.statusCode = StatusCodeInit
 }
 

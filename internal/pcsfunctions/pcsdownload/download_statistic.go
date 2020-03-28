@@ -1,11 +1,11 @@
-package pcsupload
+package pcsdownload
 
 import (
 	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions"
 )
 
 type (
-	UploadStatistic struct {
+	DownloadStatistic struct {
 		pcsfunctions.Statistic
 	}
 )

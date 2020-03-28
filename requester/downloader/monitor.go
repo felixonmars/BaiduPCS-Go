@@ -3,11 +3,9 @@ package downloader
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/iikira/BaiduPCS-Go/pcsverbose"
 	"github.com/iikira/BaiduPCS-Go/requester/transfer"
 	"sort"
-	"sync"
 	"time"
 )
 
@@ -29,8 +27,6 @@ type (
 
 		// 临时变量
 		lastAvaliableIndex int
-		allWorkerRanges    transfer.RangeList // worker 的 Range 内存地址, 必须不变
-		allWorkerRangesMu  sync.Mutex
 	}
 
 	// RangeWorkerFunc 遍历workers的函数
@@ -98,8 +94,8 @@ func (mt *Monitor) CompletedChan() <-chan struct{} {
 	return mt.completed
 }
 
-//GetAvaliableWorker 获取空闲的worker
-func (mt *Monitor) GetAvaliableWorker() *Worker {
+//GetAvailableWorker 获取空闲的worker
+func (mt *Monitor) GetAvailableWorker() *Worker {
 	workerCount := len(mt.workers)
 	for i := mt.lastAvaliableIndex; i < mt.lastAvaliableIndex+workerCount; i++ {
 		index := i % workerCount
@@ -114,17 +110,11 @@ func (mt *Monitor) GetAvaliableWorker() *Worker {
 
 //GetAllWorkersRange 获取所有worker的范围
 func (mt *Monitor) GetAllWorkersRange() transfer.RangeList {
-	mt.allWorkerRangesMu.Lock()
-	defer mt.allWorkerRangesMu.Unlock()
-
-	if mt.allWorkerRanges != nil && len(mt.allWorkerRanges) == len(mt.workers) {
-		return mt.allWorkerRanges
-	}
-	mt.allWorkerRanges = make(transfer.RangeList, 0, len(mt.workers))
+	allWorkerRanges := make(transfer.RangeList, 0, len(mt.workers))
 	for _, worker := range mt.workers {
-		mt.allWorkerRanges = append(mt.allWorkerRanges, worker.GetRange())
+		allWorkerRanges = append(allWorkerRanges, worker.GetRange())
 	}
-	return mt.allWorkerRanges
+	return allWorkerRanges
 }
 
 //NumLeftWorkers 剩余的worker数量
@@ -174,7 +164,9 @@ func (mt *Monitor) registerAllCompleted() {
 			for _, worker := range mt.workers {
 				switch worker.GetStatus().StatusCode() {
 				case StatusCodeInternalError:
-					mt.err = fmt.Errorf("ERROR: fatal internal error: %s", worker.Err())
+					// 检测到内部错误
+					// 马上停止执行
+					mt.err = worker.Err()
 					close(mt.completed)
 					return
 				case StatusCodeSuccessed, StatusCodeCanceled:
@@ -253,8 +245,8 @@ func (mt *Monitor) TryAddNewWork() {
 		return
 	}
 
-	avaliableWorker := mt.GetAvaliableWorker()
-	if avaliableWorker == nil {
+	availableWorker := mt.GetAvailableWorker()
+	if availableWorker == nil {
 		return
 	}
 
@@ -265,16 +257,16 @@ func (mt *Monitor) TryAddNewWork() {
 		return
 	}
 
-	avaliableWorker.SetRange(r)
-	avaliableWorker.CleanStatus()
+	availableWorker.SetRange(r)
+	availableWorker.ClearStatus()
 
 	mt.resetController.AddResetNum()
-	pcsverbose.Verbosef("MONITER: worker[%d] add new range: %s\n", avaliableWorker.ID(), r.ShowDetails())
-	go avaliableWorker.Execute()
+	pcsverbose.Verbosef("MONITER: worker[%d] add new range: %s\n", availableWorker.ID(), r.ShowDetails())
+	go availableWorker.Execute()
 }
 
-// DymanicSplitWorker 动态分配线程
-func (mt *Monitor) DymanicSplitWorker(worker *Worker) {
+// DynamicSplitWorker 动态分配线程
+func (mt *Monitor) DynamicSplitWorker(worker *Worker) {
 	if !mt.resetController.CanReset() {
 		return
 	}
@@ -287,8 +279,8 @@ func (mt *Monitor) DymanicSplitWorker(worker *Worker) {
 	}
 
 	// 筛选空闲的Worker
-	avaliableWorker := mt.GetAvaliableWorker()
-	if avaliableWorker == nil || worker == avaliableWorker { // 没有空的
+	availableWorker := mt.GetAvailableWorker()
+	if availableWorker == nil || worker == availableWorker { // 没有空的
 		return
 	}
 
@@ -302,16 +294,16 @@ func (mt *Monitor) DymanicSplitWorker(worker *Worker) {
 	}
 
 	// 折半
-	avaliableWorkerRange := avaliableWorker.GetRange()
-	avaliableWorkerRange.StoreBegin(middle + 1)
-	avaliableWorkerRange.StoreEnd(end)
-	avaliableWorker.CleanStatus()
+	availableWorkerRange := availableWorker.GetRange()
+	availableWorkerRange.StoreBegin(middle) // middle不能加1
+	availableWorkerRange.StoreEnd(end)
+	availableWorker.ClearStatus()
 
 	workerRange.StoreEnd(middle)
 
 	mt.resetController.AddResetNum()
-	pcsverbose.Verbosef("MONITER: worker duplicated: %d <- %d\n", avaliableWorker.ID(), worker.ID())
-	go avaliableWorker.Execute()
+	pcsverbose.Verbosef("MONITOR: worker duplicated: %d <- %d\n", availableWorker.ID(), worker.ID())
+	go availableWorker.Execute()
 }
 
 // ResetWorker 重设长时间无响应, 和下载速度为 0 的 Worker
@@ -345,7 +337,7 @@ func (mt *Monitor) ResetWorker(worker *Worker) {
 	mt.resetController.AddResetNum()
 
 	// 重设连接
-	pcsverbose.Verbosef("MONITER: worker[%d] reload\n", worker.ID())
+	pcsverbose.Verbosef("MONITOR: worker[%d] reload\n", worker.ID())
 	worker.Reset()
 }
 
@@ -401,21 +393,24 @@ func (mt *Monitor) Execute(cancelCtx context.Context) {
 				continue
 			}
 
+			// 更新maxSpeeds
+			mt.status.SetMaxSpeeds(mt.status.SpeedsPerSecond())
+
 			// 速度减慢或者全部失败, 开始监控
 			// 只有一个worker时不重设连接
 			isLeftWorkersAllFailed := mt.IsLeftWorkersAllFailed()
-			if mt.status.SpeedsPerSecond() < mt.status.MaxSpeeds()/5 || isLeftWorkersAllFailed {
+			if mt.status.SpeedsPerSecond() < mt.status.MaxSpeeds()/6 || isLeftWorkersAllFailed {
 				if isLeftWorkersAllFailed {
 					pcsverbose.Verbosef("DEBUG: monitor: All workers failed\n")
 				}
-				mt.status.StoreMaxSpeeds(0) //清空统计
+				mt.status.ClearMaxSpeeds() //清空最大速度的统计
 
 				// 先进行动态分配线程
 				pcsverbose.Verbosef("DEBUG: monitor: start duplicate.\n")
 				sort.Sort(ByLeftDesc{mt.workers})
 				for _, worker := range mt.workers {
 					//动态分配线程
-					mt.DymanicSplitWorker(worker)
+					mt.DynamicSplitWorker(worker)
 				}
 
 				// 重设长时间无响应, 和下载速度为 0 的线程

@@ -387,6 +387,8 @@ func (der *Downloader) Execute() error {
 	// 数据平均分配给各个线程
 	isRange := bii.Ranges != nil && len(bii.Ranges) > 0
 	if !isRange {
+		// 没有使用断点续传
+		// 分配线程
 		bii.Ranges = make(transfer.RangeList, 0, parallel)
 		if single { // 单线程
 			bii.Ranges = append(bii.Ranges, &transfer.Range{})

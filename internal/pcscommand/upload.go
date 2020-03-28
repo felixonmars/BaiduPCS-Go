@@ -5,6 +5,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions/pcsupload"
+	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/checksum"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
@@ -23,8 +24,8 @@ const (
 type (
 	// UploadOptions 上传可选项
 	UploadOptions struct {
-		Parallel       int
-		MaxRetry       int
+		Parallel      int
+		MaxRetry      int
 		NoRapidUpload bool
 		NoSplitFile   bool // 禁用分片上传
 	}
@@ -101,7 +102,9 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 	var (
 		pcs = GetBaiduPCS()
 		// 使用 task framework
-		executor    = taskframework.NewTaskExecutor()
+		executor    = &taskframework.TaskExecutor{
+			IsFailedDeque: true, // 失败统计
+		}
 		subSavePath string
 		// 统计
 		statistic = &pcsupload.UploadStatistic{}
@@ -155,5 +158,17 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 	executor.Execute()
 
 	fmt.Printf("\n")
-	fmt.Printf("全部上传完毕, 总大小: %s\n", converter.ConvertFileSize(statistic.TotalSize()))
+	fmt.Printf("上传结束, 时间: %s, 总大小: %s\n", statistic.Elapsed()/1e6*1e6, converter.ConvertFileSize(statistic.TotalSize()))
+
+	// 输出上传失败的文件列表
+	failedList := executor.FailedDeque()
+	if failedList.Size() != 0 {
+		fmt.Printf("以下文件上传失败: \n")
+		tb := pcstable.NewTable(os.Stdout)
+		for e := failedList.Shift(); e != nil; e = failedList.Shift() {
+			item := e.(*taskframework.TaskInfoItem)
+			tb.Append([]string{item.Info.Id(), item.Unit.(*pcsupload.UploadTaskUnit).LocalFileChecksum.Path})
+		}
+		tb.Render()
+	}
 }

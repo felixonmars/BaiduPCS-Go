@@ -7,9 +7,9 @@ type (
 		retry    int
 	}
 
-	taskInfoItem struct {
-		info *TaskInfo
-		unit TaskUnit
+	TaskInfoItem struct {
+		Info *TaskInfo
+		Unit TaskUnit
 	}
 )
 

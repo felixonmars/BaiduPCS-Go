@@ -8,6 +8,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/checksum"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/taskframework"
@@ -138,6 +139,7 @@ func (utu *UploadTaskUnit) rapidUpload() (isContinue bool, result *taskframework
 	if fdl != nil {
 		for _, fd := range fdl {
 			if fd.Filename == utu.panFile {
+				// TODO: fd.MD5 有可能是错误的
 				decodedMD5, _ := hex.DecodeString(fd.MD5)
 				if bytes.Compare(decodedMD5, utu.LocalFileChecksum.MD5) == 0 {
 					fmt.Printf("[%s] 目标文件, %s, 已存在, 跳过...\n", utu.taskInfo.Id(), utu.SavePath)
@@ -309,11 +311,7 @@ func (utu *UploadTaskUnit) OnComplete(lastRunResult *taskframework.TaskUnitRunRe
 }
 
 func (utu *UploadTaskUnit) RetryWait() time.Duration {
-	retry := utu.taskInfo.Retry()
-	if retry < 3 {
-		return 2 * time.Duration(retry) * time.Second
-	}
-	return 6 * time.Second
+	return pcsfunctions.RetryWait(utu.taskInfo.Retry())
 }
 
 func (utu *UploadTaskUnit) Run() (result *taskframework.TaskUnitRunResult) {

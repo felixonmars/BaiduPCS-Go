@@ -70,9 +70,16 @@ func (ds *DownloadStatus) AddSpeedsDownloaded(d int64) {
 	ds.speedsStat.Add(d)
 }
 
-//StoreMaxSpeeds 储存最大速度, 原子操作
-func (ds *DownloadStatus) StoreMaxSpeeds(speeds int64) {
-	atomic.StoreInt64(&ds.maxSpeeds, speeds)
+//SetMaxSpeeds 设置最大速度, 原子操作
+func (ds *DownloadStatus) SetMaxSpeeds(speeds int64) {
+	if speeds > atomic.LoadInt64(&ds.maxSpeeds) {
+		atomic.StoreInt64(&ds.maxSpeeds, speeds)
+	}
+}
+
+//ClearMaxSpeeds 清空统计最大速度, 原子操作
+func (ds *DownloadStatus) ClearMaxSpeeds() {
+	atomic.StoreInt64(&ds.maxSpeeds, 0)
 }
 
 //TotalSize 返回总大小

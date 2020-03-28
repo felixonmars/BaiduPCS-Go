@@ -6,6 +6,7 @@ import (
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
 	"github.com/iikira/BaiduPCS-Go/internal/pcscommand"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions/pcsdownload"
 	_ "github.com/iikira/BaiduPCS-Go/internal/pcsinit"
 	"github.com/iikira/BaiduPCS-Go/internal/pcsupdate"
 	"github.com/iikira/BaiduPCS-Go/pcsliner"
@@ -951,10 +952,16 @@ func main() {
 			Description: `
 	下载的文件默认保存到, 程序所在目录的 download/ 目录.
 	通过 BaiduPCS-Go config set -savedir <savedir>, 自定义保存的目录.
-	已支持目录下载.
-	已支持多个文件或目录下载.
-	已支持下载完成后自动校验文件, 但并不是所有的文件都支持校验!
+	支持多个文件或目录下载.
+	支持下载完成后自动校验文件, 但并不是所有的文件都支持校验!
 	自动跳过下载重名的文件!
+
+	下载模式说明:
+		pcs: 通过百度网盘的 PCS API 下载
+		stream: 通过百度网盘的 PCS API, 以流式文件的方式下载, 效果同 pcs
+		locate: 默认的下载模式。从百度网盘 Android 客户端, 获取下载链接的方式来下载
+		locate_pan: 从百度网盘 WEB 首页获取下载链接来下载, 该下载方式需配合第三方服务器, 机密文件切勿使用此下载方式
+		share: 从网盘文件的分享列表获取文件的下载链接来下载
 
 	示例:
 
@@ -982,37 +989,51 @@ func main() {
 					return nil
 				}
 
+				// 处理saveTo
 				var (
 					saveTo string
 				)
-
 				if c.Bool("save") {
 					saveTo = "."
 				} else if c.String("saveto") != "" {
 					saveTo = filepath.Clean(c.String("saveto"))
 				}
 
-				do := &pcscommand.DownloadOptions{
-					IsTest:                 c.Bool("test"),
-					IsPrintStatus:          c.Bool("status"),
-					IsExecutedPermission:   c.Bool("x") && runtime.GOOS != "windows",
-					IsOverwrite:            c.Bool("ow"),
-					IsShareDownload:        c.Bool("share"),
-					IsLocateDownload:       c.Bool("locate"),
-					IsLocatePanAPIDownload: c.Bool("locate_pan"),
-					IsStreaming:            c.Bool("stream"),
-					SaveTo:                 saveTo,
-					Parallel:               c.Int("p"),
-					Load:                   c.Int("l"),
-					MaxRetry:               c.Int("retry"),
-					NoCheck:                c.Bool("nocheck"),
+				// 处理解析downloadMode
+				var (
+					downloadMode pcsdownload.DownloadMode
+				)
+				switch c.String("mode") {
+				case "pcs":
+					downloadMode = pcsdownload.DownloadModePCS
+				case "stream":
+					downloadMode = pcsdownload.DownloadModeStreaming
+				case "locate":
+					downloadMode = pcsdownload.DownloadModeLocate
+				case "locate_pan":
+					downloadMode = pcsdownload.DownloadModeLocatePanAPI
+				case "share":
+					downloadMode = pcsdownload.DownloadModeShare
+				default:
+					fmt.Println("下载方式解析失败")
+					cli.ShowCommandHelp(c, c.Command.Name)
+					return nil
 				}
 
-				if c.Bool("bg") && isCli {
-					pcscommand.RunBgDownload(c.Args(), do)
-				} else {
-					pcscommand.RunDownload(c.Args(), do)
+				do := &pcscommand.DownloadOptions{
+					IsTest:               c.Bool("test"),
+					IsPrintStatus:        c.Bool("status"),
+					IsExecutedPermission: c.Bool("x"),
+					IsOverwrite:          c.Bool("ow"),
+					DownloadMode:         downloadMode,
+					SaveTo:               saveTo,
+					Parallel:             c.Int("p"),
+					Load:                 c.Int("l"),
+					MaxRetry:             c.Int("retry"),
+					NoCheck:              c.Bool("nocheck"),
 				}
+
+				pcscommand.RunDownload(c.Args(), do)
 
 				return nil
 			},
@@ -1041,21 +1062,10 @@ func main() {
 					Name:  "x",
 					Usage: "为文件加上执行权限, (windows系统无效)",
 				},
-				cli.BoolFlag{
-					Name:  "stream",
-					Usage: "以流式文件的方式下载",
-				},
-				cli.BoolFlag{
-					Name:  "share",
-					Usage: "以分享文件的方式获取下载链接来下载",
-				},
-				cli.BoolFlag{
-					Name:  "locate",
-					Usage: "以获取直链的方式来下载",
-				},
-				cli.BoolFlag{
-					Name:  "locate_pan",
-					Usage: "从百度网盘首页获取直链来下载, 该下载方式需配合第三方服务器, 机密文件切勿使用此下载方式",
+				cli.StringFlag{
+					Name:  "mode",
+					Usage: "下载模式, 可选值: pcs, stream, locate, locate_pan, share, 默认为 locate, 相关说明见上面的帮助",
+					Value: "locate",
 				},
 				cli.IntFlag{
 					Name:  "p",
@@ -1068,44 +1078,11 @@ func main() {
 				cli.IntFlag{
 					Name:  "retry",
 					Usage: "下载失败最大重试次数",
-					Value: pcscommand.DefaultDownloadMaxRetry,
+					Value: pcsdownload.DefaultDownloadMaxRetry,
 				},
 				cli.BoolFlag{
 					Name:  "nocheck",
 					Usage: "下载文件完成后不校验文件",
-				},
-				cli.BoolFlag{
-					Name:  "bg",
-					Usage: "加入后台下载",
-				},
-			},
-		},
-		{
-			Name:  "bg",
-			Usage: "管理后台任务",
-			Description: `
-	默认关闭下载中任何向终端的输出
-	再后台进行文件下载，不会影响用户继续在客户端操作
-	可以同时进行多个任务
-
-	示例:
-
-	显示所有后台任务
-	BaiduPCS-Go bg
-`,
-			Category: "其他",
-			Before:   reloadFn,
-			Action: func(c *cli.Context) error {
-				if c.NArg() == 0 {
-					pcscommand.BgMap.PrintAllBgTask()
-					return nil
-				}
-				return nil
-			},
-			Flags: []cli.Flag{
-				cli.BoolFlag{
-					Name:  "test",
-					Usage: "测试下载, 此操作不会保存文件到本地",
 				},
 			},
 		},
@@ -1153,8 +1130,8 @@ func main() {
 
 				subArgs := c.Args()
 				pcscommand.RunUpload(subArgs[:c.NArg()-1], subArgs[c.NArg()-1], &pcscommand.UploadOptions{
-					Parallel:       c.Int("p"),
-					MaxRetry:       c.Int("retry"),
+					Parallel:      c.Int("p"),
+					MaxRetry:      c.Int("retry"),
 					NoRapidUpload: c.Bool("norapid"),
 					NoSplitFile:   c.Bool("nosplit"),
 				})
@@ -1470,7 +1447,7 @@ func main() {
 				pcscommand.RunExport(pcspaths, &pcscommand.ExportOptions{
 					RootPath:  c.String("root"),
 					SavePath:  c.String("out"),
-					MaxRerty:  c.Int("retry"),
+					MaxRetry:  c.Int("retry"),
 					Recursive: c.Bool("r"),
 				})
 				return nil

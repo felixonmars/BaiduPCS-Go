@@ -349,16 +349,39 @@ BaiduPCS-Go d <网盘文件或目录的路径1> <文件或目录2> <文件或目
   --save          将下载的文件直接保存到当前工作目录
   --saveto value  将下载的文件直接保存到指定的目录
   -x              为文件加上执行权限, (windows系统无效)
-  --share         以分享文件的方式获取下载链接来下载
-  --locate        以获取直链的方式来下载
-  -p value        指定下载线程数
-```
+  --mode value    下载模式, 可选值: pcs, stream, locate, locate_pan, share, 默认为 locate, 相关说明见上面的帮助 (default: "locate")
+  -p value        指定下载线程数 (default: 0)
+  -l value        指定同时进行下载文件的数量 (default: 0)
+  --retry value   下载失败最大重试次数 (default: 3)
+  --nocheck       下载文件完成后不校验文件
 
-支持多个文件或目录的下载.
+```
 
 下载的文件默认保存到 **程序所在目录** 的 download/ 目录, 支持设置指定目录, 重名的文件会自动跳过!
 
+下载的文件默认保存到, **程序所在目录**的 **download/** 目录.
+
+通过 `BaiduPCS-Go config set -savedir <savedir>`, 自定义保存的目录.
+
+支持多个文件或目录下载.
+ 
+支持下载完成后自动校验文件, 但并不是所有的文件都支持校验!
+ 
+自动跳过下载重名的文件!
+
 [关于下载的简单说明](https://github.com/iikira/BaiduPCS-Go/wiki/%E5%85%B3%E4%BA%8E%E4%B8%8B%E8%BD%BD%E7%9A%84%E7%AE%80%E5%8D%95%E8%AF%B4%E6%98%8E)
+
+#### 下载模式说明
+
+* pcs: 通过百度网盘的 PCS API 下载
+
+* stream: 通过百度网盘的 PCS API, 以流式文件的方式下载, 效果同 pcs
+
+* locate: 默认的下载模式。从百度网盘 Android 客户端, 获取下载链接的方式来下载
+
+* locate_pan: 从百度网盘 WEB 首页获取下载链接来下载, 该下载方式需配合第三方服务器, 机密文件切勿使用此下载方式
+
+* share: 从网盘文件的分享列表获取文件的下载链接来下载
 
 #### 例子
 ```

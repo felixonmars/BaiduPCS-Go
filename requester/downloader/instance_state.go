@@ -65,7 +65,7 @@ func (is *InstanceState) getSaveFileContents() []byte {
 	return buf[:n]
 }
 
-//Get 拉取信息
+//Get 获取断点续传信息
 func (is *InstanceState) Get() (eii *transfer.DownloadInstanceInfo) {
 	if !is.checkSaveFile() {
 		return nil
@@ -97,7 +97,7 @@ func (is *InstanceState) Get() (eii *transfer.DownloadInstanceInfo) {
 	return
 }
 
-//Put 提交信息
+//Put 提交断点续传信息
 func (is *InstanceState) Put(eii *transfer.DownloadInstanceInfo) {
 	if !is.checkSaveFile() {
 		return

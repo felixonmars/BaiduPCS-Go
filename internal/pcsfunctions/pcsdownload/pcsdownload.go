@@ -18,6 +18,7 @@ func IsSkipMd5Checksum(size int64, md5Str string) bool {
 	return false
 }
 
+// BaiduPCSURLCheckFunc downloader 首次检查下载地址要执行的函数
 func BaiduPCSURLCheckFunc(client *requester.HTTPClient, durl string) (contentLength int64, resp *http.Response, err error) {
 	resp, err = client.Req(http.MethodGet, durl, nil, map[string]string{
 		"Range": "bytes=0-" + strconv.FormatInt(baidupcs.MaxDownloadRangeSize-1, 10),

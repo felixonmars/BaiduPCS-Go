@@ -22,11 +22,13 @@ type (
 
 	// 任务单元执行结果
 	TaskUnitRunResult struct {
-		ResultCode    int         // 结果代码
-		ResultMessage string      // 结果描述
 		Succeed       bool        // 是否执行成功
 		NeedRetry     bool        // 是否需要重试
+
+		// 以下是额外的信息
 		Err           error       // 错误信息
+		ResultCode    int         // 结果代码
+		ResultMessage string      // 结果描述
 		Extra         interface{} // 额外的信息
 	}
 )
