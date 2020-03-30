@@ -43,12 +43,12 @@ func GetShareDLink(pcs *baidupcs.BaiduPCS, pcspath string) (dlink string, err er
 				switch record.TypicalCategory {
 				case -1: // 文件夹
 					if strings.HasPrefix(pcspath, record.TypicalPath+baidupcs.PathSeparator) {
-						dlink, err = GetLink(record.Shortlink, record.Passwd, pcspath, true)
+						dlink, err = GetLinkByRecord(pcs, record, pcspath, true)
 						return
 					}
 				default: // 文件
 					if pcspath == record.TypicalPath {
-						dlink, err = GetLink(record.Shortlink, record.Passwd, pcspath, false)
+						dlink, err = GetLinkByRecord(pcs, record, pcspath, false)
 						return
 					}
 				}
@@ -58,7 +58,7 @@ func GetShareDLink(pcs *baidupcs.BaiduPCS, pcspath string) (dlink string, err er
 
 			// 尝试获取
 			if strings.HasPrefix(pcspath, rootSharePath) {
-				dlink, err = GetLink(record.Shortlink, record.Passwd, pcspath, false)
+				dlink, err = GetLinkByRecord(pcs, record, pcspath, false)
 				if err != nil {
 					continue
 				}
@@ -71,6 +71,20 @@ func GetShareDLink(pcs *baidupcs.BaiduPCS, pcspath string) (dlink string, err er
 		return
 	}
 	return "", ErrShareInfoNotFound
+}
+
+// GetShareRecordPasswd 获取Passwd
+func GetLinkByRecord(pcs *baidupcs.BaiduPCS, record *baidupcs.ShareRecordInfo, filePath string, skipRoot bool) (dlink string, err error) {
+	if record.Public == 0 {
+		// 私密分享
+		info, pcsError := pcs.ShareSURLInfo(record.ShareID)
+		if pcsError != nil {
+			// 获取错误
+			return "", pcsError
+		}
+		record.Passwd = info.Pwd
+	}
+	return GetLink(record.Shortlink, record.Passwd, filePath, skipRoot)
 }
 
 func GetLink(shareLink, passwd, filePath string, skipRoot bool) (dlink string, err error) {

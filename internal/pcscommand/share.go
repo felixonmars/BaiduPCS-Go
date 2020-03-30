@@ -47,7 +47,9 @@ func RunShareList(page int) {
 	if page < 1 {
 		page = 1
 	}
-	records, err := GetBaiduPCS().ShareList(page)
+
+	pcs := GetBaiduPCS()
+	records, err := pcs.ShareList(page)
 	if err != nil {
 		fmt.Printf("%s失败: %s\n", baidupcs.OperationShareList, err)
 		return
@@ -56,8 +58,16 @@ func RunShareList(page int) {
 	tb := pcstable.NewTable(os.Stdout)
 	tb.SetHeader([]string{"#", "ShareID", "分享链接", "提取密码", "特征目录", "特征路径"})
 	for k, record := range records {
-		if record == nil {
-			continue
+		// 获取Passwd
+		if record.Public == 0 {
+			// 私密分享
+			info, pcsError := pcs.ShareSURLInfo(record.ShareID)
+			if pcsError != nil {
+				// 获取错误
+				fmt.Printf("[%d] 获取分享密码错误: %s\n", k, pcsError)
+			} else {
+				record.Passwd = info.Pwd
+			}
 		}
 
 		tb.Append([]string{strconv.Itoa(k), strconv.FormatInt(record.ShareID, 10), record.Shortlink, record.Passwd, path.Clean(path.Dir(record.TypicalPath)), record.TypicalPath})

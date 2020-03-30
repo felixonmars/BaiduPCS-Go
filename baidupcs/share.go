@@ -23,11 +23,23 @@ type (
 	ShareRecordInfo struct {
 		ShareID         int64   `json:"shareId"`
 		FsIds           []int64 `json:"fsIds"`
-		Passwd          string  `json:"passwd"`
+		Passwd          string  `json:"-"` // 这个字段已经没有用了, 需要从ShareSURLInfo中获取
 		Shortlink       string  `json:"shortlink"`
 		Status          int     `json:"status"`          // 状态
+		Public          int     `json:"public"`          // 是否为公开分享
 		TypicalCategory int     `json:"typicalCategory"` // 文件类型
 		TypicalPath     string  `json:"typicalPath"`
+	}
+
+	shareSURLInfo struct {
+		*pcserror.PanErrorInfo
+		*ShareSURLInfo
+	}
+
+	// ShareSURLInfo 分享的子信息
+	ShareSURLInfo struct {
+		Pwd      string `json:"pwd"` // 新密码
+		ShortURL string `json:"shorturl"`
 	}
 
 	// ShareRecordInfoList 分享信息列表
@@ -48,29 +60,6 @@ var (
 	// ErrShareLinkNotFound 未找到分享链接
 	ErrShareLinkNotFound = errors.New("未找到分享链接")
 )
-
-// Clean 清理
-func (sri *ShareRecordInfo) Clean() {
-	if sri.Passwd == "0" {
-		sri.Passwd = ""
-	}
-}
-
-// HasPasswd 是否需要提取码
-func (sri *ShareRecordInfo) HasPasswd() bool {
-	return sri.Passwd != "" && sri.Passwd != "0"
-}
-
-// Clean 清理
-func (sril *ShareRecordInfoList) Clean() {
-	for _, sri := range *sril {
-		if sri == nil {
-			continue
-		}
-
-		sri.Clean()
-	}
-}
 
 // ShareSet 分享文件
 func (pcs *BaiduPCS) ShareSet(paths []string, option *ShareOption) (s *Shared, pcsError pcserror.Error) {
@@ -152,6 +141,34 @@ func (pcs *BaiduPCS) ShareList(page int) (records ShareRecordInfoList, pcsError 
 		return nil, errInfo
 	}
 
-	jsonData.List.Clean()
 	return jsonData.List, nil
+}
+
+//ShareSURLInfo 获取分享的详细信息, 包含密码
+func (pcs *BaiduPCS) ShareSURLInfo(shareID int64) (info *ShareSURLInfo, pcsError pcserror.Error) {
+	dataReadCloser, pcsError := pcs.PrepareShareSURLInfo(shareID)
+	if pcsError != nil {
+		return
+	}
+
+	defer dataReadCloser.Close()
+
+	errInfo := pcserror.NewPanErrorInfo(OperationShareSURLInfo)
+
+	jsonData := shareSURLInfo{
+		PanErrorInfo: errInfo,
+	}
+
+	pcsError = pcserror.HandleJSONParse(OperationShareList, dataReadCloser, &jsonData)
+	if pcsError != nil {
+		// json解析错误
+		return
+	}
+
+	// 去掉0
+	if jsonData.Pwd == "0" {
+		jsonData.Pwd = ""
+	}
+
+	return jsonData.ShareSURLInfo, nil
 }

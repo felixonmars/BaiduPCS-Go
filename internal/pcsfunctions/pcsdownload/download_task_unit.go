@@ -142,7 +142,6 @@ func (dtu *DownloadTaskUnit) download(downloadURL string, client *requester.HTTP
 	der.OnDownloadStatusEvent(func(status transfer.DownloadStatuser, workersCallback func(downloader.RangeWorkerFunc)) {
 		// 这里可能会下载结束了, 还会输出内容
 		builder := &strings.Builder{}
-		builder.WriteString("\n\n")
 		if dtu.IsPrintStatus {
 			// 输出所有的worker状态
 			var (
@@ -154,6 +153,9 @@ func (dtu *DownloadTaskUnit) download(downloadURL string, client *requester.HTTP
 				tb.Append([]string{fmt.Sprint(worker.ID()), worker.GetStatus().StatusText(), wrange.ShowDetails(), strconv.FormatInt(wrange.Len(), 10), strconv.FormatInt(worker.GetSpeedsPerSecond(), 10), fmt.Sprint(worker.Err())})
 				return true
 			})
+
+			// 先空两行
+			builder.WriteString("\n\n")
 			tb.Render()
 		}
 

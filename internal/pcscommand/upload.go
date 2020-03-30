@@ -102,13 +102,15 @@ func RunUpload(localPaths []string, savePath string, opt *UploadOptions) {
 	var (
 		pcs = GetBaiduPCS()
 		// 使用 task framework
-		executor    = &taskframework.TaskExecutor{
+		executor = &taskframework.TaskExecutor{
 			IsFailedDeque: true, // 失败统计
 		}
 		subSavePath string
 		// 统计
 		statistic = &pcsupload.UploadStatistic{}
 	)
+
+	statistic.StartTimer() // 开始计时
 
 	for k := range localPaths {
 		walkedFiles, err := pcsutil.WalkDir(localPaths[k], "")

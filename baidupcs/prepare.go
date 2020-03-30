@@ -97,9 +97,18 @@ func (pcs *BaiduPCS) sendReqReturnReadCloser(rt reqType, op, method, urlStr stri
 // PrepareUK 获取用户 UK, 只返回服务器响应数据和错误信息
 func (pcs *BaiduPCS) PrepareUK() (dataReadCloser io.ReadCloser, pcsError pcserror.Error) {
 	pcs.lazyInit()
-	pcsURL := GetHTTPScheme(pcs.isHTTPS) + "://pan.baidu.com/api/user/getinfo?need_selfinfo=1"
 
-	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationGetUK, http.MethodGet, pcsURL, nil, nil)
+	query := url.Values{}
+	query.Set("need_selfinfo", "1")
+
+	panURL := &url.URL{
+		Scheme:   "https",
+		Host:     PanBaiduCom,
+		Path:     "api/user/getinfo",
+		RawQuery: query.Encode(),
+	}
+
+	dataReadCloser, pcsError = pcs.sendReqReturnReadCloser(reqTypePCS, OperationGetUK, http.MethodGet, panURL.String(), nil, nil)
 	return
 }
 
@@ -446,7 +455,7 @@ func (pcs *BaiduPCS) PrepareUploadCreateSuperFile(checkDir bool, targetPath stri
 func (pcs *BaiduPCS) PrepareUploadPrecreate(targetPath, contentMD5, sliceMD5, crc32 string, size int64, bolckList ...string) (dataReadCloser io.ReadCloser, panError pcserror.Error) {
 	pcs.lazyInit()
 	panURL := &url.URL{
-		Scheme: GetHTTPScheme(pcs.isHTTPS),
+		Scheme: "https",
 		Host:   PanBaiduCom,
 		Path:   "api/precreate",
 	}
@@ -580,7 +589,7 @@ func (pcs *BaiduPCS) PrepareCloudDlClearTask() (dataReadCloser io.ReadCloser, pc
 func (pcs *BaiduPCS) PrepareSharePSet(paths []string, period int) (dataReadCloser io.ReadCloser, panError pcserror.Error) {
 	pcs.lazyInit()
 	panURL := &url.URL{
-		Scheme: GetHTTPScheme(pcs.isHTTPS),
+		Scheme: "https",
 		Host:   PanBaiduCom,
 		Path:   "share/pset",
 	}
@@ -601,7 +610,7 @@ func (pcs *BaiduPCS) PrepareSharePSet(paths []string, period int) (dataReadClose
 func (pcs *BaiduPCS) PrepareShareCancel(shareIDs []int64) (dataReadCloser io.ReadCloser, panError pcserror.Error) {
 	pcs.lazyInit()
 	panURL := &url.URL{
-		Scheme: GetHTTPScheme(pcs.isHTTPS),
+		Scheme: "https",
 		Host:   PanBaiduCom,
 		Path:   "share/cancel",
 	}
@@ -627,7 +636,7 @@ func (pcs *BaiduPCS) PrepareShareList(page int) (dataReadCloser io.ReadCloser, p
 	query.Set("order", "time")
 
 	panURL := &url.URL{
-		Scheme:   GetHTTPScheme(pcs.isHTTPS),
+		Scheme:   "https",
 		Host:     PanBaiduCom,
 		Path:     "share/record",
 		RawQuery: query.Encode(),
@@ -635,6 +644,26 @@ func (pcs *BaiduPCS) PrepareShareList(page int) (dataReadCloser io.ReadCloser, p
 	baiduPCSVerbose.Infof("%s URL: %s\n", OperationShareList, panURL)
 
 	dataReadCloser, panError = pcs.sendReqReturnReadCloser(reqTypePan, OperationShareList, http.MethodGet, panURL.String(), nil, nil)
+	return
+}
+
+// PrepareShareSURLInfo 获取分享的详细信息, 包含密码, 只返回服务器响应数据和错误信息
+func (pcs *BaiduPCS) PrepareShareSURLInfo(shareID int64) (dataReadCloser io.ReadCloser, panError pcserror.Error) {
+	pcs.lazyInit()
+
+	query := url.Values{}
+	query.Set("shareid", strconv.FormatInt(shareID, 10))
+	query.Set("sign", converter.ToString(netdisksign.ShareSURLInfoSign(shareID)))
+
+	panURL := &url.URL{
+		Scheme:   "https",
+		Host:     PanBaiduCom,
+		Path:     "share/surlinfoinrecord",
+		RawQuery: query.Encode(),
+	}
+	baiduPCSVerbose.Infof("%s URL: %s\n", OperationShareSURLInfo, panURL)
+
+	dataReadCloser, panError = pcs.sendReqReturnReadCloser(reqTypePan, OperationShareSURLInfo, http.MethodGet, panURL.String(), nil, nil)
 	return
 }
 

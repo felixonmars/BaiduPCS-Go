@@ -73,6 +73,8 @@ const (
 	OperationShareCancel = "取消分享"
 	// OperationShareList 列出分享列表
 	OperationShareList = "列出分享列表"
+	// OperationShareSURLInfo 获取分享详细信息
+	OperationShareSURLInfo = "获取分享详细信息"
 	// OperationRecycleList 列出回收站文件列表
 	OperationRecycleList = "列出回收站文件列表"
 	// OperationRecycleRestore 还原回收站文件或目录

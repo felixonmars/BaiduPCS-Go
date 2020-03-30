@@ -8,9 +8,13 @@ import (
 //go:linkname mallocgc runtime.mallocgc
 func mallocgc(size uintptr, typ uintptr, needzero bool) unsafe.Pointer
 
+//go:linkname rawbyteslice runtime.rawbyteslice
+func rawbyteslice(size int) (b []byte)
+
 // RawByteSlice point to runtime.rawbyteslice
-//go:linkname RawByteSlice runtime.rawbyteslice
-func RawByteSlice(size int) (b []byte)
+func RawByteSlice(size int) (b []byte) {
+	return rawbyteslice(size)
+}
 
 // RawMalloc allocates a new slice. The slice is not zeroed.
 func RawMalloc(size int) unsafe.Pointer {
