@@ -72,11 +72,11 @@ func (fb *fileBlock) Read(b []byte) (n int, err error) {
 	fb.mu.Lock()
 	defer fb.mu.Unlock()
 
-	if fb.readed+fb.readRange.Begin >= fb.readRange.End {
+	left := int(fb.Left())
+	if left <= 0 {
 		return 0, io.EOF
 	}
 
-	left := int(fb.Left())
 	if len(b) > left {
 		n, err = fb.readerAt.ReadAt(b[:left], fb.readed+fb.readRange.Begin)
 	} else {

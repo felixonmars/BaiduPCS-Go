@@ -54,7 +54,7 @@ const (
 
 var (
 	// Version 版本号
-	Version = "v3.6.1-devel"
+	Version = "v3.6.2-devel"
 
 	historyFilePath = filepath.Join(pcsconfig.GetConfigDir(), "pcs_command_history.txt")
 	reloadFn        = func(c *cli.Context) error {
@@ -96,7 +96,7 @@ func main() {
 	app.Name = "BaiduPCS-Go"
 	app.Version = Version
 	app.Author = "iikira/BaiduPCS-Go: https://github.com/iikira/BaiduPCS-Go"
-	app.Copyright = "(c) 2016-2019 iikira."
+	app.Copyright = "(c) 2016-2020 iikira."
 	app.Usage = "百度网盘客户端 for " + runtime.GOOS + "/" + runtime.GOARCH
 	app.Description = `BaiduPCS-Go 使用Go语言编写的百度网盘命令行客户端, 为操作百度网盘, 提供实用功能.
 	具体功能, 参见 COMMANDS 列表

@@ -16,6 +16,13 @@ func NewBuffer(buf []byte) *Buffer {
 	}
 }
 
+// ReadAt 实现 io.ReadAt 接口
+// 不进行越界检查
+func (b *Buffer) ReadAt(p []byte, off int64) (n int, err error) {
+	n = copy(p, b.Buf[off:])
+	return n, nil
+}
+
 // WriteAt 实现 io.WriterAt 接口
 // 不进行越界检查
 func (b *Buffer) WriteAt(p []byte, off int64) (n int, err error) {

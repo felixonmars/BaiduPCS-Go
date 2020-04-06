@@ -100,6 +100,8 @@ This project was largely inspired by [GangZhuo/BaiduPCS](https://github.com/Gang
 
 Go语言程序, 可直接在[发布页](https://github.com/iikira/BaiduPCS-Go/releases)下载使用.
 
+可在这里下载最新commit对应的**测试版**: https://ci.appveyor.com/project/iikira/baidupcs-go/build/artifacts
+
 如果程序运行时输出乱码, 请检查下终端的编码方式是否为 `UTF-8`.
 
 使用本程序之前, 建议学习一些 linux 基础知识 和 基础命令.
