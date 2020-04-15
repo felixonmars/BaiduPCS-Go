@@ -881,15 +881,13 @@ d 1.mp4
 d /我的资源
 ```
 
-参见 例6 设置下载最大并发量
-
 ## 6. 设置下载最大并发量
 
 cli交互模式下, 运行命令 `config set -h` (注意空格) 查看设置帮助以及可供设置的值
 
-cli交互模式下, 运行命令 `config set -max_parallel 250` 将下载最大并发量设置为 250
+cli交互模式下, 运行命令 `config set -max_parallel 2` 将下载最大并发量设置为 2
 
-下载最大并发量建议值: 50~500, 太低下载速度提升不明显甚至速度会变为0, 太高可能会导致程序出错被操作系统结束掉.
+注意：下载最大并发量的值不易设置过高, 可能会导致百度帐号被限制下载
 
 ## 7. 退出程序
 
@@ -916,11 +914,3 @@ cli交互模式下, 运行命令 `config set -max_parallel 250` 将下载最大�
 邮箱: i@mail.iikira.com
 
 QQ群: 178324706
-
-# 捐助
-
-如果你愿意.
-
-|支付宝|微信|
-|:-----:|:-----:|
-|![alipay](https://github.com/iikira/BaiduPCS-Go/raw/master/assets/donate/alipay.jpg)|![weixin](https://github.com/iikira/BaiduPCS-Go/raw/master/assets/donate/weixin.png)|
