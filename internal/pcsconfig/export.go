@@ -3,14 +3,12 @@ package pcsconfig
 import (
 	"fmt"
 	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/baidupcs/dlinkclient"
 	"github.com/iikira/BaiduPCS-Go/pcstable"
 	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
 	"github.com/iikira/BaiduPCS-Go/requester"
 	"github.com/olekukonko/tablewriter"
 	"os"
 	"strconv"
-	"time"
 )
 
 // ActiveUser 获取当前登录的用户
@@ -49,18 +47,6 @@ func (c *PCSConfig) PCSHTTPClient() *requester.HTTPClient {
 // PanHTTPClient 返回设置好的 Pan HTTPClient
 func (c *PCSConfig) PanHTTPClient() *requester.HTTPClient {
 	return c.httpClientWithUA(c.PanUA)
-}
-
-// DlinkClient 返回设置好的DlinkClient
-func (c *PCSConfig) DlinkClient() *dlinkclient.DlinkClient {
-	if c.dc == nil {
-		dc := dlinkclient.NewDlinkClient()
-		client := c.PanHTTPClient()
-		client.SetResponseHeaderTimeout(30 * time.Second)
-		dc.SetClient(client)
-		c.dc = dc
-	}
-	return c.dc
 }
 
 // NumLogins 获取登录的用户数量

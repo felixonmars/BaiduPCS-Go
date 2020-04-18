@@ -960,8 +960,6 @@ func main() {
 		pcs: 通过百度网盘的 PCS API 下载
 		stream: 通过百度网盘的 PCS API, 以流式文件的方式下载, 效果同 pcs
 		locate: 默认的下载模式。从百度网盘 Android 客户端, 获取下载链接的方式来下载
-		locate_pan: 从百度网盘 WEB 首页获取下载链接来下载, 该下载方式需配合第三方服务器, 机密文件切勿使用此下载方式
-		share: 从网盘文件的分享列表获取文件的下载链接来下载
 
 	示例:
 
@@ -1010,10 +1008,6 @@ func main() {
 					downloadMode = pcsdownload.DownloadModeStreaming
 				case "locate":
 					downloadMode = pcsdownload.DownloadModeLocate
-				case "locate_pan":
-					downloadMode = pcsdownload.DownloadModeLocatePanAPI
-				case "share":
-					downloadMode = pcsdownload.DownloadModeShare
 				default:
 					fmt.Println("下载方式解析失败")
 					cli.ShowCommandHelp(c, c.Command.Name)
@@ -1064,7 +1058,7 @@ func main() {
 				},
 				cli.StringFlag{
 					Name:  "mode",
-					Usage: "下载模式, 可选值: pcs, stream, locate, locate_pan, share, 默认为 locate, 相关说明见上面的帮助",
+					Usage: "下载模式, 可选值: pcs, stream, locate, 默认为 locate, 相关说明见上面的帮助",
 					Value: "locate",
 				},
 				cli.IntFlag{

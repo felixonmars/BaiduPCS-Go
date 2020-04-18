@@ -351,7 +351,7 @@ BaiduPCS-Go d <网盘文件或目录的路径1> <文件或目录2> <文件或目
   --save          将下载的文件直接保存到当前工作目录
   --saveto value  将下载的文件直接保存到指定的目录
   -x              为文件加上执行权限, (windows系统无效)
-  --mode value    下载模式, 可选值: pcs, stream, locate, locate_pan, share, 默认为 locate, 相关说明见上面的帮助 (default: "locate")
+  --mode value    下载模式, 可选值: pcs, stream, locate, 默认为 locate, 相关说明见上面的帮助 (default: "locate")
   -p value        指定下载线程数 (default: 0)
   -l value        指定同时进行下载文件的数量 (default: 0)
   --retry value   下载失败最大重试次数 (default: 3)
@@ -380,10 +380,6 @@ BaiduPCS-Go d <网盘文件或目录的路径1> <文件或目录2> <文件或目
 * stream: 通过百度网盘的 PCS API, 以流式文件的方式下载, 效果同 pcs
 
 * locate: 默认的下载模式。从百度网盘 Android 客户端, 获取下载链接的方式来下载
-
-* locate_pan: 从百度网盘 WEB 首页获取下载链接来下载, 该下载方式需配合第三方服务器, 机密文件切勿使用此下载方式
-
-* share: 从网盘文件的分享列表获取文件的下载链接来下载
 
 #### 例子
 ```

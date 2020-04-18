@@ -74,8 +74,6 @@ const (
 const (
 	DownloadModeLocate DownloadMode = iota
 	DownloadModePCS
-	DownloadModeShare
-	DownloadModeLocatePanAPI
 	DownloadModeStreaming
 )
 
@@ -301,44 +299,6 @@ func (dtu *DownloadTaskUnit) locateDownload(result *taskframework.TaskUnitRunRes
 	return
 }
 
-func (dtu *DownloadTaskUnit) shareDownload(result *taskframework.TaskUnitRunResult) (ok bool) {
-	dlink, err := GetShareDLink(dtu.PCS, dtu.PcsPath)
-	switch err {
-	case nil:
-		// continue
-	case ErrShareInfoNotFound:
-		// 未分享
-		// 采用 locate 方式
-		fmt.Printf("[%s] 错误: %s, 将使用 locate 下载方式\n", dtu.taskInfo.Id(), err)
-		dtu.locateDownload(result)
-		return
-	default:
-		// 其他错误
-		// 需要重试
-		result.ResultMessage = StrDownloadGetDlinkFailed
-		result.Err = err
-		dtu.handleError(result)
-		return
-	}
-
-	dtu.execPanDownload(dlink, result, &ok)
-	return
-}
-
-//locatePanAPIDownload 由第三方处理
-func (dtu *DownloadTaskUnit) locatePanAPIDownload(result *taskframework.TaskUnitRunResult) (ok bool) {
-	dlink, err := GetLocatePanLink(dtu.PCS, dtu.fileInfo.FsID)
-	if err != nil {
-		// 获取下载链接失败
-		result.ResultMessage = StrDownloadGetDlinkFailed
-		result.Err = err
-		dtu.handleError(result)
-		return
-	}
-	dtu.execPanDownload(dlink, result, &ok)
-	return
-}
-
 func (dtu *DownloadTaskUnit) pcsOrStreamingDownload(mode DownloadMode, result *taskframework.TaskUnitRunResult) (ok bool) {
 	dfunc := func(downloadURL string, jar http.CookieJar) error {
 		client := pcsconfig.Config.PCSHTTPClient()
@@ -515,10 +475,6 @@ func (dtu *DownloadTaskUnit) Run() (result *taskframework.TaskUnitRunResult) {
 	switch dtu.DownloadMode {
 	case DownloadModeLocate:
 		ok = dtu.locateDownload(result)
-	case DownloadModeShare:
-		ok = dtu.shareDownload(result)
-	case DownloadModeLocatePanAPI:
-		ok = dtu.locatePanAPIDownload(result)
 	case DownloadModePCS, DownloadModeStreaming:
 		ok = dtu.pcsOrStreamingDownload(dtu.DownloadMode, result)
 	}

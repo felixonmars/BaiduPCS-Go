@@ -191,9 +191,6 @@ func (c *PCSConfig) SetPanUA(panUA string) {
 	if c.pcs != nil {
 		c.pcs.SetPanUserAgent(panUA)
 	}
-	if c.dc != nil {
-		c.dc.SetClient(c.PanHTTPClient())
-	}
 }
 
 // SetEnableHTTPS 设置是否启用https
@@ -201,9 +198,6 @@ func (c *PCSConfig) SetEnableHTTPS(https bool) {
 	c.EnableHTTPS = https
 	if c.pcs != nil {
 		c.pcs.SetHTTPS(https)
-	}
-	if c.dc != nil {
-		c.dc.SetClient(c.PanHTTPClient())
 	}
 }
 
