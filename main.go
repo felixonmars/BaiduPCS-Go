@@ -1739,10 +1739,10 @@ func main() {
 							pcsconfig.Config.SetUserAgent(c.String("user_agent"))
 						}
 						if c.IsSet("pcs_ua") {
-							pcsconfig.Config.SetUserAgent(c.String("pcs_ua"))
+							pcsconfig.Config.SetPCSUA(c.String("pcs_ua"))
 						}
 						if c.IsSet("pan_ua") {
-							pcsconfig.Config.SetUserAgent(c.String("pan_ua"))
+							pcsconfig.Config.SetPanUA(c.String("pan_ua"))
 						}
 						if c.IsSet("cache_size") {
 							err := pcsconfig.Config.SetCacheSizeByStr(c.String("cache_size"))
