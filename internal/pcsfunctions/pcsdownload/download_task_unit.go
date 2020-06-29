@@ -293,6 +293,10 @@ func (dtu *DownloadTaskUnit) locateDownload(result *taskframework.TaskUnitRunRes
 
 	// 更新链接的协议
 	FixHTTPLinkURL(rawDlinks[0])
+	// 至少重试一次 HTTP 下载
+	if dtu.taskInfo.Retry() == 2 {
+		rawDlinks[0].Scheme = "http"
+	}
 	dlink := rawDlinks[0].String()
 
 	dtu.execPanDownload(dlink, result, &ok)
