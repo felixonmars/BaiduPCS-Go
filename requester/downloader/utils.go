@@ -1,8 +1,8 @@
 package downloader
 
 import (
-	"github.com/iikira/BaiduPCS-Go/pcsverbose"
-	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/felixonmars/BaiduPCS-Go/pcsverbose"
+	"github.com/felixonmars/BaiduPCS-Go/requester"
 	mathrand "math/rand"
 	"mime"
 	"net/url"

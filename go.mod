@@ -1,4 +1,4 @@
-module github.com/iikira/BaiduPCS-Go
+module github.com/felixonmars/BaiduPCS-Go
 
 go 1.12
 
@@ -11,8 +11,8 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fatih/color v0.0.0-20150510220652-1b35f289c47d
 	github.com/golang/protobuf v1.3.2
-	github.com/iikira/Baidu-Login v1.2.2-0.20180427090606-ecf146973528
-	github.com/iikira/baidu-tools v0.0.0-20190609113215-4dd64618064d
+	github.com/felixonmars/Baidu-Login v1.2.2-0.20180427090606-ecf146973528
+	github.com/felixonmars/baidu-tools v0.0.0-20190609113215-4dd64618064d
 	github.com/json-iterator/go v1.1.7
 	github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1
 	github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae

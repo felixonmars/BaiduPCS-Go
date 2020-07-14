@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
-	"github.com/iikira/baidu-tools/randominfo"
+	"github.com/felixonmars/baidu-tools/randominfo"
 	"sort"
 	"strconv"
 	"strings"

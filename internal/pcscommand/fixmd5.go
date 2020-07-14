@@ -2,7 +2,7 @@ package pcscommand
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/baidupcs"
+	"github.com/felixonmars/BaiduPCS-Go/baidupcs"
 )
 
 // RunFixMD5 执行修复md5

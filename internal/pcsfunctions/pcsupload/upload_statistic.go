@@ -1,7 +1,7 @@
 package pcsupload
 
 import (
-	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions"
+	"github.com/felixonmars/BaiduPCS-Go/internal/pcsfunctions"
 )
 
 type (

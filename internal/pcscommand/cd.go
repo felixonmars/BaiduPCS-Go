@@ -2,8 +2,8 @@ package pcscommand
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/felixonmars/BaiduPCS-Go/baidupcs"
+	"github.com/felixonmars/BaiduPCS-Go/internal/pcsconfig"
 )
 
 // RunChangeDirectory 执行更改工作目录

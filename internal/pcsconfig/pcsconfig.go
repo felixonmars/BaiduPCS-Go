@@ -2,11 +2,11 @@
 package pcsconfig
 
 import (
-	"github.com/iikira/BaiduPCS-Go/baidupcs"
-	"github.com/iikira/BaiduPCS-Go/pcsutil"
-	"github.com/iikira/BaiduPCS-Go/pcsutil/jsonhelper"
-	"github.com/iikira/BaiduPCS-Go/pcsverbose"
-	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/felixonmars/BaiduPCS-Go/baidupcs"
+	"github.com/felixonmars/BaiduPCS-Go/pcsutil"
+	"github.com/felixonmars/BaiduPCS-Go/pcsutil/jsonhelper"
+	"github.com/felixonmars/BaiduPCS-Go/pcsverbose"
+	"github.com/felixonmars/BaiduPCS-Go/requester"
 	"github.com/json-iterator/go"
 	"os"
 	"path/filepath"

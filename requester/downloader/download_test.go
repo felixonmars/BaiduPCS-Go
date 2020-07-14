@@ -2,8 +2,8 @@ package downloader
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/pcsverbose"
-	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/felixonmars/BaiduPCS-Go/pcsverbose"
+	"github.com/felixonmars/BaiduPCS-Go/requester"
 	"os"
 	"testing"
 	"time"

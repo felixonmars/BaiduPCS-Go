@@ -2,8 +2,8 @@ package baidupcs
 
 import (
 	"fmt"
-	"github.com/iikira/BaiduPCS-Go/baidupcs/expires"
-	"github.com/iikira/BaiduPCS-Go/baidupcs/pcserror"
+	"github.com/felixonmars/BaiduPCS-Go/baidupcs/expires"
+	"github.com/felixonmars/BaiduPCS-Go/baidupcs/pcserror"
 	"time"
 )
 

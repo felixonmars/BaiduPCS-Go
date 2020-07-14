@@ -3,10 +3,10 @@ package pcscommand
 import (
 	"bytes"
 	"fmt"
-	"github.com/iikira/Baidu-Login"
-	"github.com/iikira/BaiduPCS-Go/internal/pcsfunctions/pcscaptcha"
-	"github.com/iikira/BaiduPCS-Go/pcsliner"
-	"github.com/iikira/BaiduPCS-Go/requester"
+	"github.com/felixonmars/Baidu-Login"
+	"github.com/felixonmars/BaiduPCS-Go/internal/pcsfunctions/pcscaptcha"
+	"github.com/felixonmars/BaiduPCS-Go/pcsliner"
+	"github.com/felixonmars/BaiduPCS-Go/requester"
 	"image/png"
 	"io/ioutil"
 )

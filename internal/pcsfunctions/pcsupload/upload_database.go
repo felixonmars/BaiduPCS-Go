@@ -2,11 +2,11 @@ package pcsupload
 
 import (
 	"errors"
-	"github.com/iikira/BaiduPCS-Go/internal/pcsconfig"
-	"github.com/iikira/BaiduPCS-Go/pcsutil/checksum"
-	"github.com/iikira/BaiduPCS-Go/pcsutil/converter"
-	"github.com/iikira/BaiduPCS-Go/pcsutil/jsonhelper"
-	"github.com/iikira/BaiduPCS-Go/requester/uploader"
+	"github.com/felixonmars/BaiduPCS-Go/internal/pcsconfig"
+	"github.com/felixonmars/BaiduPCS-Go/pcsutil/checksum"
+	"github.com/felixonmars/BaiduPCS-Go/pcsutil/converter"
+	"github.com/felixonmars/BaiduPCS-Go/pcsutil/jsonhelper"
+	"github.com/felixonmars/BaiduPCS-Go/requester/uploader"
 	"os"
 	"path/filepath"
 	"strings"
