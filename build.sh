@@ -8,8 +8,22 @@ if [ "$1" = "" ]; then
 fi
 
 output="out/"
+WHICH_GO=`which go`
+if [ -h "$WHICH_GO" ]
+then
+      echo "$WHICH_GO is link file locate it"
+      DIR_GO=`dirname "$WHICH_GO"`
+      LINK_GO=`readlink "$WHICH_GO"`
+      WHICH_GO=`realpath "$DIR_GO/$LINK_GO"`
+fi
+echo $WHICH_GO
+# exit
 
-GOROOT=/usr
+echo "GOROOT=$GOROOT"
+if [ ! $GOROOT ];then
+  GOROOT=`dirname $WHICH_GO | xargs dirname`
+fi
+echo "GOROOT=$GOROOT"
 
 old_golang() {
   #GOROOT=/usr/local/go1.10.8
@@ -58,14 +72,24 @@ IOSBuild() {
   echo "Building $1..."
   mkdir -p "$output/$1"
   cd "$output/$1"
-  export CC=/usr/local/go/misc/ios/clangwrap.sh GOOS=darwin GOARCH=arm GOARM=7 CGO_ENABLED=1
-  $go build -ldflags "-X main.Version=$version -s -w" -o "armv7" github.com/felixonmars/BaiduPCS-Go
-  jtool --sign --inplace --ent ../../entitlements.xml "armv7"
-  export GOARCH=arm64
+
+  #go 1.15 not support armv7
+  GO_VER=`go version | awk '{print $3}' | awk -F. '{print $2}'`
+  if [ $GO_VER -lt 15 ];then
+    export CC="${GOROOT}/misc/ios/clangwrap.sh" GOOS=darwin GOARCH=arm GOARM=7 CGO_ENABLED=1
+    $go build -ldflags "-X main.Version=$version -s -w" -o "armv7" github.com/felixonmars/BaiduPCS-Go
+    jtool --sign --inplace --ent ../../entitlements.xml "armv7"
+  fi
+  export CC="${GOROOT}/misc/ios/clangwrap.sh" GOOS=darwin GOARCH=arm64 GOARM=7 CGO_ENABLED=1
   $go build -ldflags "-X main.Version=$version -s -w" -o "arm64" github.com/felixonmars/BaiduPCS-Go
   jtool --sign --inplace --ent ../../entitlements.xml "arm64"
-  lipo -create "armv7" "arm64" -output $name # merge
-  rm "armv7" "arm64"
+  # echo "ios build complete"
+  if [ -f "armv7" ];then
+    lipo -create "armv7" "arm64" -output $name # merge
+    rm "armv7" "arm64"
+  else
+    mv "arm64" $name
+  fi
   cd ../..
   RicePack $1 $name
   Pack $1
